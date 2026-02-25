@@ -22,7 +22,7 @@ export default function BlogListingPage() {
     }, []);
 
     return (
-        <div className="bg-gray-50 dark:bg-black min-h-screen transition-colors duration-300">
+        <div className="bg-background min-h-screen transition-colors duration-300">
             {/* Blog Hero */}
             <section className="relative bg-primary py-20 lg:py-28 pt-32 overflow-hidden">
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(#334155 1px, transparent 1px)", backgroundSize: "32px 32px" }}></div>
@@ -54,7 +54,7 @@ export default function BlogListingPage() {
                     {/* Categories (Simple tabs for now) */}
                     <div className="flex justify-center gap-4 mb-16 flex-wrap">
                         {['All Posts', 'Company News', 'Financial Tips', 'Impact', 'Technology'].map((cat, idx) => (
-                            <button key={cat} className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${idx === 0 ? 'bg-primary text-white' : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10'}`}>
+                            <button key={cat} className={`px-5 py-2 rounded-full text-sm font-medium transition-colors border ${idx === 0 ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-accent/50 hover:text-foreground'}`}>
                                 {cat}
                             </button>
                         ))}

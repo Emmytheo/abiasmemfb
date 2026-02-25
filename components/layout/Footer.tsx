@@ -180,7 +180,7 @@ export function Footer() {
                         <div className="flex space-x-6">
                             <Link
                                 className="text-white/70 hover:text-white text-xs transition-colors"
-                                href="/legal/cookies"
+                                href="/legal/privacy"
                             >
                                 Privacy Policy
                             </Link>

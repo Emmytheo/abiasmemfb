@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Suspense } from "react";
 
-export default async function DashboardOverview() {
+async function DashboardOverviewContent() {
     const accounts = await dashboardApi.getAllAccounts();
     const loans = await dashboardApi.getAllLoans();
     const transactions = await dashboardApi.getAllTransactions();
@@ -202,8 +203,8 @@ export default async function DashboardOverview() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${loan.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                                                        loan.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
-                                                            'bg-primary/10 text-primary border-primary/20'
+                                                    loan.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                                        'bg-primary/10 text-primary border-primary/20'
                                                     }`}>
                                                     {loan.status}
                                                 </span>
@@ -308,5 +309,13 @@ export default async function DashboardOverview() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function DashboardOverview() {
+    return (
+        <Suspense fallback={<div className="flex w-full justify-center p-8">Loading dashboard overview...</div>}>
+            <DashboardOverviewContent />
+        </Suspense>
     );
 }

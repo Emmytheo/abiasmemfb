@@ -4,6 +4,7 @@ import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, Fil
 import { Newsletter } from "@/components/newsletter";
 import { SuccessStories } from "@/components/home/success-stories";
 import { NewsInsights } from "@/components/home/news-insights";
+import { Suspense } from "react";
 
 export default function Home() {
   return (
@@ -323,7 +324,9 @@ export default function Home() {
       {/* Success Stories */}
       <SuccessStories />
       {/* News & Insights */}
-      <NewsInsights />
+      <Suspense fallback={null}>
+        <NewsInsights />
+      </Suspense>
     </>
   );
 }

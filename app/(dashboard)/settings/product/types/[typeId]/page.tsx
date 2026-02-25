@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -22,7 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function EditProductTypePage() {
+function EditProductTypeContent() {
     const params = useParams();
     const router = useRouter();
     const typeId = params.typeId as string;
@@ -373,5 +374,13 @@ export default function EditProductTypePage() {
                 </div>
             </aside>
         </div>
+    );
+}
+
+export default function EditProductTypePage() {
+    return (
+        <Suspense fallback={<div className="flex w-full justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+            <EditProductTypeContent />
+        </Suspense>
     );
 }

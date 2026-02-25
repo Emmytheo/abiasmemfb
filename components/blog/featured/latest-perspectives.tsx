@@ -2,20 +2,20 @@ import { ArrowUpRight, Filter, LayoutGrid } from "lucide-react";
 
 export function LatestPerspectives() {
     return (
-        <section className="w-full bg-primary/5 dark:bg-[#0f1629] py-20 px-6 lg:px-12 transition-colors duration-300">
+        <section className="w-full bg-primary/5 dark:bg-background py-20 px-6 lg:px-12 transition-colors duration-300">
             <div className="max-w-7xl mx-auto flex flex-col gap-12">
 
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-200 dark:border-white/10 pb-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-border pb-6">
                     <div>
-                        <h2 className="text-gray-900 dark:text-white text-3xl md:text-4xl font-display font-normal">Latest Perspectives</h2>
-                        <p className="text-gray-600 dark:text-gray-400 mt-2 font-light">Curated insights for the modern investor.</p>
+                        <h2 className="text-foreground text-3xl md:text-4xl font-display font-normal">Latest Perspectives</h2>
+                        <p className="text-muted-foreground mt-2 font-light">Curated insights for the modern investor.</p>
                     </div>
                     <div className="flex gap-2">
-                        <button className="p-2 rounded-full border border-gray-200 dark:border-white/10 hover:border-accent text-gray-900 dark:text-white hover:text-accent transition-colors">
+                        <button className="p-2 rounded-full border border-border hover:border-accent text-foreground hover:text-accent transition-colors">
                             <Filter className="w-5 h-5" />
                         </button>
-                        <button className="p-2 rounded-full border border-gray-200 dark:border-white/10 hover:border-accent text-gray-900 dark:text-white hover:text-accent transition-colors">
+                        <button className="p-2 rounded-full border border-border hover:border-accent text-foreground hover:text-accent transition-colors">
                             <LayoutGrid className="w-5 h-5" />
                         </button>
                     </div>
@@ -48,24 +48,24 @@ export function LatestPerspectives() {
                     {/* Sidebar Column (Right) */}
                     <div className="col-span-1 md:col-span-12 lg:col-span-4 flex flex-col gap-6">
                         {/* Text Article Card */}
-                        <article className="flex-1 bg-white dark:bg-white/5 rounded-xl p-6 border border-gray-200 dark:border-white/5 hover:border-accent/30 transition-colors group cursor-pointer flex flex-col justify-between shadow-sm">
+                        <article className="flex-1 bg-card rounded-xl p-6 border border-border hover:border-accent/30 transition-colors group cursor-pointer flex flex-col justify-between shadow-sm">
                             <div>
                                 <div className="flex justify-between items-start mb-4">
-                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Wealth</span>
-                                    <ArrowUpRight className="w-5 h-5 text-gray-400 group-hover:text-accent transition-colors" />
+                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Wealth</span>
+                                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
                                 </div>
-                                <h4 className="text-xl font-medium text-gray-900 dark:text-white group-hover:text-accent transition-colors mb-2">
+                                <h4 className="text-xl font-medium text-foreground group-hover:text-accent transition-colors mb-2">
                                     5 Saving Habits for SME Owners
                                 </h4>
-                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                                <p className="text-muted-foreground text-sm leading-relaxed">
                                     Practical steps to separate personal finances from business capital.
                                 </p>
                             </div>
                             <div className="flex items-center gap-3 mt-6">
-                                <div className="w-8 h-8 rounded-full bg-gray-200 ring-2 ring-white dark:ring-white/10 overflow-hidden">
+                                <div className="w-8 h-8 rounded-full bg-muted ring-2 ring-background overflow-hidden">
                                     <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7vjK0jgumMRstat4Bbf8PF1UIF2zrHXTi8bHy5mf84txLaBli2CWGkrtwRNbBA709rgUZT7wvpy99X0sCyUN_jOyve4Ly1NYRhatrsgJFAae4sHuCZvNxoHRrprswKE44YVVergKNPpIx102dpdT2cYrGs8utBI_Y6sHTaso1TQogXQRVViDeIbSvLGTora6M_AhgAf2B936HKvOPqrQvrxLYe-FxlzxkV4gd7t3aqlYmNQ4uh_0SBI9OLt58mnKZIZ_A8YaYAlCq" alt="Author" className="w-full h-full object-cover" />
                                 </div>
-                                <span className="text-xs text-gray-500">By Chinedu Okeke</span>
+                                <span className="text-xs text-muted-foreground">By Chinedu Okeke</span>
                             </div>
                         </article>
 
@@ -105,7 +105,7 @@ export function LatestPerspectives() {
                 </div>
 
                 <div className="flex justify-center pt-8">
-                    <button className="px-8 py-3 rounded-full border border-gray-300 dark:border-white/20 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white hover:text-primary transition-all text-sm font-medium tracking-wide uppercase">
+                    <button className="px-8 py-3 rounded-full border border-border text-foreground hover:bg-accent/10 hover:text-accent transition-all text-sm font-medium tracking-wide uppercase">
                         Load More Articles
                     </button>
                 </div>

@@ -2,11 +2,11 @@ import { Download } from "lucide-react";
 
 export function FinancialJournal() {
     return (
-        <section className="w-full bg-gray-50 dark:bg-[#0f1629] py-24 px-6 lg:px-12 border-t border-gray-200 dark:border-white/5 transition-colors duration-300">
+        <section className="w-full bg-background py-24 px-6 lg:px-12 border-t border-border transition-colors duration-300">
             <div className="max-w-7xl mx-auto">
                 <div className="text-center max-w-2xl mx-auto mb-16">
-                    <h2 className="text-3xl md:text-5xl text-gray-900 dark:text-white font-display mb-4">The Financial Journal</h2>
-                    <p className="text-gray-600 dark:text-gray-400 font-light">Deep dives into the fiscal landscape. Download premium whitepapers and annual reports.</p>
+                    <h2 className="text-3xl md:text-5xl text-foreground font-display mb-4">The Financial Journal</h2>
+                    <p className="text-muted-foreground font-light">Deep dives into the fiscal landscape. Download premium whitepapers and annual reports.</p>
                 </div>
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16 max-w-5xl mx-auto">
@@ -28,7 +28,7 @@ export function FinancialJournal() {
                             </div>
                         </div>
                         <div className="mt-8 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-y-2 group-hover:translate-y-0">
-                            <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs">Comprehensive breakdown of AbiaSMEMFB's yearly performance and community impact.</p>
+                            <p className="text-muted-foreground text-sm max-w-xs">Comprehensive breakdown of AbiaSMEMFB's yearly performance and community impact.</p>
                         </div>
                     </div>
 
@@ -49,7 +49,7 @@ export function FinancialJournal() {
                             </div>
                         </div>
                         <div className="mt-8 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-y-2 group-hover:translate-y-0">
-                            <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs">Expert strategies for scaling small businesses in emerging markets.</p>
+                            <p className="text-muted-foreground text-sm max-w-xs">Expert strategies for scaling small businesses in emerging markets.</p>
                         </div>
                     </div>
 
@@ -70,7 +70,7 @@ export function FinancialJournal() {
                             </div>
                         </div>
                         <div className="mt-8 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-y-2 group-hover:translate-y-0">
-                            <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs">Navigating international trade regulations for Nigerian manufacturers.</p>
+                            <p className="text-muted-foreground text-sm max-w-xs">Navigating international trade regulations for Nigerian manufacturers.</p>
                         </div>
                     </div>
 

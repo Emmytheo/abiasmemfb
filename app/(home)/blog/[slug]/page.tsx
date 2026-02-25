@@ -1,4 +1,5 @@
 import { getBlogPostBySlug, getBlogPosts } from "@/lib/services/blog";
+import { Suspense } from "react";
 import { Clock, Calendar, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,7 +16,7 @@ export async function generateStaticParams() {
     }));
 }
 
-export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+async function BlogPostPageContent({ params }: { params: { slug: string } }) {
     const { slug } = await params;
     const post = await getBlogPostBySlug(slug);
 
@@ -24,7 +25,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     }
 
     return (
-        <article className="min-h-screen bg-white dark:bg-black transition-colors duration-300 pb-20">
+        <article className="min-h-screen bg-background transition-colors duration-300 pb-20">
             <ReadingProgress />
             {/* Hero Header */}
             <div className="relative h-[60vh] min-h-[500px] w-full overflow-hidden">
@@ -66,11 +67,11 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
                 </div>
             </div>
 
-            <div className="layout-container flex flex-col lg:flex-row justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-16 relative bg-white dark:bg-black gap-16 max-w-[1440px] mx-auto">
+            <div className="layout-container flex flex-col lg:flex-row justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-16 relative bg-background gap-16 max-w-[1440px] mx-auto">
                 <BlogPostSocialSidebar />
 
-                <article className="max-w-[720px] w-full text-lg leading-loose text-gray-800 dark:text-white font-light mx-auto lg:mx-0">
-                    <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-a:text-accent hover:prose-a:text-primary transition-colors">
+                <article className="max-w-[720px] w-full text-lg leading-loose text-foreground font-light mx-auto lg:mx-0">
+                    <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-headings:text-foreground prose-a:text-accent hover:prose-a:text-primary transition-colors">
                         <div dangerouslySetInnerHTML={{ __html: post.content }} />
                     </div>
                 </article>
@@ -79,5 +80,13 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
                 <BlogPostMobileActions />
             </div>
         </article>
+    );
+}
+
+export default function BlogPostPage({ params }: { params: { slug: string } }) {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center">Loading article...</div>}>
+            <BlogPostPageContent params={params} />
+        </Suspense>
     );
 }

@@ -28,6 +28,7 @@ export default function CreateProductTypePage() {
 
     const [isSaving, setIsSaving] = React.useState(false);
     const [interestRate, setInterestRate] = React.useState(10.0);
+    const [currentStep, setCurrentStep] = React.useState(1);
 
     const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -38,49 +39,14 @@ export default function CreateProductTypePage() {
         }, 800);
     };
 
-    // Handlers for scroll spy or simple anchor links
-    const scrollTo = (id: string) => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
+    const steps = [
+        { step: 1, title: "Basic Info", icon: Info },
+        { step: 2, title: "Financial Terms", icon: CreditCard },
+        { step: 3, title: "Content & Media", icon: FileText }
+    ];
 
     return (
-        <div className="flex w-full gap-8 animate-in fade-in duration-500">
-            {/* Left Sidebar Navigation (Anchor Links) */}
-            <aside className="w-56 hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)]">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 pl-3">Navigation</h3>
-                <div className="flex flex-col gap-1">
-                    <button onClick={() => scrollTo('basic-info')} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent text-primary border-l-2 border-primary text-left">
-                        <Info className="h-5 w-5" />
-                        <span className="text-sm font-medium">Basic Info</span>
-                    </button>
-                    <button onClick={() => scrollTo('financial-terms')} className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left">
-                        <CreditCard className="h-5 w-5" />
-                        <span className="text-sm font-medium">Financial Terms</span>
-                    </button>
-                    <button onClick={() => scrollTo('content')} className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left">
-                        <FileText className="h-5 w-5" />
-                        <span className="text-sm font-medium">Content & Media</span>
-                    </button>
-                    <button onClick={() => scrollTo('settings')} className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left">
-                        <Settings className="h-5 w-5" />
-                        <span className="text-sm font-medium">Configuration</span>
-                    </button>
-                </div>
-
-                <div className="mt-auto mb-8 p-4 rounded-xl bg-gradient-to-b from-accent to-background border border-border">
-                    <div className="flex items-center gap-2 text-primary mb-2">
-                        <Lightbulb className="h-[18px] w-[18px]" />
-                        <span className="text-xs font-bold uppercase">Pro Tip</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                        Start with basic details. You can always configure advanced settings later.
-                    </p>
-                </div>
-            </aside>
-
+        <div className="flex w-full gap-8 animate-in fade-in duration-500 justify-center">
             {/* Central Content Area */}
             <main className="flex-1 max-w-3xl">
                 <form id="create-product-form" onSubmit={handleSave} className="space-y-10 pb-24">
@@ -102,159 +68,213 @@ export default function CreateProductTypePage() {
                             <Button type="button" variant="ghost" asChild>
                                 <Link href="/settings/product/types">Cancel</Link>
                             </Button>
-                            <Button type="submit" disabled={isSaving} className="shadow-[0_0_15px_rgba(var(--primary),0.2)]">
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Save Product Type
-                            </Button>
                         </div>
                     </div>
 
-                    {/* Section: Basic Information */}
-                    <section id="basic-info" className="space-y-6 pt-4 scroll-mt-24">
-                        <div className="flex items-center gap-2 pb-2 border-b">
-                            <Info className="text-primary h-5 w-5" />
-                            <h2 className="text-lg font-semibold">Basic Information</h2>
-                        </div>
+                    {/* Stepper Header */}
+                    <div className="relative flex justify-between items-center mb-8 px-8">
+                        {/* Connecting Line */}
+                        <div className="absolute left-[10%] right-[10%] top-5 h-[2px] bg-border -z-10"></div>
+                        {/* Active Line */}
+                        <div
+                            className="absolute left-[10%] top-5 h-[2px] bg-primary -z-10 transition-all duration-500"
+                            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 80}%` }}
+                        ></div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2 group">
-                                <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Product Name</label>
-                                <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                    <input type="text" placeholder="e.g. Premium Business Checking" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" required />
+                        {steps.map((s) => (
+                            <button
+                                key={s.step}
+                                type="button"
+                                onClick={() => setCurrentStep(s.step)}
+                                className={`flex flex-col items-center gap-2 bg-background px-2 transition-colors ${currentStep >= s.step ? 'text-primary' : 'text-muted-foreground'}`}
+                            >
+                                <div className={`h-10 w-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${currentStep >= s.step ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border bg-background'}`}>
+                                    <s.icon className="h-5 w-5" />
                                 </div>
+                                <span className={`text-xs font-bold uppercase tracking-wider hidden sm:block ${currentStep === s.step ? 'text-foreground' : ''}`}>
+                                    {s.title}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Section: Basic Information */}
+                    <div className={currentStep === 1 ? "animate-in slide-in-from-right-4 fade-in duration-300 block" : "hidden"}>
+                        <section id="basic-info" className="space-y-6 pt-4">
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                                <Info className="text-primary h-5 w-5" />
+                                <h2 className="text-lg font-semibold">Basic Information</h2>
                             </div>
-                            <div className="space-y-2 group">
-                                <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Category</label>
-                                <div className="relative bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                    <select defaultValue="" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none appearance-none cursor-pointer" required>
-                                        <option value="" disabled>Select Category...</option>
-                                        <option value="loans">Loans & Credit</option>
-                                        <option value="savings">Savings Accounts</option>
-                                        <option value="investment">Investments</option>
-                                    </select>
-                                    <div className="absolute right-3 top-3 pointer-events-none text-muted-foreground">
-                                        <ChevronDown className="h-4 w-4" />
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2 group">
+                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Product Name</label>
+                                    <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                        <input type="text" placeholder="e.g. Premium Business Checking" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" required />
                                     </div>
                                 </div>
-                            </div>
-                            <div className="space-y-2 group md:col-span-2">
-                                <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Short Tagline</label>
-                                <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                    <input type="text" placeholder="A brief, appealing summary of this product." className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" />
+                                <div className="space-y-2 group">
+                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Category</label>
+                                    <div className="relative bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                        <select defaultValue="" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none appearance-none cursor-pointer" required>
+                                            <option value="" disabled>Select Category...</option>
+                                            <option value="loans">Loans & Credit</option>
+                                            <option value="savings">Savings Accounts</option>
+                                            <option value="investment">Investments</option>
+                                        </select>
+                                        <div className="absolute right-3 top-3 pointer-events-none text-muted-foreground">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground text-right">0/100 characters</p>
+                                <div className="space-y-2 group md:col-span-2">
+                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Short Tagline</label>
+                                    <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                        <input type="text" placeholder="A brief, appealing summary of this product." className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground text-right">0/100 characters</p>
+                                </div>
                             </div>
-                        </div>
-                    </section>
+                        </section>
+                    </div>
 
                     {/* Section: Financial Terms */}
-                    <section id="financial-terms" className="space-y-6 pt-4 scroll-mt-24">
-                        <div className="flex items-center gap-2 pb-2 border-b">
-                            <CreditCard className="text-primary h-5 w-5" />
-                            <h2 className="text-lg font-semibold">Financial Terms</h2>
-                        </div>
-
-                        <div className="bg-accent/50 rounded-xl p-6 border space-y-8">
-                            {/* Interest Rate Slider */}
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-sm font-medium">Interest Rate (Annual)</label>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            value={interestRate}
-                                            onChange={(e) => setInterestRate(Number(e.target.value))}
-                                            className="bg-background border rounded text-primary font-bold w-20 text-center focus:ring-1 focus:ring-primary focus:border-primary text-sm p-1 outline-none"
-                                        />
-                                        <span className="text-muted-foreground text-sm">%</span>
-                                    </div>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0" max="30" step="0.1"
-                                    value={interestRate}
-                                    onChange={(e) => setInterestRate(Number(e.target.value))}
-                                    className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer accent-primary"
-                                />
-                                <div className="flex justify-between text-xs text-muted-foreground">
-                                    <span>0%</span>
-                                    <span>15%</span>
-                                    <span>30%</span>
-                                </div>
+                    <div className={currentStep === 2 ? "animate-in slide-in-from-right-4 fade-in duration-300 block" : "hidden"}>
+                        <section id="financial-terms" className="space-y-6 pt-4">
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                                <CreditCard className="text-primary h-5 w-5" />
+                                <h2 className="text-lg font-semibold">Financial Terms</h2>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-2 group">
-                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Minimum Amount</label>
-                                    <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                        <span className="pl-3 text-muted-foreground font-serif text-sm">₦</span>
-                                        <input type="number" placeholder="0" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" />
+                            <div className="bg-accent/50 rounded-xl p-6 border space-y-8">
+                                {/* Interest Rate Slider */}
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-sm font-medium">Interest Rate (Annual)</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                value={interestRate}
+                                                onChange={(e) => setInterestRate(Number(e.target.value))}
+                                                className="bg-background border rounded text-primary font-bold w-20 text-center focus:ring-1 focus:ring-primary focus:border-primary text-sm p-1 outline-none"
+                                            />
+                                            <span className="text-muted-foreground text-sm">%</span>
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0" max="30" step="0.1"
+                                        value={interestRate}
+                                        onChange={(e) => setInterestRate(Number(e.target.value))}
+                                        className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer accent-primary"
+                                    />
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>0%</span>
+                                        <span>15%</span>
+                                        <span>30%</span>
                                     </div>
                                 </div>
-                                <div className="space-y-2 group">
-                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Maximum Amount</label>
-                                    <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                        <span className="pl-3 text-muted-foreground font-serif text-sm">₦</span>
-                                        <input type="number" placeholder="50,000" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" />
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* Tenure Pseudo-Slider */}
-                            <div className="space-y-4 pt-2">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-sm font-medium">Loan Tenure Range</label>
-                                    <span className="text-sm text-primary font-mono bg-primary/10 px-2 py-0.5 rounded">1 - 12 Months</span>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-2 group">
+                                        <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Minimum Amount</label>
+                                        <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                            <span className="pl-3 text-muted-foreground font-serif text-sm">₦</span>
+                                            <input type="number" placeholder="0" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 group">
+                                        <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Maximum Amount</label>
+                                        <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                            <span className="pl-3 text-muted-foreground font-serif text-sm">₦</span>
+                                            <input type="number" placeholder="50,000" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="relative w-full h-1.5 bg-background rounded-full">
-                                    <div className="absolute left-[0%] right-[66%] top-0 bottom-0 bg-primary rounded-full"></div>
-                                    <div className="absolute left-[0%] top-1/2 -translate-y-1/2 w-4 h-4 bg-primary border-2 border-background rounded-full shadow cursor-pointer hover:scale-110 transition-transform"></div>
-                                    <div className="absolute right-[66%] top-1/2 -translate-y-1/2 w-4 h-4 bg-primary border-2 border-background rounded-full shadow cursor-pointer hover:scale-110 transition-transform"></div>
-                                </div>
-                                <div className="flex justify-between text-xs text-muted-foreground">
-                                    <span>1 Month</span>
-                                    <span>36 Months</span>
+
+                                {/* Tenure Pseudo-Slider */}
+                                <div className="space-y-4 pt-2">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-sm font-medium">Loan Tenure Range</label>
+                                        <span className="text-sm text-primary font-mono bg-primary/10 px-2 py-0.5 rounded">1 - 12 Months</span>
+                                    </div>
+                                    <div className="relative w-full h-1.5 bg-background rounded-full">
+                                        <div className="absolute left-[0%] right-[66%] top-0 bottom-0 bg-primary rounded-full"></div>
+                                        <div className="absolute left-[0%] top-1/2 -translate-y-1/2 w-4 h-4 bg-primary border-2 border-background rounded-full shadow cursor-pointer hover:scale-110 transition-transform"></div>
+                                        <div className="absolute right-[66%] top-1/2 -translate-y-1/2 w-4 h-4 bg-primary border-2 border-background rounded-full shadow cursor-pointer hover:scale-110 transition-transform"></div>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>1 Month</span>
+                                        <span>36 Months</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </section>
+                        </section>
+                    </div>
 
                     {/* Section: Content */}
-                    <section id="content" className="space-y-6 pt-4 scroll-mt-24">
-                        <div className="flex items-center gap-2 pb-2 border-b">
-                            <FileText className="text-primary h-5 w-5" />
-                            <h2 className="text-lg font-semibold">Content & Media</h2>
-                        </div>
+                    <div className={currentStep === 3 ? "animate-in slide-in-from-right-4 fade-in duration-300 block" : "hidden"}>
+                        <section id="content" className="space-y-6 pt-4">
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                                <FileText className="text-primary h-5 w-5" />
+                                <h2 className="text-lg font-semibold">Content & Media</h2>
+                            </div>
 
-                        {/* Rich Text Editor Mockup */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted-foreground">Detailed Description</label>
-                            <div className="bg-background rounded-lg border overflow-hidden focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all">
-                                <div className="flex items-center gap-1 p-2 bg-muted/50 border-b">
-                                    <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><Bold className="h-4 w-4" /></button>
-                                    <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><Italic className="h-4 w-4" /></button>
-                                    <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><Underline className="h-4 w-4" /></button>
-                                    <div className="w-px h-4 bg-border mx-1" />
-                                    <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><List className="h-4 w-4" /></button>
-                                    <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><LinkIcon className="h-4 w-4" /></button>
-                                </div>
-                                <div className="p-4 min-h-[160px] text-sm text-foreground/80 leading-relaxed outline-none" contentEditable suppressContentEditableWarning data-placeholder="Explain the product's benefits in detail here...">
+                            {/* Rich Text Editor Mockup */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">Detailed Description</label>
+                                <div className="bg-background rounded-lg border overflow-hidden focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all">
+                                    <div className="flex items-center gap-1 p-2 bg-muted/50 border-b">
+                                        <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><Bold className="h-4 w-4" /></button>
+                                        <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><Italic className="h-4 w-4" /></button>
+                                        <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><Underline className="h-4 w-4" /></button>
+                                        <div className="w-px h-4 bg-border mx-1" />
+                                        <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><List className="h-4 w-4" /></button>
+                                        <button type="button" className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><LinkIcon className="h-4 w-4" /></button>
+                                    </div>
+                                    <div className="p-4 min-h-[160px] text-sm text-foreground/80 leading-relaxed outline-none" contentEditable suppressContentEditableWarning data-placeholder="Explain the product's benefits in detail here...">
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Image Uploader */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted-foreground">Product Banner Image</label>
-                            <div className="border-2 border-dashed border-border hover:border-primary/50 bg-accent/30 rounded-xl p-8 flex flex-col items-center justify-center transition-colors cursor-pointer group">
-                                <div className="size-12 rounded-full bg-background border flex items-center justify-center mb-3 group-hover:bg-primary/10 transition-colors">
-                                    <UploadCloud className="text-muted-foreground group-hover:text-primary h-6 w-6" />
+                            {/* Image Uploader */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">Product Banner Image</label>
+                                <div className="border-2 border-dashed border-border hover:border-primary/50 bg-accent/30 rounded-xl p-8 flex flex-col items-center justify-center transition-colors cursor-pointer group">
+                                    <div className="size-12 rounded-full bg-background border flex items-center justify-center mb-3 group-hover:bg-primary/10 transition-colors">
+                                        <UploadCloud className="text-muted-foreground group-hover:text-primary h-6 w-6" />
+                                    </div>
+                                    <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                                    <p className="text-xs text-muted-foreground mt-1">SVG, PNG, JPG or GIF (max. 800x400px)</p>
                                 </div>
-                                <p className="text-sm font-medium">Click to upload or drag and drop</p>
-                                <p className="text-xs text-muted-foreground mt-1">SVG, PNG, JPG or GIF (max. 800x400px)</p>
                             </div>
-                        </div>
-                    </section>
+                        </section>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-8 border-t">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
+                            disabled={currentStep === 1}
+                        >
+                            Previous Step
+                        </Button>
+
+                        {currentStep < 3 ? (
+                            <Button
+                                type="button"
+                                onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
+                            >
+                                Continue to Next Step
+                            </Button>
+                        ) : (
+                            <Button type="submit" disabled={isSaving} className="shadow-[0_0_15px_rgba(var(--primary),0.2)]">
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Publish Product
+                            </Button>
+                        )}
+                    </div>
                 </form>
             </main>
 

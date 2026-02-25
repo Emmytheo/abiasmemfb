@@ -71,7 +71,7 @@ export function BlogPostAuthorSidebar({ post }: BlogPostAuthorSidebarProps) {
     return (
         <aside className="hidden lg:block w-[320px] shrink-0">
             <div className="sticky top-24 space-y-12">
-                <div className="bg-gray-50 dark:bg-card-dark/50 border border-gray-200 dark:border-white/5 p-6 rounded-lg backdrop-blur-sm">
+                <div className="bg-card border border-border p-6 rounded-lg backdrop-blur-sm shadow-sm">
                     <div className="flex items-center gap-4 mb-4">
                         <img
                             alt={post.author.name}
@@ -79,12 +79,12 @@ export function BlogPostAuthorSidebar({ post }: BlogPostAuthorSidebarProps) {
                             src={post.author.avatar}
                         />
                         <div>
-                            <h4 className="text-gray-900 dark:text-white font-serif text-lg font-medium">{post.author.name}</h4>
+                            <h4 className="text-card-foreground font-serif text-lg font-medium">{post.author.name}</h4>
                             <p className="text-accent text-xs uppercase tracking-wider">{post.author.role}</p>
                         </div>
                     </div>
                     <div className="relative">
-                        <p className={`text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-2 transition-all duration-300 ${isExpanded ? '' : 'line-clamp-2'}`}>
+                        <p className={`text-muted-foreground text-sm leading-relaxed mb-2 transition-all duration-300 ${isExpanded ? '' : 'line-clamp-2'}`}>
                             Former macro-economist at Global Bank turned micro-finance advocate. Helping communities
                             build resilience through strategic lending.
                         </p>
@@ -110,8 +110,8 @@ export function BlogPostAuthorSidebar({ post }: BlogPostAuthorSidebarProps) {
                 </div>
 
                 {headings.length > 0 && (
-                    <div className="border-l border-gray-200 dark:border-white/10 pl-6">
-                        <h5 className="text-gray-900 dark:text-white font-medium text-sm mb-6 flex items-center gap-2">
+                    <div className="border-l border-border pl-6">
+                        <h5 className="text-foreground font-medium text-sm mb-6 flex items-center gap-2">
                             <span className="material-symbols-outlined text-base text-accent">format_list_bulleted</span>
                             On this page
                         </h5>
@@ -125,8 +125,8 @@ export function BlogPostAuthorSidebar({ post }: BlogPostAuthorSidebarProps) {
                                             document.getElementById(heading.id)?.scrollIntoView({ behavior: 'smooth' });
                                         }}
                                         className={`transition-colors block pl-6 border-l-2 -ml-[25px] ${activeSection === heading.id
-                                                ? 'text-accent border-accent font-medium'
-                                                : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-900 dark:hover:text-white hover:border-gray-200 dark:hover:border-white/20'
+                                            ? 'text-accent border-accent font-medium'
+                                            : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border'
                                             } ${heading.level === 'h3' ? 'ml-4' : ''}`}
                                     >
                                         {heading.text}
@@ -138,9 +138,9 @@ export function BlogPostAuthorSidebar({ post }: BlogPostAuthorSidebarProps) {
                 )}
 
                 <div className="p-6 bg-gradient-to-br from-primary/5 to-transparent border border-accent/20 rounded-lg">
-                    <h5 className="text-gray-900 dark:text-white font-serif mb-2">Abia Daily</h5>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Financial clarity in a chaotic world. Subscribe to our daily briefing.</p>
-                    <button className="w-full py-2 bg-white dark:bg-card-dark text-gray-900 dark:text-white text-xs font-bold uppercase tracking-wider border border-gray-200 dark:border-white/10 hover:border-accent hover:text-accent transition-all rounded-sm">
+                    <h5 className="text-foreground font-serif mb-2">Abia Daily</h5>
+                    <p className="text-xs text-muted-foreground mb-4">Financial clarity in a chaotic world. Subscribe to our daily briefing.</p>
+                    <button className="w-full py-2 bg-background text-foreground text-xs font-bold uppercase tracking-wider border border-border hover:border-accent hover:text-accent transition-all rounded-sm">
                         Subscribe
                     </button>
                 </div>

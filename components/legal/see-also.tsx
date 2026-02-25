@@ -20,7 +20,7 @@ export function LegalSeeAlso() {
                     </div>
                 </Link>
 
-                <Link href="/legal/cookies" className="group block bg-card text-card-foreground rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                <Link href="/legal/privacy" className="group block bg-card text-card-foreground rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                     <div className="h-56 overflow-hidden">
                         <img
                             alt="Secure padlock on keyboard"

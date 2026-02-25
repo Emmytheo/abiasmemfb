@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export default function ProductSettingsLayout({ children }: { children: React.ReactNode }) {
+function ProductSettingsContent({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     const tabs = [
@@ -52,5 +53,15 @@ export default function ProductSettingsLayout({ children }: { children: React.Re
 
             {children}
         </div>
+    );
+}
+
+export default function ProductSettingsLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <Suspense fallback={<div className="p-8">Loading configuration...</div>}>
+            <ProductSettingsContent>
+                {children}
+            </ProductSettingsContent>
+        </Suspense>
     );
 }
