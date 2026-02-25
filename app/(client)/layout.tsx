@@ -3,12 +3,15 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { Separator } from "@/components/ui/separator";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { DashboardBreadcrumb } from "@/components/dashboard-breadcrumb";
+import { Suspense } from "react";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
     return (
         <SidebarProvider>
             {/* Sidebar Navigation */}
-            <ClientSidebar variant="inset" />
+            <Suspense fallback={null}>
+                <ClientSidebar variant="inset" />
+            </Suspense>
 
             {/* Main Content Area */}
             <SidebarInset>
@@ -17,7 +20,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     <div className="flex items-center gap-4">
                         <SidebarTrigger className="-ml-2 hover:bg-muted/50 transition-colors" />
                         <Separator orientation="vertical" className="h-6 opacity-50" />
-                        <DashboardBreadcrumb />
+                        <Suspense fallback={null}>
+                            <DashboardBreadcrumb />
+                        </Suspense>
                     </div>
 
                     {/* Top Right Actions */}

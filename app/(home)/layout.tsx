@@ -30,6 +30,8 @@ const playfairDisplay = Playfair_Display({
   weight: ["500", "700"],
 });
 
+import { Suspense } from "react";
+
 export default function HomeLayout({
   children,
 }: Readonly<{
@@ -37,7 +39,9 @@ export default function HomeLayout({
 }>) {
   return (
     <>
-      <Navbar />
+      <Suspense fallback={null}>
+        <Navbar />
+      </Suspense>
       {children}
       <Footer />
     </>
