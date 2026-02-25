@@ -29,14 +29,14 @@ const benefits = [
 
 export function CareersValues() {
     return (
-        <section className="py-24 bg-white dark:bg-card-dark transition-colors duration-300" id="benefits">
+        <section className="py-24 bg-card transition-colors duration-300" id="benefits">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col md:flex-row gap-12 md:items-end justify-between mb-16">
                     <div className="max-w-2xl">
-                        <h2 className="text-3xl md:text-4xl font-display font-bold text-gray-900 dark:text-white mb-4">
+                        <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
                             Our Culture & Benefits
                         </h2>
-                        <p className="text-lg text-gray-600 dark:text-gray-300">
+                        <p className="text-lg text-muted-foreground">
                             We believe in fostering an environment where innovation thrives and every employee is empowered to grow both personally and professionally.
                         </p>
                     </div>
@@ -45,13 +45,13 @@ export function CareersValues() {
                     {benefits.map((benefit) => (
                         <div
                             key={benefit.id}
-                            className="group p-8 rounded-xl bg-white/60 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
+                            className="group p-8 rounded-xl bg-background/60 backdrop-blur-md border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
                         >
-                            <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-white dark:bg-white/10 text-accent mb-6 shadow-sm group-hover:scale-110 transition-transform">
+                            <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-background dark:bg-muted text-accent mb-6 shadow-sm group-hover:scale-110 transition-transform">
                                 <benefit.icon className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{benefit.title}</h3>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                            <h3 className="text-xl font-bold text-foreground mb-3">{benefit.title}</h3>
+                            <p className="text-muted-foreground text-sm leading-relaxed">
                                 {benefit.description}
                             </p>
                         </div>

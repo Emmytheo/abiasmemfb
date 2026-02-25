@@ -26,7 +26,7 @@ export default function Media() {
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-24">
                 {/* Featured Event */}
-                <section className="relative rounded-2xl overflow-hidden shadow-2xl bg-[#E8DCC6]">
+                <section className="relative rounded-2xl overflow-hidden shadow-2xl bg-secondary">
                     <div className="flex flex-col md:flex-row items-center">
                         <div className="w-full md:w-1/2 h-64 md:h-80 relative">
                             <img
@@ -37,10 +37,10 @@ export default function Media() {
                             <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent md:hidden"></div>
                         </div>
                         <div className="w-full md:w-1/2 p-8 md:p-12 text-center md:text-left">
-                            <span className="text-xs font-bold tracking-widest text-gray-600 uppercase mb-2 block">Original Series</span>
-                            <h2 className="text-3xl font-display font-bold text-gray-900 mb-4">A Heart On The Line</h2>
-                            <p className="text-gray-700 mb-8 max-w-md">Experience the drama and passion in our latest exclusive series. Streaming now on BluuTV.</p>
-                            <Link className="inline-block bg-primary text-white px-8 py-3 rounded-lg font-semibold shadow-lg hover:bg-opacity-90 transition-all hover:shadow-xl" href="#">
+                            <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-2 block">Original Series</span>
+                            <h2 className="text-3xl font-display font-bold text-foreground mb-4">A Heart On The Line</h2>
+                            <p className="text-muted-foreground mb-8 max-w-md">Experience the drama and passion in our latest exclusive series. Streaming now on BluuTV.</p>
+                            <Link className="inline-block bg-primary text-primary-foreground px-8 py-3 rounded-lg font-semibold shadow-lg hover:bg-opacity-90 transition-all hover:shadow-xl" href="#">
                                 Subscribe Now
                             </Link>
                         </div>
@@ -50,8 +50,8 @@ export default function Media() {
                 {/* Events Grid */}
                 <section>
                     <div className="flex items-center justify-between mb-12">
-                        <h2 className="text-3xl font-bold text-primary dark:text-white">Upcoming & Past Events</h2>
-                        <div className="h-1 bg-gray-200 dark:bg-gray-700 flex-grow ml-8 rounded-full hidden md:block"></div>
+                        <h2 className="text-3xl font-bold text-foreground">Upcoming & Past Events</h2>
+                        <div className="h-1 bg-border flex-grow ml-8 rounded-full hidden md:block"></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {/* Event 1 */}
@@ -62,13 +62,13 @@ export default function Media() {
                                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPWcGf-QqdG9KUOC-ikWt_hGee4zlg32NDatAHVzBB2RAEOyI75N9YOh_2FctyaitFmjywAnDLohARDhny5dix8odk4mUbdcMXRYkhJgwQzhc8y-68kmQKN5z19gbRkCY-IIcdaasKwpmYDRiPhddqW7-044UtYbWQkl27lcuugduztjeOeF2AsotP1QxebapZjkBVZvWgF0CLS2MEOkvogSgUhqsZIQx4BIyg0q1TG-rYBWkycqTTw54gjJ8Q3WX2dJ1cPmBFayyN"
                                 />
-                                <div className="absolute top-4 right-4 bg-white/90 dark:bg-black/80 backdrop-blur text-xs font-bold px-3 py-1 rounded-full text-primary dark:text-accent">
+                                <div className="absolute top-4 right-4 bg-background/90 backdrop-blur text-xs font-bold px-3 py-1 rounded-full text-foreground">
                                     TECH
                                 </div>
                             </div>
                             <div className="p-6">
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">FinTech Summit</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Exploring the future of financial technology and digital banking solutions.</p>
+                                <h3 className="text-xl font-bold text-foreground mb-2">FinTech Summit</h3>
+                                <p className="text-sm text-muted-foreground">Exploring the future of financial technology and digital banking solutions.</p>
                             </div>
                         </div>
                         {/* Event 2 */}
@@ -79,13 +79,13 @@ export default function Media() {
                                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSz4wrv4IHxJ0pLi2nTbte0ohwo_pJHJXtIKIL_vBELcwOg6QzhF6_0voUvfQhrB2dvIdOoDQuuo7tnoZ36Xol2CHITihM8C5BTb6kRDFPSugeYuCt8arvETn4e3AaatPFx-kk3MaVZqd4cXv5JNQ9katF_cnKKkUcxqQQRF1wEnn36gqCp-ZPVpLRL3lqeXm-_yWQSkhLNje0MQyQxNiQjq0NUKeTRDY5idIWyKKl8hLCHok9_bbu5gJV3FP_UXebGNCW4Pfb8nwJ"
                                 />
-                                <div className="absolute top-4 right-4 bg-white/90 dark:bg-black/80 backdrop-blur text-xs font-bold px-3 py-1 rounded-full text-primary dark:text-accent">
+                                <div className="absolute top-4 right-4 bg-background/90 backdrop-blur text-xs font-bold px-3 py-1 rounded-full text-foreground">
                                     SPORTS
                                 </div>
                             </div>
                             <div className="p-6">
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Golf Championship</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Annual championship bringing together top executives and golf enthusiasts.</p>
+                                <h3 className="text-xl font-bold text-foreground mb-2">Golf Championship</h3>
+                                <p className="text-sm text-muted-foreground">Annual championship bringing together top executives and golf enthusiasts.</p>
                             </div>
                         </div>
                         {/* Event 3 */}
@@ -96,13 +96,13 @@ export default function Media() {
                                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9RoSJQycEuxtXIH097MoXq08FoUKMX300ywH3FiyoLUn7UOxcmbNvzE5fKmSH1nhrLyQfZ9wG-92uZSrddwjr-IhbOb2frrvwhrW30ixXBulTW6zCrX-GFBj1HzSR4jr8wmS134PBQiuof5NtFX4MVYVjDBLIk5ZWjB0KnqufmjPufqTqzZlzdqLWPrfhGasDUrLLbom6JQ76-1UZCfro363s8qFZfxDlPMMcZYItP5bGWl0bhnnYk_qnWFJNDkOjYK8EcQRBz4eN"
                                 />
-                                <div className="absolute top-4 right-4 bg-white/90 dark:bg-black/80 backdrop-blur text-xs font-bold px-3 py-1 rounded-full text-primary dark:text-accent">
+                                <div className="absolute top-4 right-4 bg-background/90 backdrop-blur text-xs font-bold px-3 py-1 rounded-full text-foreground">
                                     CULTURE
                                 </div>
                             </div>
                             <div className="p-6">
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">CAIBA</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Celebrating African International Business Achievements and partnerships.</p>
+                                <h3 className="text-xl font-bold text-foreground mb-2">CAIBA</h3>
+                                <p className="text-sm text-muted-foreground">Celebrating African International Business Achievements and partnerships.</p>
                             </div>
                         </div>
                         {/* Event 4 */}
@@ -115,8 +115,8 @@ export default function Media() {
                                 />
                             </div>
                             <div className="p-6">
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">First@Arts</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Supporting the creative industry and showcasing exceptional artistic talent.</p>
+                                <h3 className="text-xl font-bold text-foreground mb-2">First@Arts</h3>
+                                <p className="text-sm text-muted-foreground">Supporting the creative industry and showcasing exceptional artistic talent.</p>
                             </div>
                         </div>
                         {/* Event 5 */}
@@ -129,8 +129,8 @@ export default function Media() {
                                 />
                             </div>
                             <div className="p-6">
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">LITF</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Lagos International Theatre Festival 2024. A stage for world-class performances.</p>
+                                <h3 className="text-xl font-bold text-foreground mb-2">LITF</h3>
+                                <p className="text-sm text-muted-foreground">Lagos International Theatre Festival 2024. A stage for world-class performances.</p>
                             </div>
                         </div>
                         {/* Event 6 */}
@@ -143,13 +143,13 @@ export default function Media() {
                                 />
                             </div>
                             <div className="p-6">
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Oxymoron</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">The Oxymoron of Kennyblaq. A night of music, comedy, and pure entertainment.</p>
+                                <h3 className="text-xl font-bold text-foreground mb-2">Oxymoron</h3>
+                                <p className="text-sm text-muted-foreground">The Oxymoron of Kennyblaq. A night of music, comedy, and pure entertainment.</p>
                             </div>
                         </div>
                     </div>
                     <div className="mt-12 text-center">
-                        <button className="inline-flex items-center space-x-2 text-primary dark:text-white font-semibold hover:text-accent transition-colors">
+                        <button className="inline-flex items-center space-x-2 text-foreground font-semibold hover:text-accent transition-colors">
                             <span>Load More Events</span>
                             <ChevronDown />
                         </button>
@@ -188,7 +188,7 @@ export default function Media() {
                 <section>
                     <div className="text-center mb-12">
                         <span className="text-accent font-bold tracking-widest text-sm uppercase">Explore More</span>
-                        <h2 className="text-3xl font-bold text-primary dark:text-white mt-2">See Also</h2>
+                        <h2 className="text-3xl font-bold text-foreground mt-2">See Also</h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="group relative h-80 rounded-2xl overflow-hidden cursor-pointer">

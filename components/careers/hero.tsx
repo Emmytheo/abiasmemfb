@@ -1,12 +1,12 @@
 export function CareersHero() {
     return (
-        <section className="relative bg-primary dark:bg-black py-20 lg:py-32 pt-32 overflow-hidden">
+        <section className="relative bg-primary py-20 lg:py-32 pt-32 overflow-hidden">
             <div className="absolute inset-0 z-0">
                 <div
                     className="w-full h-full bg-cover bg-center opacity-40 mix-blend-overlay"
                     style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuA7-Bt4UAGQ_Ex7sGViUFefkzwpFniOfJ3-zPks_pgAoeOajqK3oRN-sdGH8FmwmWN7DLRdjWOQaU4sKMzYTPazQ3P-mdAXnmbyDPXS1YxpnlUfbemT1g1XGXfS1NL0qXfcJopeRYkxtCD8_CQMkjH3SjNqe-c5t5CiCd8a3XeCZFjUAUc1qsS1-96h1wWITwjMb1L4pRycr5d0GpezZbBRi0Ui_Ar9fZsEcM-PMb6JxAfpDJXAoAT-QU36DGV5sg6Q9UANqm7SITDP')" }}
                 ></div>
-                <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/90 to-transparent dark:from-black dark:via-black/90"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/90 to-transparent dark:from-background dark:via-background/90"></div>
             </div>
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="max-w-3xl">

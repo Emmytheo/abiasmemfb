@@ -71,9 +71,9 @@ export default function Leadership() {
                     <nav aria-label="Breadcrumb" className="flex justify-center mb-6">
                         <ol className="flex items-center space-x-2 text-xs uppercase tracking-widest font-medium text-slate-400">
                             <li><Link className="hover:text-accent transition-colors" href="/">Home</Link></li>
-                            <li><span className="text-slate-600 dark:text-slate-600">/</span></li>
+                            <li><span className="text-muted-foreground">/</span></li>
                             <li><Link className="hover:text-accent transition-colors" href="/company">Company</Link></li>
-                            <li><span className="text-slate-600 dark:text-slate-600">/</span></li>
+                            <li><span className="text-muted-foreground">/</span></li>
                             <li aria-current="page" className="text-accent">Board of Directors</li>
                         </ol>
                     </nav>
@@ -91,7 +91,7 @@ export default function Leadership() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
                     {leadership.map((leader, index) => (
                         <article key={index} className="group fade-in-up">
-                            <div className="relative overflow-hidden rounded-t-2xl aspect-[4/5] mb-6 shadow-xl bg-slate-200 dark:bg-slate-800">
+                            <div className="relative overflow-hidden rounded-t-2xl aspect-[4/5] mb-6 shadow-xl bg-muted">
                                 <img
                                     alt={leader.name}
                                     className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-700 ease-in-out grayscale-[20%] group-hover:grayscale-0"
@@ -106,14 +106,14 @@ export default function Leadership() {
                                     <span className="h-px w-8 bg-accent"></span>
                                     <p className="text-xs font-bold text-accent uppercase tracking-widest">{leader.title}</p>
                                 </div>
-                                <h3 className="text-2xl font-display font-bold text-primary dark:text-white mb-3 group-hover:text-accent transition-colors">
+                                <h3 className="text-2xl font-display font-bold text-foreground mb-3 group-hover:text-accent transition-colors">
                                     {leader.name}
                                 </h3>
-                                <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-4 line-clamp-3">
+                                <p className="text-muted-foreground text-sm leading-relaxed mb-4 line-clamp-3">
                                     {leader.bio}
                                 </p>
                                 <Link
-                                    className="inline-flex items-center text-primary dark:text-slate-200 font-medium text-sm hover:text-accent transition-colors group"
+                                    className="inline-flex items-center text-foreground font-medium text-sm hover:text-accent transition-colors group"
                                     href="#"
                                 >
                                     Read Biography <ArrowRight className="ml-1 transition-transform group-hover:translate-x-1" size={16} />
