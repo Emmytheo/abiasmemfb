@@ -25,7 +25,7 @@ export function DashboardBreadcrumb() {
     const pathname = usePathname();
     const isMobile = useIsMobile();
 
-    const segments = pathname.split('/').filter(Boolean);
+    const segments = (pathname || "").split('/').filter(Boolean);
 
     if (segments.length === 0) return null;
 
