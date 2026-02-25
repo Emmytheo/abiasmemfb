@@ -159,7 +159,7 @@ export function Footer() {
 
 
                                 <Image
-                                    src="https://ndic.gov.ng/wp-content/uploads/2021/05/NDIC-Logo-1.png"
+                                    src="https://ndic.gov.ng/wp-content/uploads/2020/08/ndic_small_logo-1.png"
                                     alt="NDIC Logo"
                                     fill
                                     className="object-contain"
