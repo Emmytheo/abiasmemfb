@@ -13,6 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
+import { VolumeChart } from "@/components/dashboard/volume-chart";
 
 async function DashboardOverviewContent() {
     const accounts = await api.getAllAccounts();
@@ -28,7 +29,7 @@ async function DashboardOverviewContent() {
     const recentLoans = loans.slice(0, 3);
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 sm:p-4 md:p-8">
             {/* Welcome & Key Stats */}
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                 <div>
@@ -118,51 +119,7 @@ async function DashboardOverviewContent() {
                 <div className="xl:col-span-2 space-y-8">
 
                     {/* Performance Chart Area */}
-                    <Card className="bg-card border-border rounded-2xl overflow-hidden p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-8">
-                            <div>
-                                <h3 className="text-lg font-bold">Bank Volume Analytics</h3>
-                                <p className="text-sm text-muted-foreground">Monthly transaction volume across all digital channels</p>
-                            </div>
-                            <div className="flex bg-muted/50 p-1 rounded-lg border">
-                                <button className="px-4 py-1.5 text-xs font-bold text-primary bg-primary/10 rounded-md">7 Days</button>
-                                <button className="px-4 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors">30 Days</button>
-                            </div>
-                        </div>
-
-                        {/* SVG Chart Simulation */}
-                        <div className="relative h-[240px] w-full">
-                            <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 800 240">
-                                <defs>
-                                    <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
-                                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
-                                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-                                    </linearGradient>
-                                </defs>
-                                <path d="M0,180 Q100,160 200,190 T400,140 T600,100 T800,80 V240 H0 Z" fill="url(#chartGradient)" />
-                                <path d="M0,180 Q100,160 200,190 T400,140 T600,100 T800,80" fill="none" stroke="hsl(var(--primary))" strokeLinecap="round" strokeWidth="3" />
-                                {/* Points */}
-                                <circle cx="200" cy="190" fill="hsl(var(--primary))" r="4" />
-                                <circle cx="400" cy="140" fill="hsl(var(--primary))" r="4" />
-                                <circle cx="600" cy="100" fill="hsl(var(--primary))" r="4" />
-                                <circle cx="800" cy="80" fill="hsl(var(--primary))" r="4" />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                                <div className="border-b border-border/50 w-full" />
-                                <div className="border-b border-border/50 w-full" />
-                                <div className="border-b border-border/50 w-full" />
-                                <div className="border-b border-border/50 w-full" />
-                                <div className="w-full" />
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-4 px-2">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">January</span>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">March</span>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">May</span>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">July</span>
-                            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Today</span>
-                        </div>
-                    </Card>
+                    <VolumeChart transactions={transactions} />
 
                     {/* Loan Management Table */}
                     <Card className="bg-card border-border rounded-2xl overflow-hidden shadow-sm">

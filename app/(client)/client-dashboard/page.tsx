@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
     Eye,
     TrendingUp,
@@ -23,6 +23,7 @@ export default function ClientDashboard() {
     const [loans, setLoans] = useState<Loan[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [timeframe, setTimeframe] = useState<'6M' | '1Y' | 'ALL'>('6M');
 
     useEffect(() => {
         async function loadData() {
@@ -49,6 +50,73 @@ export default function ClientDashboard() {
     const investmentYield = 1120450;
     const availableCredit = 8500000;
     const portfolioValue = totalLiquidity + investmentYield + availableCredit;
+
+    const chartData = useMemo(() => {
+        const months = timeframe === '6M' ? 6 : timeframe === '1Y' ? 12 : 24;
+        const now = new Date();
+        const dataPoints = Array(months).fill(0);
+        const labels: string[] = [];
+
+        for (let i = 0; i < months; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+            labels.push(d.toLocaleDateString(undefined, { month: 'short' }));
+        }
+
+        let currentIterativeValue = portfolioValue || 1000000;
+
+        for (let i = months - 1; i >= 0; i--) {
+            dataPoints[i] = currentIterativeValue;
+            // Go back in time: previous month was slightly less (growth of 0.5% to 3.5% per month randomly)
+            const growthFactor = 1 + (Math.random() * 0.03 + 0.005);
+            currentIterativeValue = currentIterativeValue / growthFactor;
+        }
+
+        return { points: dataPoints, labels };
+
+    }, [timeframe, portfolioValue]);
+
+    const { chartPath, chartFill, chartPoints } = useMemo(() => {
+        const width = 1000;
+        const height = 200;
+        const { points } = chartData;
+        const min = Math.min(...points) * 0.95;
+        const max = Math.max(...points) * 1.02;
+        const range = max - min || 1;
+
+        const pts = points.map((val, i) => {
+            const x = (i / (points.length - 1)) * width;
+            const y = height - ((val - min) / range) * height;
+            return { x, y: Math.max(10, Math.min(height - 10, y)), value: val };
+        });
+
+        const pathStr = pts.map((pt, i) => {
+            if (i === 0) return `M ${pt.x},${pt.y}`;
+            const prev = pts[i - 1];
+            const cp1x = prev.x + (pt.x - prev.x) / 2;
+            const cp1y = prev.y;
+            const cp2x = prev.x + (pt.x - prev.x) / 2;
+            const cp2y = pt.y;
+            return `C ${cp1x},${cp1y} ${cp2x},${cp2y} ${pt.x},${pt.y}`;
+        }).join(' ');
+
+        return {
+            chartPath: pathStr,
+            chartFill: `${pathStr} L ${width},${height} L 0,${height} Z`,
+            chartPoints: pts
+        };
+
+    }, [chartData]);
+
+    const displayLabels = useMemo(() => {
+        const maxLabels = 6;
+        const result = [];
+        const step = Math.max(1, Math.floor((chartData.labels.length - 1) / (maxLabels - 1)));
+        for (let i = 0; i < maxLabels - 1; i++) {
+            result.push(chartData.labels[i * step]);
+        }
+        result.push(chartData.labels[chartData.labels.length - 1]);
+        return result;
+    }, [chartData.labels]);
 
     if (loading) {
         return <div className="max-w-6xl mx-auto p-10 flex justify-center text-muted-foreground">Loading dashboard...</div>;
@@ -119,38 +187,36 @@ export default function ClientDashboard() {
                 <div className="p-6 md:p-8 border-b flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h4 className="text-xl font-bold tracking-tight">Financial Growth</h4>
-                        <p className="text-sm text-muted-foreground">Portfolio performance over the last 6 months</p>
+                        <p className="text-sm text-muted-foreground">Portfolio performance over the last {timeframe === '6M' ? '6 months' : timeframe === '1Y' ? 'year' : '2 years'}</p>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="default" size="sm" className="h-8 text-xs font-bold">6M</Button>
-                        <Button variant="secondary" size="sm" className="h-8 text-xs font-bold text-muted-foreground bg-accent">1Y</Button>
-                        <Button variant="secondary" size="sm" className="h-8 text-xs font-bold text-muted-foreground bg-accent">ALL</Button>
+                        <Button variant={timeframe === '6M' ? 'default' : 'secondary'} onClick={() => setTimeframe('6M')} size="sm" className={`h-8 text-xs font-bold ${timeframe !== '6M' && 'text-muted-foreground bg-accent'}`}>6M</Button>
+                        <Button variant={timeframe === '1Y' ? 'default' : 'secondary'} onClick={() => setTimeframe('1Y')} size="sm" className={`h-8 text-xs font-bold ${timeframe !== '1Y' && 'text-muted-foreground bg-accent'}`}>1Y</Button>
+                        <Button variant={timeframe === 'ALL' ? 'default' : 'secondary'} onClick={() => setTimeframe('ALL')} size="sm" className={`h-8 text-xs font-bold ${timeframe !== 'ALL' && 'text-muted-foreground bg-accent'}`}>ALL</Button>
                     </div>
                 </div>
                 <div className="p-6 md:p-8">
                     <div className="relative h-64 w-full">
-                        <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 1000 200">
+                        <svg className="w-full h-full" overflow="visible" preserveAspectRatio="none" viewBox="0 0 1000 200">
                             <defs>
                                 <linearGradient id="chartGradientClient" x1="0" x2="0" y1="0" y2="1">
                                     <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
                                     <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
                                 </linearGradient>
                             </defs>
-                            <path d="M0,180 Q100,160 200,170 T400,120 T600,130 T800,40 T1000,60 L1000,200 L0,200 Z" fill="url(#chartGradientClient)" />
-                            <path d="M0,180 Q100,160 200,170 T400,120 T600,130 T800,40 T1000,60" fill="none" stroke="hsl(var(--primary))" strokeLinecap="round" strokeWidth="4" />
-                            <circle cx="200" cy="170" fill="hsl(var(--primary))" r="4" />
-                            <circle cx="400" cy="120" fill="hsl(var(--primary))" r="4" />
-                            <circle cx="600" cy="130" fill="hsl(var(--primary))" r="4" />
-                            <circle cx="800" cy="40" fill="hsl(var(--primary))" r="6" className="animate-pulse origin-center" />
+                            <path d={chartFill} fill="url(#chartGradientClient)" />
+                            <path d={chartPath} fill="none" stroke="hsl(var(--primary))" strokeLinecap="round" strokeWidth="4" />
+                            {chartPoints.map((pt, i) => (
+                                <circle key={i} cx={pt.x} cy={pt.y} fill="hsl(var(--primary))" r={i === chartPoints.length - 1 ? "6" : "4"} className={i === chartPoints.length - 1 ? "animate-pulse origin-center shadow-[0_0_10px_rgba(var(--primary),0.8)]" : ""} />
+                            ))}
                         </svg>
                     </div>
                     <div className="flex justify-between mt-6 px-2">
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Jan</span>
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Feb</span>
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Mar</span>
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Apr</span>
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">May</span>
-                        <span className="text-xs font-bold text-primary uppercase tracking-widest">Jun</span>
+                        {displayLabels.map((lbl, i) => (
+                            <span key={i} className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest ${i === displayLabels.length - 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+                                {lbl}
+                            </span>
+                        ))}
                     </div>
                 </div>
             </div>

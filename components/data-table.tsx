@@ -71,7 +71,7 @@ export function GenericDataTable<T extends { id: string | number }>({
     }, [data, searchQuery, searchKey]);
 
     return (
-        <Card className="w-full bg-background/50 backdrop-blur border-border/50 shadow-sm border-0">
+        <Card className="w-full bg-background/50 backdrop-blur border-border/50 shadow-transparent border-0">
             <CardHeader>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
