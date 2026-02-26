@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { use, useEffect, useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, ShieldCheck, HeartHandshake, Loader2, ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { ProductType } from "@/lib/api/types";
 
-export default function PublicProductDetail() {
-    const params = useParams();
+function PublicProductDetailContent({ params }: { params: Promise<{ productId: string }> }) {
+    const resolvedParams = use(params);
     const router = useRouter();
-    const productId = params.productId as string;
+    const productId = resolvedParams.productId;
 
     const [product, setProduct] = useState<ProductType | null>(null);
     const [loading, setLoading] = useState(true);
@@ -189,3 +189,12 @@ function Button(props: any) {
     }
     return <button className={`px-4 py-2 border rounded ${className}`} {...rest}>{children}</button>
 }
+
+export default function PublicProductDetail({ params }: { params: Promise<{ productId: string }> }) {
+    return (
+        <Suspense fallback={<div className="flex w-full justify-center p-32"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+            <PublicProductDetailContent params={params} />
+        </Suspense>
+    );
+}
+

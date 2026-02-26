@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { use, useEffect, useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { ProductApplication, ProductType, User } from "@/lib/api/types";
@@ -9,10 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Building, Landmark, Check, X, AlertCircle } from "lucide-react";
 
-export default function AdminApplicationReviewPage() {
-    const params = useParams();
+function AdminApplicationReviewContent({ params }: { params: Promise<{ applicationId: string }> }) {
+    const resolvedParams = use(params);
     const router = useRouter();
-    const applicationId = params.applicationId as string;
+    const applicationId = resolvedParams.applicationId;
 
     const [app, setApp] = useState<ProductApplication | null>(null);
     const [product, setProduct] = useState<ProductType | null>(null);
@@ -129,8 +129,8 @@ export default function AdminApplicationReviewPage() {
                                     return (
                                         <div key={stage} className="flex flex-col items-center gap-2">
                                             <div className={`w-10 h-10 rounded-full border-4 flex items-center justify-center bg-background shrink-0 transition-colors ${isCompleted ? 'border-primary bg-primary text-primary-foreground' :
-                                                    isCurrent ? 'border-primary text-primary animate-pulse shadow-[0_0_15px_rgba(var(--primary),0.3)]' :
-                                                        'border-muted text-muted-foreground'
+                                                isCurrent ? 'border-primary text-primary animate-pulse shadow-[0_0_15px_rgba(var(--primary),0.3)]' :
+                                                    'border-muted text-muted-foreground'
                                                 }`}>
                                                 {isCompleted ? <Check className="h-4 w-4" /> : <span className="text-xs font-bold">{idx + 1}</span>}
                                             </div>
@@ -251,5 +251,13 @@ export default function AdminApplicationReviewPage() {
 
             </div>
         </div>
+    );
+}
+
+export default function AdminApplicationReviewPage({ params }: { params: Promise<{ applicationId: string }> }) {
+    return (
+        <Suspense fallback={<div className="flex w-full justify-center p-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+            <AdminApplicationReviewContent params={params} />
+        </Suspense>
     );
 }

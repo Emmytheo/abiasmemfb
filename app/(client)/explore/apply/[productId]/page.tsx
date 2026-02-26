@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { use, useEffect, useState, FormEvent, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { ProductType, User } from "@/lib/api/types";
@@ -9,10 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Send } from "lucide-react";
 
-export default function ApplyProductPage() {
-    const params = useParams();
+function ApplyProductContent({ params }: { params: Promise<{ productId: string }> }) {
+    const resolvedParams = use(params);
     const router = useRouter();
-    const productId = params.productId as string;
+    const productId = resolvedParams.productId;
 
     const [product, setProduct] = useState<ProductType | null>(null);
     const [user, setUser] = useState<User | null>(null);
@@ -224,4 +224,12 @@ function UploadCloudIcon(props: any) {
             <path d="m16 16-4-4-4 4" />
         </svg>
     )
+}
+
+export default function ApplyProductPage({ params }: { params: Promise<{ productId: string }> }) {
+    return (
+        <Suspense fallback={<div className="flex w-full justify-center p-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+            <ApplyProductContent params={params} />
+        </Suspense>
+    );
 }

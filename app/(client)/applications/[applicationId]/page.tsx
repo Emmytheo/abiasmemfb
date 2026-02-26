@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { use, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { ProductApplication, ProductType, User } from "@/lib/api/types";
@@ -9,9 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, CheckCircle2, Circle, Clock, Building, Landmark, Check } from "lucide-react";
 
-export default function ApplicationDetailPage() {
-    const params = useParams();
-    const applicationId = params.applicationId as string;
+function ApplicationDetailContent({ params }: { params: Promise<{ applicationId: string }> }) {
+    const resolvedParams = use(params);
+    const applicationId = resolvedParams.applicationId;
 
     const [app, setApp] = useState<ProductApplication | null>(null);
     const [product, setProduct] = useState<ProductType | null>(null);
@@ -189,5 +188,13 @@ export default function ApplicationDetailPage() {
 
             </div>
         </div>
+    );
+}
+
+export default function ApplicationDetailPage({ params }: { params: Promise<{ applicationId: string }> }) {
+    return (
+        <Suspense fallback={<div className="flex w-full justify-center p-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+            <ApplicationDetailContent params={params} />
+        </Suspense>
     );
 }

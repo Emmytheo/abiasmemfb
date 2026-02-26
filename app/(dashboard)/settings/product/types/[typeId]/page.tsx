@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -56,10 +56,8 @@ function RichTextEditor({ value, onChange }: { value: string, onChange: (v: stri
     );
 }
 
-function EditProductTypeContent() {
-    const params = useParams();
+function EditProductTypeContent({ typeId }: { typeId: string }) {
     const router = useRouter();
-    const typeId = params.typeId as string;
 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -641,10 +639,12 @@ function EditProductTypeContent() {
     );
 }
 
-export default function EditProductTypePage() {
+export default function EditProductTypePage({ params }: { params: Promise<{ typeId: string }> }) {
+    const resolvedParams = use(params);
+
     return (
         <Suspense fallback={<div className="flex w-full justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
-            <EditProductTypeContent />
+            <EditProductTypeContent typeId={resolvedParams.typeId} />
         </Suspense>
     );
 }
