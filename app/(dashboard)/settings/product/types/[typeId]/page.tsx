@@ -57,7 +57,7 @@ function EditProductTypeContent() {
     ];
 
     return (
-        <div className="flex w-full gap-8 animate-in fade-in duration-500 justify-center">
+        <div className="flex w-full gap-8 animate-in fade-in duration-500 justify-center px-4 md:px-8">
             {/* Central Content Area */}
             <main className="flex-1 max-w-3xl">
                 <form id="edit-product-form" onSubmit={handleSave} className="space-y-10 pb-24">
@@ -71,9 +71,9 @@ function EditProductTypeContent() {
                                         <ArrowLeft className="h-4 w-4" />
                                     </Link>
                                 </Button>
-                                <h1 className="text-3xl font-bold tracking-tight">Edit Product</h1>
+                                <h1 className="text-xl md:text-3xl font-bold tracking-tight">Edit Product</h1>
                             </div>
-                            <p className="text-muted-foreground ml-11">Configure the core details for "SME Growth Loan". ID: {typeId}</p>
+                            <p className="text-muted-foreground ml-11 text-md md:text-base">Configure the core details for "SME Growth Loan". ID: {typeId}</p>
                         </div>
                         <div className="flex items-center gap-2 self-end md:self-auto">
                             <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting}>

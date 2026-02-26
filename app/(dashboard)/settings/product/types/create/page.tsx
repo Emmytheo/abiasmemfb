@@ -46,7 +46,7 @@ export default function CreateProductTypePage() {
     ];
 
     return (
-        <div className="flex w-full gap-8 animate-in fade-in duration-500 justify-center">
+        <div className="flex w-full gap-8 animate-in fade-in duration-500 justify-center px-4 md:px-8">
             {/* Central Content Area */}
             <main className="flex-1 max-w-3xl">
                 <form id="create-product-form" onSubmit={handleSave} className="space-y-10 pb-24">

@@ -21,14 +21,14 @@ function ProductSettingsContent({ children }: { children: React.ReactNode }) {
                 pathname === "/settings/product/categories" ||
                 pathname === "/settings/product/types") && (
                     <>
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2 px-4 md:px-8">
                             <h1 className="text-3xl font-bold tracking-tight text-primary">Product Configuration</h1>
                             <p className="text-muted-foreground">
                                 Manage product classes, categories, and specific types offered by ABIA MFB.
                             </p>
                         </div>
 
-                        <div className="bg-background/95 backdrop-blur border-b sticky top-16 z-10 w-full mb-6 py-2">
+                        <div className="bg-background/95 backdrop-blur border-b sticky top-16 z-10 w-full mb-6 py-2 px-4 md:px-8">
                             <nav className="flex items-center space-x-1 border rounded-lg p-1 bg-muted/20 w-max">
                                 {tabs.map((tab) => {
                                     const isActive = pathname.startsWith(tab.href) &&
