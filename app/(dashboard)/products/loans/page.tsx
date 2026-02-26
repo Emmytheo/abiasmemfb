@@ -1,82 +1,118 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { GenericDataTable } from "@/components/data-table";
-import { api, Loan } from "@/lib/api";
+import { api } from "@/lib/api";
+import { ProductApplication, ProductType } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Eye } from "lucide-react";
 
-export default function LoansPage() {
-    const [data, setData] = useState<Loan[]>([]);
+type EnrichedApp = ProductApplication & { product?: ProductType };
+
+export default function AdminLoansPage() {
+    const [data, setData] = useState<EnrichedApp[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.getAllLoans().then((loans) => {
-            setData(loans);
-            setLoading(false);
-        });
+        async function loadData() {
+            try {
+                const [apps, types] = await Promise.all([
+                    api.getAllApplications(),
+                    api.getAllProductTypes()
+                ]);
+
+                const enriched = apps
+                    .map(app => ({ ...app, product: types.find(t => t.id === app.product_type_id) }))
+                    .filter(app => app.product?.category === 'loans');
+
+                setData(enriched);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadData();
     }, []);
 
-    if (loading) return <div className="p-8">Loading loans...</div>;
+    if (loading) return <div className="p-8">Loading applications...</div>;
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <GenericDataTable
-                title="Customer Loans"
-                description="View and manage all active, pending, and past customer loans."
+                title="Customer Loan Applications"
+                description="Manage and review customer applications for loans and credit facilities."
                 data={data}
-                searchPlaceholder="Search by status..."
-                searchKey="status"
+                searchPlaceholder="Search by Reference ID..."
+                searchKey="id"
                 columns={[
-                    { header: "Amount", accessorKey: "amount", cell: (item) => `₦${item.amount.toLocaleString()}` },
-                    { header: "Interest Rate", accessorKey: "interest_rate", cell: (item) => `${item.interest_rate}%` },
-                    { header: "Duration", accessorKey: "duration_months", cell: (item) => `${item.duration_months} Months` },
+                    {
+                        header: "Reference",
+                        accessorKey: "id",
+                        cell: (item) => <span className="font-mono text-xs">{item.id.split('_')[1]?.toUpperCase()}</span>
+                    },
+                    {
+                        header: "Product",
+                        accessorKey: "product_type_id",
+                        cell: (item) => <span className="font-medium">{item.product?.name || 'Unknown'}</span>
+                    },
+                    {
+                        header: "Requested",
+                        accessorKey: "requested_amount",
+                        cell: (item) => <span className="font-mono">₦{item.requested_amount?.toLocaleString() || 'N/A'}</span>
+                    },
                     {
                         header: "Status",
                         accessorKey: "status",
-                        cell: (item) => {
-                            const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-                                approved: "default",
-                                pending: "outline",
-                                repaid: "secondary",
-                                rejected: "destructive"
-                            };
-                            return (
-                                <Badge variant={variants[item.status] || "default"} className="capitalize">
-                                    {item.status}
-                                </Badge>
-                            );
-                        }
+                        cell: (item) => (
+                            <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize">
+                                {item.status}
+                            </Badge>
+                        )
                     },
                     {
-                        header: "Created",
-                        accessorKey: "created_at",
-                        cell: (item) => new Date(item.created_at).toLocaleDateString()
+                        header: "Current Stage",
+                        accessorKey: "workflow_stage",
+                        cell: (item) => <span className="text-xs">{item.workflow_stage}</span>
                     },
+                    {
+                        header: "Action",
+                        accessorKey: "id",
+                        cell: (item) => (
+                            <Button variant="ghost" size="sm" asChild>
+                                <Link href={`/products/applications/${item.id}`}>
+                                    <Eye className="h-4 w-4 mr-2" /> View
+                                </Link>
+                            </Button>
+                        )
+                    }
                 ]}
-                gridRenderItem={(item) => {
-                    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-                        approved: "default",
-                        pending: "outline",
-                        repaid: "secondary",
-                        rejected: "destructive"
-                    };
-                    return (
-                        <div key={item.id} className="border rounded-lg p-4 bg-background shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="font-semibold text-xl">₦{item.amount.toLocaleString()}</h3>
-                                    <p className="text-sm text-muted-foreground">{item.interest_rate}% for {item.duration_months} months</p>
-                                </div>
+                gridRenderItem={(item) => (
+                    <div key={item.id} className="border rounded-lg p-4 bg-background shadow-sm hover:shadow-md transition-shadow relative">
+                        <div className="flex justify-between items-start mb-4 gap-2">
+                            <div>
+                                <h3 className="font-semibold">{item.product?.name || 'Unknown'}</h3>
+                                <p className="text-xs text-muted-foreground font-mono mt-1">Ref: {item.id.split('_')[1]?.toUpperCase()}</p>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <Badge variant={variants[item.status]} className="capitalize">
-                                    {item.status}
-                                </Badge>
-                                <div className="text-xs text-muted-foreground">ID: {item.user_id}</div>
-                            </div>
+                            <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize shrink-0">
+                                {item.status}
+                            </Badge>
                         </div>
-                    )
-                }}
+                        <div className="text-2xl font-bold mb-3">
+                            ₦{item.requested_amount?.toLocaleString() || '0'}
+                        </div>
+                        <div className="text-sm border-t pt-3 mb-4">
+                            <span className="text-muted-foreground block text-xs mb-1">Workflow Stage:</span>
+                            <span className="font-medium">{item.workflow_stage}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-muted-foreground mt-4">
+                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={`/products/applications/${item.id}`}>Review</Link>
+                            </Button>
+                        </div>
+                    </div>
+                )}
             />
         </div>
     );

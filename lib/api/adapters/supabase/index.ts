@@ -20,6 +20,31 @@ export const SupabaseAdapter: ApiAdapter = {
         throw new Error("Supabase Adapter not fully implemented");
     },
 
+    // Product Configuration & Dynamic Forms
+    getAllProductTypes: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getProductTypeById: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    saveProductType: async (data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    deleteProductType: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+
+    // Product Applications
+    createProductApplication: async (data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getUserApplications: async (userId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getAllApplications: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+
     // Services
     getAllTransactions: async () => {
         throw new Error("Supabase Adapter not fully implemented");

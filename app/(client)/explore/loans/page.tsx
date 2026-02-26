@@ -1,8 +1,28 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Briefcase, Building, CheckCircle2 } from "lucide-react";
+import { Building, Briefcase, CheckCircle2, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { ProductType } from "@/lib/api/types";
 
 export default function ExploreLoansPage() {
+    const [products, setProducts] = useState<ProductType[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        api.getAllProductTypes().then(types => {
+            setProducts(types.filter(t => t.category === 'loans' && t.status === 'active'));
+            setLoading(false);
+        });
+    }, []);
+
+    if (loading) {
+        return <div className="flex w-full justify-center p-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
@@ -11,66 +31,39 @@ export default function ExploreLoansPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
-                {/* SME Growth Loan */}
-                <Card className="border shadow-lg flex flex-col relative overflow-hidden">
-                    <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
-                        Popular
+                {products.length === 0 ? (
+                    <div className="col-span-full text-center p-12 border bg-card rounded-xl text-muted-foreground">
+                        No active loans currently available.
                     </div>
-                    <CardHeader className="pt-8">
-                        <div className="p-3 w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                            <Building className="h-7 w-7 text-primary" />
-                        </div>
-                        <CardTitle className="text-xl">SME Growth Loan</CardTitle>
-                        <CardDescription>Flexible financing to power your business growth.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 space-y-4">
-                        <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
-                            <span className="text-muted-foreground">Interest Rate</span>
-                            <span className="font-bold text-primary">12.5% P.A.</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
-                            <span className="text-muted-foreground">Amount Limit</span>
-                            <span className="font-bold">Up to ₦5,000,000</span>
-                        </div>
-                        <ul className="text-sm space-y-3 mt-4">
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Quick 48-hour approval</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> No collateral for &lt;₦500k</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Flexible 3-24 months tenure</li>
-                        </ul>
-                    </CardContent>
-                    <CardFooter className="pt-6">
-                        <Button className="w-full h-12">Apply Now</Button>
-                    </CardFooter>
-                </Card>
-
-                {/* Personal Loan */}
-                <Card className="border flex flex-col hover:shadow-md transition-shadow">
-                    <CardHeader className="pt-8">
-                        <div className="p-3 w-14 h-14 rounded-full bg-accent text-primary flex items-center justify-center mb-4">
-                            <Briefcase className="h-7 w-7" />
-                        </div>
-                        <CardTitle className="text-xl">Personal Asset Loan</CardTitle>
-                        <CardDescription>Finance your immediate personal or household needs.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 space-y-4">
-                        <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
-                            <span className="text-muted-foreground">Interest Rate</span>
-                            <span className="font-bold text-primary">15% P.A.</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
-                            <span className="text-muted-foreground">Amount Limit</span>
-                            <span className="font-bold">Up to ₦1,500,000</span>
-                        </div>
-                        <ul className="text-sm space-y-3 mt-4">
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /> Direct salary deduction</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /> Minimal documentation</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /> Up to 12 months tenure</li>
-                        </ul>
-                    </CardContent>
-                    <CardFooter className="pt-6">
-                        <Button variant="outline" className="w-full h-12 border-primary text-primary hover:bg-primary/5">Apply Now</Button>
-                    </CardFooter>
-                </Card>
+                ) : products.map(product => (
+                    <Card key={product.id} className="border flex flex-col hover:shadow-md transition-shadow relative overflow-hidden">
+                        <CardHeader className="pt-8">
+                            <div className="p-3 w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                <Building className="h-7 w-7 text-primary" />
+                            </div>
+                            <CardTitle className="text-xl">{product.name}</CardTitle>
+                            <CardDescription>{product.tagline}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 space-y-4">
+                            <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
+                                <span className="text-muted-foreground">Interest Rate</span>
+                                <span className="font-bold text-primary">{product.interest_rate}% P.A.</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
+                                <span className="text-muted-foreground">Amount Limit</span>
+                                <span className="font-bold">Up to ₦{product.max_amount?.toLocaleString()}</span>
+                            </div>
+                            <div className="text-sm mt-4 text-muted-foreground line-clamp-3">
+                                {product.description}
+                            </div>
+                        </CardContent>
+                        <CardFooter className="pt-6">
+                            <Button asChild className="w-full h-12">
+                                <Link href={`/explore/apply/${product.id}`}>Apply Now</Link>
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                ))}
             </div>
         </div>
     );

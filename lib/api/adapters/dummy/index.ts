@@ -1,5 +1,5 @@
 import { ApiAdapter } from '../../types';
-import { MOCK_USERS, MOCK_ACCOUNTS, MOCK_LOANS, MOCK_TRANSACTIONS, MOCK_CONFIGS, MOCK_POSTS, MOCK_JOBS } from './data';
+import { MOCK_USERS, MOCK_ACCOUNTS, MOCK_LOANS, MOCK_TRANSACTIONS, MOCK_CONFIGS, MOCK_POSTS, MOCK_JOBS, MOCK_PRODUCT_TYPES, MOCK_APPLICATIONS } from './data';
 
 // Simulate network delay for realistic mock
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -25,6 +25,49 @@ export const DummyAdapter: ApiAdapter = {
     getAllLoans: async () => {
         await delay(500);
         return MOCK_LOANS;
+    },
+
+    // Product Configuration & Dynamic Forms
+    getAllProductTypes: async () => {
+        await delay(400);
+        return MOCK_PRODUCT_TYPES;
+    },
+
+    getProductTypeById: async (id) => {
+        await delay(200);
+        return MOCK_PRODUCT_TYPES.find(p => p.id === id) || null;
+    },
+
+    saveProductType: async (data) => {
+        await delay(600);
+        // Simulate saving/updating by returning the data
+        return data;
+    },
+
+    deleteProductType: async (id) => {
+        await delay(400);
+        return true;
+    },
+
+    // Product Applications
+    createProductApplication: async (data) => {
+        await delay(800);
+        return {
+            ...data,
+            id: `app_${Math.random().toString(36).substring(7)}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+    },
+
+    getUserApplications: async (userId) => {
+        await delay(500);
+        return MOCK_APPLICATIONS.filter(a => a.user_id === userId);
+    },
+
+    getAllApplications: async () => {
+        await delay(600);
+        return MOCK_APPLICATIONS;
     },
 
     // Services

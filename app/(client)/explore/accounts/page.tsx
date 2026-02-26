@@ -1,8 +1,28 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PiggyBank, Landmark, CheckCircle2 } from "lucide-react";
+import { Landmark, CheckCircle2, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { ProductType } from "@/lib/api/types";
 
 export default function ExploreAccountsPage() {
+    const [products, setProducts] = useState<ProductType[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        api.getAllProductTypes().then(types => {
+            setProducts(types.filter(t => t.category === 'accounts' && t.status === 'active'));
+            setLoading(false);
+        });
+    }, []);
+
+    if (loading) {
+        return <div className="flex w-full justify-center p-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
@@ -11,66 +31,39 @@ export default function ExploreAccountsPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
-                {/* Premium Corporate */}
-                <Card className="border shadow-lg flex flex-col relative overflow-hidden">
-                    <div className="absolute top-0 right-0 bg-primary/20 text-primary text-xs font-bold px-3 py-1 rounded-bl-lg">
-                        Recommended
+                {products.length === 0 ? (
+                    <div className="col-span-full text-center p-12 border bg-card rounded-xl text-muted-foreground">
+                        No active accounts currently available.
                     </div>
-                    <CardHeader className="pt-8">
-                        <div className="p-3 w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                            <Landmark className="h-7 w-7 text-primary" />
-                        </div>
-                        <CardTitle className="text-xl">Premium Corporate</CardTitle>
-                        <CardDescription>Scale your enterprise with zero maintenance fees.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 space-y-4">
-                        <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
-                            <span className="text-muted-foreground">Interest Range</span>
-                            <span className="font-bold text-primary">Up to 5% P.A.</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
-                            <span className="text-muted-foreground">Min Balance</span>
-                            <span className="font-bold">₦0.00</span>
-                        </div>
-                        <ul className="text-sm space-y-3 mt-4">
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Free incoming wire transfers</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Priority customer support</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Bulk payment API access</li>
-                        </ul>
-                    </CardContent>
-                    <CardFooter className="pt-6">
-                        <Button className="w-full h-12">Open Account</Button>
-                    </CardFooter>
-                </Card>
-
-                {/* High-Yield Savings */}
-                <Card className="border flex flex-col hover:shadow-md transition-shadow">
-                    <CardHeader className="pt-8">
-                        <div className="p-3 w-14 h-14 rounded-full bg-accent text-primary flex items-center justify-center mb-4">
-                            <PiggyBank className="h-7 w-7" />
-                        </div>
-                        <CardTitle className="text-xl">Target Savings</CardTitle>
-                        <CardDescription>Reach your financial milestones faster.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 space-y-4">
-                        <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
-                            <span className="text-muted-foreground">Interest Range</span>
-                            <span className="font-bold text-primary">12% - 14% P.A.</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
-                            <span className="text-muted-foreground">Lock Period</span>
-                            <span className="font-bold">3 - 12 Months</span>
-                        </div>
-                        <ul className="text-sm space-y-3 mt-4">
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /> Automated daily/weekly savings</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /> Penalty-free emergency withdrawal (1x)</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /> High compounding returns</li>
-                        </ul>
-                    </CardContent>
-                    <CardFooter className="pt-6">
-                        <Button variant="outline" className="w-full h-12 border-primary text-primary hover:bg-primary/5">Start Saving</Button>
-                    </CardFooter>
-                </Card>
+                ) : products.map(product => (
+                    <Card key={product.id} className="border flex flex-col hover:shadow-md transition-shadow relative overflow-hidden">
+                        <CardHeader className="pt-8">
+                            <div className="p-3 w-14 h-14 rounded-full bg-accent text-primary flex items-center justify-center mb-4">
+                                <Landmark className="h-7 w-7" />
+                            </div>
+                            <CardTitle className="text-xl">{product.name}</CardTitle>
+                            <CardDescription>{product.tagline}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 space-y-4">
+                            <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
+                                <span className="text-muted-foreground">Interest Rate</span>
+                                <span className="font-bold text-primary">{product.interest_rate}% P.A.</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg">
+                                <span className="text-muted-foreground">Min Deposit</span>
+                                <span className="font-bold">₦{product.min_amount?.toLocaleString()}</span>
+                            </div>
+                            <div className="text-sm mt-4 text-muted-foreground line-clamp-3">
+                                {product.description}
+                            </div>
+                        </CardContent>
+                        <CardFooter className="pt-6">
+                            <Button asChild className="w-full h-12">
+                                <Link href={`/explore/apply/${product.id}`}>Open Account</Link>
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                ))}
             </div>
         </div>
     );

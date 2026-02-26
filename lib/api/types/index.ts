@@ -22,11 +22,52 @@ export interface Account {
 export interface Loan {
     id: string;
     user_id: string;
+    product_type_id?: string;
     amount: number;
     interest_rate: number;
     duration_months: number;
-    status: 'pending' | 'approved' | 'rejected' | 'repaid';
+    status: 'pending' | 'approved' | 'rejected' | 'repaid' | 'under_review';
     created_at: string;
+}
+
+export interface FormField {
+    id: string;
+    label: string;
+    type: 'text' | 'number' | 'email' | 'select' | 'file';
+    required: boolean;
+    options?: string[]; // For select fields
+    placeholder?: string;
+    description?: string;
+}
+
+export interface ProductType {
+    id: string;
+    name: string;
+    category: 'loans' | 'accounts' | 'investments';
+    tagline: string;
+    description: string;
+    interest_rate?: number;
+    min_amount?: number;
+    max_amount?: number;
+    min_duration?: number;
+    max_duration?: number;
+    image_url?: string;
+    form_schema: FormField[];
+    workflow_stages: string[]; // e.g., ['Submitted', 'Under Review', 'Approved']
+    status: 'active' | 'draft' | 'archived';
+    created_at: string;
+}
+
+export interface ProductApplication {
+    id: string;
+    user_id: string;
+    product_type_id: string;
+    status: 'pending' | 'approved' | 'rejected' | 'under_review';
+    workflow_stage: string;
+    submitted_data: Record<string, any>;
+    requested_amount?: number;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface Transaction {
@@ -84,6 +125,17 @@ export interface ApiAdapter {
     // Products (Accounts, Loans)
     getAllAccounts: () => Promise<Account[]>;
     getAllLoans: () => Promise<Loan[]>;
+
+    // Product Configuration & Dynamic Forms
+    getAllProductTypes: () => Promise<ProductType[]>;
+    getProductTypeById: (id: string) => Promise<ProductType | null>;
+    saveProductType: (data: ProductType) => Promise<ProductType>;
+    deleteProductType: (id: string) => Promise<boolean>;
+
+    // Product Applications
+    createProductApplication: (data: Omit<ProductApplication, 'id' | 'created_at' | 'updated_at'>) => Promise<ProductApplication>;
+    getUserApplications: (userId: string) => Promise<ProductApplication[]>;
+    getAllApplications: () => Promise<ProductApplication[]>;
 
     // Services (Transactions)
     getAllTransactions: () => Promise<Transaction[]>;

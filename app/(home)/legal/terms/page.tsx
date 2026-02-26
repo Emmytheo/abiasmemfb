@@ -4,7 +4,7 @@ export default function TermsOfService() {
     return (
         <>
             <header className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 bg-primary overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-900 to-black opacity-90"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary-dark to-background opacity-90"></div>
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6">
                         Terms of Service
