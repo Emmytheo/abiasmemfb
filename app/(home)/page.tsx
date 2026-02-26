@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, FileText, CheckSquare, ShieldCheck, Apple, Play } from "lucide-react";
+import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, FileText, CheckSquare, ShieldCheck, Apple, Play, Battery, Wifi, Signal, Menu, UserCircle, Send, ArrowDownLeft, Receipt, CreditCard, Hash, Store } from "lucide-react";
 import { Newsletter } from "@/components/newsletter";
 import { SuccessStories } from "@/components/home/success-stories";
 import { NewsInsights } from "@/components/home/news-insights";
@@ -148,13 +148,131 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center gap-16">
             <div className="lg:w-1/2 order-2 lg:order-1">
-              <div className="relative">
+              <div className="relative flex justify-center">
                 <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl transform -translate-x-10 translate-y-10"></div>
-                <img
-                  alt="Mobile Banking App Interface"
-                  className="relative rounded-2xl shadow-2xl border-4 border-border w-full max-w-md mx-auto transform hover:scale-[1.02] transition-transform duration-500"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTI_Ts85VC_1JndsAWXrDIGgJ4EIj_dHeoDbCz_8IsmaxFXvb_v0E-Ny5S5GXraCXfCsGHXdYvtVy2Iyg5ScV5q3XhxcoUm0anbx3GYX3W_OGmH6u3DDR08SnvRRJvW4qRjBALAriKNYzcuj9w_cCA97o-wPjsRlbdul_uSh7s58BfW5PPW-HtwI1eMD41GC0qks36_aqB76lRcG14OVwfZPs3pVzLbJfdgWdnSvkBBZf3VR3fufzc7FXUiTqxEHd6BJVGOGNInN2a"
-                />
+                {/* Mobile Mockup */}
+                <div className="w-[320px] bg-white rounded-[2rem] overflow-hidden shadow-2xl relative border-[8px] border-slate-900 z-10 transform scale-90 sm:scale-100 hover:scale-[1.02] transition-transform duration-500">
+                  {/* Status Bar Mockup */}
+                  <div className="h-6 bg-slate-900 flex justify-between items-center px-4">
+                    <span className="text-[10px] text-white font-bold">9:41</span>
+                    <div className="flex gap-1.5 items-center">
+                      <Signal className="text-white w-3 h-3" />
+                      <Wifi className="text-white w-3 h-3" />
+                      <Battery className="text-white w-3.5 h-3.5" />
+                    </div>
+                  </div>
+                  {/* App Content */}
+                  <div className="bg-gray-50 min-h-[500px]">
+                    {/* Header bar fake */}
+                    <div className="bg-primary px-4 py-3 flex justify-between items-center shadow-sm">
+                      <Menu className="text-black w-5 h-5 cursor-pointer" />
+                      <span className="text-sm font-black tracking-tight text-black border-2 border-black rounded-sm px-2">ABIA MFB</span>
+                      <UserCircle className="text-black w-6 h-6 cursor-pointer" />
+                    </div>
+
+                    <div className="p-4 space-y-5">
+                      {/* Greeting */}
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Good Morning,</p>
+                        <h4 className="text-xl font-bold text-gray-900 tracking-tight">Sarah Johnson</h4>
+                      </div>
+
+                      {/* Balance Card */}
+                      <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-bl-full transform translate-x-10 -translate-y-10"></div>
+                        <p className="text-xs text-slate-400 font-medium mb-1">Total Available Balance</p>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-lg font-light text-primary">₦</span>
+                          <span className="text-3xl font-bold tracking-tighter">1,240,500<span className="text-lg text-slate-400">.00</span></span>
+                        </div>
+                        <div className="flex gap-3 text-xs font-semibold">
+                          <button className="bg-primary text-black px-4 py-2 rounded-lg flex-1 hover:bg-white active:scale-95 transition-all">Add Money</button>
+                          <button className="bg-white/10 text-white px-4 py-2 rounded-lg flex-1 hover:bg-white/20 active:scale-95 transition-all">Transfer</button>
+                        </div>
+                      </div>
+
+                      {/* Quick Actions */}
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="flex flex-col items-center gap-1.5 cursor-pointer">
+                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
+                            <Send size={20} />
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-600">Send</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1.5 cursor-pointer">
+                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
+                            <ArrowDownLeft size={20} />
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-600">Receive</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1.5 cursor-pointer">
+                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
+                            <Receipt size={20} />
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-600">Bills</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1.5 cursor-pointer">
+                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
+                            <Smartphone size={20} />
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-600">Airtime</span>
+                        </div>
+                      </div>
+
+                      {/* Recent Transactions */}
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="text-sm font-bold text-gray-900">Recent Transactions</h4>
+                          <span className="text-[10px] font-bold text-primary uppercase cursor-pointer">See All</span>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+                          {/* Transaction 1 */}
+                          <div className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                                <ArrowDownLeft size={14} />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-gray-900">Salary Credit</p>
+                                <p className="text-[10px] text-gray-400">Today, 08:30 AM</p>
+                              </div>
+                            </div>
+                            <p className="text-xs font-bold text-emerald-500">+₦450,000</p>
+                          </div>
+                          {/* Transaction 2 */}
+                          <div className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center">
+                                <Send size={14} />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-gray-900">MTN Airtime</p>
+                                <p className="text-[10px] text-gray-400">Yesterday</p>
+                              </div>
+                            </div>
+                            <p className="text-xs font-bold text-gray-900">-₦5,000</p>
+                          </div>
+                          {/* Transaction 3 */}
+                          <div className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center">
+                                <Receipt size={14} />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-gray-900">Aba Power PLC</p>
+                                <p className="text-[10px] text-gray-400">Monday</p>
+                              </div>
+                            </div>
+                            <p className="text-xs font-bold text-gray-900">-₦12,500</p>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                  {/* Home Indicator */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-slate-300 rounded-full"></div>
+                </div>
               </div>
             </div>
             <div className="lg:w-1/2 order-1 lg:order-2">
@@ -317,6 +435,59 @@ export default function Home() {
             >
               Start Your Application
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Upcoming Channels */}
+      <section className="py-24 bg-background pattern-dots">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-accent font-semibold tracking-wide uppercase text-sm mb-3">Expanding Our Reach</h2>
+            <h3 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-6">
+              More Ways to Bank <span className="text-muted-foreground font-light text-2xl md:text-3xl">(Coming Soon)</span>
+            </h3>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              We are constantly innovating to bring AbiaSMEMFB closer to you. Our upcoming channels are designed to ensure you have 24/7 access to your funds and our services.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Cards */}
+            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-sm border border-border/50 relative overflow-hidden group">
+              <div className="absolute top-4 right-4 bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold px-2 py-1 rounded">Soon</div>
+              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center text-foreground mb-6 opacity-70 group-hover:opacity-100 transition-opacity">
+                <CreditCard size={24} />
+              </div>
+              <h4 className="text-xl font-bold text-foreground mb-3 opacity-80 group-hover:opacity-100 transition-opacity">ATM & Virtual Cards</h4>
+              <p className="text-muted-foreground leading-relaxed text-sm">
+                Request physical or virtual debit cards. Manage your spending limits, pick your custom PIN securely, and freeze your card instantly from your app.
+              </p>
+            </div>
+
+            {/* USSD */}
+            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-sm border border-border/50 relative overflow-hidden group">
+              <div className="absolute top-4 right-4 bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold px-2 py-1 rounded">Soon</div>
+              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center text-foreground mb-6 opacity-70 group-hover:opacity-100 transition-opacity">
+                <Hash size={24} />
+              </div>
+              <h4 className="text-xl font-bold text-foreground mb-3 opacity-80 group-hover:opacity-100 transition-opacity">USSD Banking (*xxx#)</h4>
+              <p className="text-muted-foreground leading-relaxed text-sm">
+                No internet? No problem. Check balances, buy airtime, and transfer funds seamlessly with our dedicated USSD code from any basic mobile phone.
+              </p>
+            </div>
+
+            {/* Agency Banking */}
+            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-sm border border-border/50 relative overflow-hidden group">
+              <div className="absolute top-4 right-4 bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold px-2 py-1 rounded">Soon</div>
+              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center text-foreground mb-6 opacity-70 group-hover:opacity-100 transition-opacity">
+                <Store size={24} />
+              </div>
+              <h4 className="text-xl font-bold text-foreground mb-3 opacity-80 group-hover:opacity-100 transition-opacity">Agency Banking (POS)</h4>
+              <p className="text-muted-foreground leading-relaxed text-sm">
+                Access cash deposits and withdrawals right in your neighborhood through our extensive network of authorized POS agents across the state.
+              </p>
+            </div>
           </div>
         </div>
       </section>

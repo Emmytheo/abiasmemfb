@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import {
     Eye,
+    EyeOff,
     TrendingUp,
     BarChart3,
     CreditCard,
@@ -25,6 +26,7 @@ export default function ClientDashboard() {
     const [loading, setLoading] = useState(true);
     const [timeframe, setTimeframe] = useState<'6M' | '1Y' | 'ALL'>('6M');
     const [isMounted, setIsMounted] = useState(false);
+    const [showBalance, setShowBalance] = useState(true);
 
     useEffect(() => {
         setIsMounted(true);
@@ -127,23 +129,33 @@ export default function ClientDashboard() {
     }
 
     return (
-        <div className="max-w-6xl mx-auto p-4 md:p-10 space-y-10 animate-in fade-in duration-500">
+        <div className="max-w-6xl mx-auto p-1 md:p-10 space-y-10 animate-in fade-in duration-500">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h2 className="text-muted-foreground text-lg font-medium">Good evening, {user?.full_name?.split(' ')[0] || 'User'}</h2>
-                    <h3 className="text-5xl font-black tracking-tight mt-1">Dashboard</h3>
+                    <h2 className="text-muted-foreground text-base md:text-lg font-medium">Good evening, {user?.full_name?.split(' ')[0] || 'User'}</h2>
+                    <h3 className="text-4xl md:text-6xl font-black tracking-tight mt-1">Dashboard</h3>
                 </div>
                 <div className="flex items-end gap-10">
                     <div className="text-left md:text-right w-full md:w-auto">
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">Total Portfolio Value</p>
-                        <div className="flex items-center md:justify-end gap-3">
-                            <span className="text-4xl font-light text-primary">₦</span>
-                            <span className="text-5xl font-bold tracking-tighter">{portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            <Eye className="h-6 w-6 text-muted-foreground cursor-pointer hover:text-primary transition-colors ml-2" />
+                        <div className="flex items-center md:justify-end gap-2 md:gap-3">
+                            <span className="text-2xl sm:text-3xl md:text-4xl font-light text-primary">₦</span>
+                            <span className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter">
+                                {showBalance ? portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "••••••••"}
+                            </span>
+                            <button onClick={() => setShowBalance(!showBalance)} className="focus:outline-none">
+                                {showBalance ? (
+                                    <EyeOff className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground cursor-pointer hover:text-primary transition-colors ml-1 md:ml-2" />
+                                ) : (
+                                    <Eye className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground cursor-pointer hover:text-primary transition-colors ml-1 md:ml-2" />
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>
+
+
             </header>
 
             {/* Top Stats Grid */}

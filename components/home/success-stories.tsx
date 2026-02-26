@@ -28,7 +28,7 @@ export function SuccessStories() {
                         className="z-10"
                     >
                         <SplideSlide>
-                            <div className="bg-card text-card-foreground border-border">
+                            <div className="bg-card text-card-foreground border-border p-4 md:p-8 rounded-lg">
                                 <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
                                     <div className="flex-shrink-0 relative">
                                         <div className="w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden border-4 border-primary dark:border-accent shadow-lg relative z-10">
@@ -60,7 +60,7 @@ export function SuccessStories() {
                         </SplideSlide>
 
                         <SplideSlide>
-                            <div className="bg-card text-card-foreground border-border">
+                            <div className="bg-card text-card-foreground border-border p-4 md:p-8 rounded-lg">
                                 <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
                                     <div className="flex-shrink-0 relative">
                                         <div className="w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden border-4 border-primary dark:border-accent shadow-lg relative z-10">
@@ -90,7 +90,7 @@ export function SuccessStories() {
                         </SplideSlide>
 
                         <SplideSlide>
-                            <div className="bg-card text-card-foreground border-border">
+                            <div className="bg-card text-card-foreground border-border p-4 md:p-8 rounded-lg">
                                 <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
                                     <div className="flex-shrink-0 relative">
                                         <div className="w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden border-4 border-primary dark:border-accent shadow-lg relative z-10">
