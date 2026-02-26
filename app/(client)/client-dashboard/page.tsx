@@ -68,8 +68,10 @@ export default function ClientDashboard() {
 
         for (let i = months - 1; i >= 0; i--) {
             dataPoints[i] = currentIterativeValue;
-            // Go back in time: previous month was slightly less (growth of 0.5% to 3.5% per month randomly)
-            const growthFactor = 1 + (Math.random() * 0.03 + 0.005);
+            // Go back in time deterministically: previous month was slightly less (growth of ~0.5% to 3.5%)
+            // Using a pseudo-random seed based on the index `i` to prevent SSR mismatches
+            const pseudoRandom = (Math.sin(i * 1000) + 1) / 2;
+            const growthFactor = 1 + (pseudoRandom * 0.03 + 0.005);
             currentIterativeValue = currentIterativeValue / growthFactor;
         }
 
