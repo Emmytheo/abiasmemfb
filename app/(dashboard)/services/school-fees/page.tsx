@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GenericDataTable } from "@/components/data-table";
-import { dashboardApi } from "@/lib/dashboard-api/api";
-import { Transaction } from "@/lib/dashboard-api/types";
+import { api, Transaction } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 
 export default function SchoolFeesPage() {
@@ -11,7 +10,7 @@ export default function SchoolFeesPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        dashboardApi.getTransactionsByCategory("School Fees").then((txs) => {
+        api.getTransactionsByCategory("School Fees").then((txs) => {
             setData(txs);
             setLoading(false);
         });

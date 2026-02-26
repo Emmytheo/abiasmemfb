@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NavMain } from "@/components/nav-main";
 import { Button } from "@/components/ui/button";
+import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
 
 const navGroups = [
@@ -142,6 +143,9 @@ export function DashboardSidebar({ ...props }: React.ComponentProps<typeof Sideb
                 <NavMain groups={navGroups} />
             </SidebarContent>
             <SidebarFooter>
+                <div className="sm:hidden px-2 pb-2 flex justify-center">
+                    <ThemeCustomizer />
+                </div>
                 <NavUser user={sidebarUser} />
             </SidebarFooter>
             <SidebarRail />

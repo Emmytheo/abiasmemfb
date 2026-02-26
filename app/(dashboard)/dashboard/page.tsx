@@ -1,4 +1,4 @@
-import { dashboardApi } from "@/lib/dashboard-api/api";
+import { api } from "@/lib/api";
 import {
     UploadCloud,
     Wallet,
@@ -15,10 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
 
 async function DashboardOverviewContent() {
-    const accounts = await dashboardApi.getAllAccounts();
-    const loans = await dashboardApi.getAllLoans();
-    const transactions = await dashboardApi.getAllTransactions();
-    const users = await dashboardApi.getAllUsers();
+    const accounts = await api.getAllAccounts();
+    const loans = await api.getAllLoans();
+    const transactions = await api.getAllTransactions();
+    const users = await api.getAllUsers();
 
     const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
     const totalLoans = loans.reduce((acc, curr) => acc + curr.amount, 0);

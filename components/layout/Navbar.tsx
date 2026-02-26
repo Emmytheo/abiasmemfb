@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, UserCircle } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
 
@@ -76,11 +82,24 @@ export function Navbar() {
                     <div className="hidden md:flex items-center gap-4">
                         <ThemeCustomizer />
                         <Link
-                            href="#"
+                            href="/auth/login"
                             className="inline-flex items-center justify-center px-6 py-2.5 border border-primary dark:border-accent text-sm font-medium rounded-full text-primary dark:text-accent bg-transparent hover:bg-primary hover:text-white dark:hover:bg-accent dark:hover:text-primary transition-all duration-300"
                         >
-                            Internet Banking
+                            Sign In
                         </Link>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger className="flex items-center justify-center w-10 h-10 rounded-full bg-muted/50 border border-border hover:bg-muted transition-colors outline-none shrink-0 overflow-hidden">
+                                <UserCircle className="w-6 h-6 text-muted-foreground" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem asChild>
+                                    <Link href="/client-dashboard" className="w-full cursor-pointer">Client Portal</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/dashboard" className="w-full cursor-pointer">Admin Portal</Link>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                     <div className="flex md:hidden items-center gap-4">
                         <ThemeCustomizer />
@@ -141,13 +160,27 @@ export function Navbar() {
                         >
                             Help & Support
                         </Link>
-                        <div className="pt-4 pb-2">
+                        <div className="pt-4 pb-2 space-y-3">
                             <Link
-                                href="#"
+                                href="/auth/login"
                                 className="w-full flex items-center justify-center px-6 py-3 border border-primary dark:border-accent text-base font-medium rounded-full text-primary dark:text-accent bg-transparent hover:bg-primary hover:text-white dark:hover:bg-accent dark:hover:text-primary transition-all duration-300"
                             >
-                                Internet Banking
+                                Sign In
                             </Link>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Link
+                                    href="/client-dashboard"
+                                    className="flex items-center justify-center px-4 py-3 bg-muted text-foreground text-sm font-medium rounded-full hover:bg-accent hover:text-accent-foreground transition-all duration-300"
+                                >
+                                    Client Portal
+                                </Link>
+                                <Link
+                                    href="/dashboard"
+                                    className="flex items-center justify-center px-4 py-3 bg-muted text-foreground text-sm font-medium rounded-full hover:bg-accent hover:text-accent-foreground transition-all duration-300"
+                                >
+                                    Admin Portal
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>

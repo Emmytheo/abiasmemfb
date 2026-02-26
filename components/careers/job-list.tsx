@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOpenPositions, type JobPosition } from "@/lib/services/careers";
+import { api, type JobPosition } from "@/lib/api";
 import { MapPin, Briefcase } from "lucide-react";
 
 function JobCard({ job }: { job: JobPosition }) {
@@ -40,7 +40,7 @@ export function JobList() {
     useEffect(() => {
         async function fetchJobs() {
             try {
-                const data = await getOpenPositions();
+                const data = await api.getOpenPositions();
                 setJobs(data);
             } finally {
                 setLoading(false);

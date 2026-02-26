@@ -61,17 +61,16 @@
   }
 
   /* --- NATURE PALETTE --- */
-  /* Target: Rich Green (#006B33) */
+  /* Target: Rich Green (#006B33) with Gold/Yellow Complementary */
   [data-palette="nature"] {
-    /* 148 100% 21% is exact equivalent to #006B33 */
     --primary: 148 100% 21%;
     --primary-foreground: 0 0% 98%;
-    /* Subtle warmer green secondary */
-    --secondary: 148 60% 45%;
-    --secondary-foreground: 0 0% 100%;
-    /* Lighter green accent for highlights/borders */
-    --accent: 148 40% 90%;
-    --accent-foreground: 148 100% 21%;
+    /* Soft Gold Backgrounds */
+    --secondary: 45 40% 92%;
+    --secondary-foreground: 148 100% 21%;
+    /* Vibrant Gold accent for highlights/borders */
+    --accent: 45 93% 47%;
+    --accent-foreground: 0 0% 15%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     --border: 148 30% 85%;
@@ -84,12 +83,11 @@
     --card: 148 33% 12.5%;
     --popover: 148 33% 12.5%;
     --primary: 148 80% 35%;
-    /* Brightened version for dark mode contrast */
     --primary-foreground: 0 0% 10%;
-    --secondary: 148 60% 45%;
-    --secondary-foreground: 0 0% 100%;
-    --accent: 148 50% 15%;
-    --accent-foreground: 148 80% 35%;
+    --secondary: 45 30% 20%;
+    --secondary-foreground: 45 90% 80%;
+    --accent: 45 93% 47%;
+    --accent-foreground: 0 0% 15%;
     --muted: 148 33% 17.5%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -99,19 +97,18 @@
   }
 
   /* --- ELECTRIC PALETTE --- */
-  /* Electric Blue, Black/Dark Backgrounds */
+  /* Electric Blue & Neon Pink Complementary */
   [data-palette="electric"] {
     --primary: 217 91% 60%;
-    /* Electric Blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 190 90% 50%;
-    /* Cyan accent */
-    --secondary-foreground: 0 0% 100%;
-    --accent: 217 50% 95%;
-    /* Very light blue */
-    --accent-foreground: 217 91% 60%;
+    --secondary: 330 80% 94%;
+    --secondary-foreground: 217 91% 60%;
+    --accent: 330 80% 60%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+    --border: 217 30% 85%;
+    --input: 217 30% 85%;
     --ring: 217 91% 60%;
   }
 
@@ -120,14 +117,11 @@
     --card: 217 33% 12.5%;
     --popover: 217 33% 12.5%;
     --primary: 217 91% 60%;
-    /* Electric Blue */
     --primary-foreground: 0 0% 0%;
-    --secondary: 190 90% 50%;
-    /* Cyan */
-    --secondary-foreground: 0 0% 0%;
-    --accent: 217 50% 15%;
-    /* Dark Blue tint */
-    --accent-foreground: 217 91% 60%;
+    --secondary: 330 50% 20%;
+    --secondary-foreground: 330 80% 80%;
+    --accent: 330 80% 60%;
+    --accent-foreground: 0 0% 100%;
     --muted: 217 33% 17.5%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -137,18 +131,18 @@
   }
 
   /* --- OCEAN PALETTE --- */
-  /* Deep Blue, Teal, Calming */
+  /* Deep Blue & Coral Complementary */
   [data-palette="ocean"] {
     --primary: 199 89% 48%;
-    /* Cerulean */
     --primary-foreground: 0 0% 100%;
-    --secondary: 172 66% 50%;
-    /* Teal/Turquoise */
-    --secondary-foreground: 0 0% 100%;
-    --accent: 199 50% 96%;
-    --accent-foreground: 199 89% 48%;
+    --secondary: 16 100% 95%;
+    --secondary-foreground: 199 89% 48%;
+    --accent: 16 80% 60%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+    --border: 199 30% 85%;
+    --input: 199 30% 85%;
     --ring: 199 89% 48%;
   }
 
@@ -157,12 +151,11 @@
     --card: 199 33% 12.5%;
     --popover: 199 33% 12.5%;
     --primary: 199 89% 58%;
-    /* Brighter Blue */
     --primary-foreground: 0 0% 0%;
-    --secondary: 172 66% 50%;
-    --secondary-foreground: 0 0% 0%;
-    --accent: 199 50% 15%;
-    --accent-foreground: 199 89% 58%;
+    --secondary: 16 40% 20%;
+    --secondary-foreground: 16 80% 80%;
+    --accent: 16 80% 60%;
+    --accent-foreground: 0 0% 100%;
     --muted: 199 33% 17.5%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -172,18 +165,18 @@
   }
 
   /* --- SUNSET PALETTE --- */
-  /* Warm Pinks, Purples, Oranges */
+  /* Purple & Bright Orange Complementary */
   [data-palette="sunset"] {
     --primary: 262 83% 58%;
-    /* Purple */
     --primary-foreground: 0 0% 100%;
-    --secondary: 340 82% 52%;
-    /* Pink/Magenta */
-    --secondary-foreground: 0 0% 100%;
-    --accent: 262 50% 96%;
-    --accent-foreground: 262 83% 58%;
+    --secondary: 35 100% 92%;
+    --secondary-foreground: 262 83% 58%;
+    --accent: 35 90% 55%;
+    --accent-foreground: 0 0% 15%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+    --border: 262 30% 85%;
+    --input: 262 30% 85%;
     --ring: 262 83% 58%;
   }
 
@@ -192,13 +185,11 @@
     --card: 262 33% 12.5%;
     --popover: 262 33% 12.5%;
     --primary: 262 83% 68%;
-    /* Lighter Purple */
     --primary-foreground: 0 0% 0%;
-    --secondary: 340 82% 62%;
-    /* Hot Pink */
-    --secondary-foreground: 0 0% 0%;
-    --accent: 262 50% 15%;
-    --accent-foreground: 262 83% 68%;
+    --secondary: 35 40% 20%;
+    --secondary-foreground: 35 90% 80%;
+    --accent: 35 90% 55%;
+    --accent-foreground: 0 0% 15%;
     --muted: 262 33% 17.5%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;

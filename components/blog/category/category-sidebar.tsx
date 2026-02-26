@@ -1,11 +1,11 @@
 import { ArrowRight } from "lucide-react";
 import { NewsletterForm } from "@/components/blog/newsletter-form";
-import { getPopularPosts, getAllTags } from "@/lib/services/blog";
+import { api } from "@/lib/api";
 import Link from "next/link";
 
 export async function CategorySidebar() {
-    const popularPosts = await getPopularPosts();
-    const tags = await getAllTags();
+    const popularPosts = await api.getPopularPosts();
+    const tags = await api.getAllTags();
 
     return (
         <aside className="lg:col-span-4 space-y-16">

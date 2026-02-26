@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GenericDataTable } from "@/components/data-table";
-import { dashboardApi } from "@/lib/dashboard-api/api";
-import { Transaction } from "@/lib/dashboard-api/types";
+import { api, Transaction } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 
 export default function InternetBankingPage() {
@@ -11,7 +10,7 @@ export default function InternetBankingPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        dashboardApi.getTransactionsByCategory("Transfer").then((txs) => {
+        api.getTransactionsByCategory("Transfer").then((txs) => {
             setData(txs);
             setLoading(false);
         });

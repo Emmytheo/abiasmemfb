@@ -85,7 +85,7 @@ export function DashboardBreadcrumb() {
                             <ChevronRight className="h-3.5 w-3.5" />
                         </BreadcrumbSeparator>
                         <BreadcrumbItem>
-                            <BreadcrumbPage className="max-w-[150px] sm:max-w-[200px] truncate">
+                            <BreadcrumbPage className="max-w-[80px] sm:max-w-[200px] truncate">
                                 {formatSegment(displaySegments[displaySegments.length - 1])}
                             </BreadcrumbPage>
                         </BreadcrumbItem>
@@ -103,10 +103,10 @@ export function DashboardBreadcrumb() {
                                 </BreadcrumbSeparator>
                                 <BreadcrumbItem>
                                     {isLast ? (
-                                        <BreadcrumbPage className="max-w-[150px] sm:max-w-none truncate">{formatSegment(segment)}</BreadcrumbPage>
+                                        <BreadcrumbPage className="max-w-[80px] sm:max-w-[200px] truncate">{formatSegment(segment)}</BreadcrumbPage>
                                     ) : (
                                         <BreadcrumbLink asChild>
-                                            <Link href={path} className="max-w-[120px] sm:max-w-none truncate">{formatSegment(segment)}</Link>
+                                            <Link href={path} className="max-w-[80px] sm:max-w-[200px] truncate">{formatSegment(segment)}</Link>
                                         </BreadcrumbLink>
                                     )}
                                 </BreadcrumbItem>

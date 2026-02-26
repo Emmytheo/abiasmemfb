@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { type BlogPost } from "@/lib/services/blog";
+import { type BlogPost } from "@/lib/api";
 import { Clock, Tag } from "lucide-react";
 
 export function BlogCard({ post }: { post: BlogPost }) {

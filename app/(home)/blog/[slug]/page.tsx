@@ -1,4 +1,4 @@
-import { getBlogPostBySlug, getBlogPosts } from "@/lib/services/blog";
+import { api, BlogPost } from "@/lib/api";
 import { Suspense } from "react";
 import { Clock, Calendar, ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import { ReadingProgress } from "@/components/blog/post/reading-progress";
 
 // Generate static params for basic SSG behavior (optional but good for known slugs)
 export async function generateStaticParams() {
-    const posts = await getBlogPosts();
+    const posts = await api.getBlogPosts();
     return posts.map((post) => ({
         slug: post.slug,
     }));
@@ -18,7 +18,7 @@ export async function generateStaticParams() {
 
 async function BlogPostPageContent({ params }: { params: { slug: string } }) {
     const { slug } = await params;
-    const post = await getBlogPostBySlug(slug);
+    const post = await api.getBlogPostBySlug(slug);
 
     if (!post) {
         notFound();

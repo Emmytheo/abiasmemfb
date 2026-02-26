@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
     Eye,
     TrendingUp,
@@ -8,19 +11,55 @@ import {
     Receipt,
     PiggyBank,
     ArrowDownLeft,
-    ArrowUpRight,
     Zap,
     ShoppingBag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { api, Account, Loan, Transaction, User } from "@/lib/api";
 
 export default function ClientDashboard() {
+    const [user, setUser] = useState<User | null>(null);
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [loans, setLoans] = useState<Loan[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadData() {
+            try {
+                const [userData, accountsData, loansData, txsData] = await Promise.all([
+                    api.getCurrentUser(),
+                    api.getAllAccounts(),
+                    api.getAllLoans(),
+                    api.getAllTransactions()
+                ]);
+                setUser(userData);
+                setAccounts(accountsData);
+                setLoans(loansData);
+                setTransactions(txsData.slice(0, 4)); // Only top 4 recent
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadData();
+    }, []);
+
+    const totalLiquidity = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    // Mock values for visual layout, using actual dynamic bases
+    const investmentYield = 1120450;
+    const availableCredit = 8500000;
+    const portfolioValue = totalLiquidity + investmentYield + availableCredit;
+
+    if (loading) {
+        return <div className="max-w-6xl mx-auto p-10 flex justify-center text-muted-foreground">Loading dashboard...</div>;
+    }
+
     return (
         <div className="max-w-6xl mx-auto p-4 md:p-10 space-y-10 animate-in fade-in duration-500">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h2 className="text-muted-foreground text-lg font-medium">Good evening, Alex</h2>
+                    <h2 className="text-muted-foreground text-lg font-medium">Good evening, {user?.full_name?.split(' ')[0] || 'User'}</h2>
                     <h3 className="text-5xl font-black tracking-tight mt-1">Dashboard</h3>
                 </div>
                 <div className="flex items-end gap-10">
@@ -28,7 +67,7 @@ export default function ClientDashboard() {
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">Total Portfolio Value</p>
                         <div className="flex items-center md:justify-end gap-3">
                             <span className="text-4xl font-light text-primary">₦</span>
-                            <span className="text-5xl font-bold tracking-tighter">14,248,500.00</span>
+                            <span className="text-5xl font-bold tracking-tighter">{portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             <Eye className="h-6 w-6 text-muted-foreground cursor-pointer hover:text-primary transition-colors ml-2" />
                         </div>
                     </div>
@@ -47,7 +86,7 @@ export default function ClientDashboard() {
                         </span>
                     </div>
                     <p className="text-sm text-muted-foreground font-medium">Liquidity Ratio</p>
-                    <p className="text-2xl font-bold mt-1 tracking-tight">₦4,200,000</p>
+                    <p className="text-2xl font-bold mt-1 tracking-tight">₦{totalLiquidity.toLocaleString(undefined, { minimumFractionDigits: 0 })}</p>
                 </div>
 
                 <div className="bg-card p-6 rounded-xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
@@ -60,7 +99,7 @@ export default function ClientDashboard() {
                         </span>
                     </div>
                     <p className="text-sm text-muted-foreground font-medium">Investment Yield</p>
-                    <p className="text-2xl font-bold mt-1 tracking-tight text-emerald-500">+₦1,120,450</p>
+                    <p className="text-2xl font-bold mt-1 tracking-tight text-emerald-500">+₦{investmentYield.toLocaleString()}</p>
                 </div>
 
                 <div className="bg-card p-6 rounded-xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
@@ -71,7 +110,7 @@ export default function ClientDashboard() {
                         <span className="text-xs font-bold text-muted-foreground">Current</span>
                     </div>
                     <p className="text-sm text-muted-foreground font-medium">Available Credit</p>
-                    <p className="text-2xl font-bold mt-1 tracking-tight">₦8,500,000</p>
+                    <p className="text-2xl font-bold mt-1 tracking-tight">₦{availableCredit.toLocaleString()}</p>
                 </div>
             </div>
 
@@ -161,65 +200,28 @@ export default function ClientDashboard() {
                 <div className="lg:col-span-2 space-y-6">
                     <div className="flex items-center justify-between">
                         <h4 className="text-xl font-bold tracking-tight">Recent Activity</h4>
-                        <Link href="/client/activity" className="text-xs font-bold text-primary hover:underline">
+                        <Link href="/client/my-services" className="text-xs font-bold text-primary hover:underline">
                             View All
                         </Link>
                     </div>
 
                     <div className="bg-card rounded-2xl border divide-y shadow-sm">
-
-                        <div className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className="size-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                                    <ArrowDownLeft className="h-5 w-5" />
+                        {transactions.map(tx => (
+                            <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors">
+                                <div className="flex items-center gap-4">
+                                    <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${tx.type === 'credit' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-muted-foreground'}`}>
+                                        {tx.type === 'credit' ? <ArrowDownLeft className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold">{tx.category}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-bold">Portfolio Dividend</p>
-                                    <p className="text-xs text-muted-foreground">June 14, 2024</p>
-                                </div>
+                                <p className={`text-sm font-bold ${tx.type === 'credit' ? 'text-emerald-500' : ''}`}>
+                                    {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </p>
                             </div>
-                            <p className="text-sm font-bold text-emerald-500">+₦124,000.00</p>
-                        </div>
-
-                        <div className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className="size-10 rounded-full bg-slate-500/10 text-muted-foreground flex items-center justify-center shrink-0">
-                                    <ShoppingBag className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold">Luxury Auto Leasing</p>
-                                    <p className="text-xs text-muted-foreground">June 12, 2024</p>
-                                </div>
-                            </div>
-                            <p className="text-sm font-bold">-₦450,000.00</p>
-                        </div>
-
-                        <div className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className="size-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                                    <ArrowDownLeft className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold">Inward Wire Transfer</p>
-                                    <p className="text-xs text-muted-foreground">June 10, 2024</p>
-                                </div>
-                            </div>
-                            <p className="text-sm font-bold text-emerald-500">+₦2,500,000.00</p>
-                        </div>
-
-                        <div className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className="size-10 rounded-full bg-slate-500/10 text-muted-foreground flex items-center justify-center shrink-0">
-                                    <Zap className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold">Utility Payment - SmartHome</p>
-                                    <p className="text-xs text-muted-foreground">June 08, 2024</p>
-                                </div>
-                            </div>
-                            <p className="text-sm font-bold">-₦25,400.00</p>
-                        </div>
-
+                        ))}
                     </div>
                 </div>
             </div>

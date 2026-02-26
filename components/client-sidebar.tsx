@@ -35,6 +35,7 @@ import {
 import { NavMain } from "@/components/nav-main";
 import { Button } from "@/components/ui/button";
 import { NavUser } from "@/components/nav-user";
+import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
 
 const navGroups = [
@@ -150,6 +151,9 @@ export function ClientSidebar({ ...props }: React.ComponentProps<typeof Sidebar>
                 <NavMain groups={navGroups} />
             </SidebarContent>
             <SidebarFooter>
+                <div className="sm:hidden px-2 pb-2 flex justify-center">
+                    <ThemeCustomizer />
+                </div>
                 <NavUser user={sidebarUser} />
             </SidebarFooter>
             <SidebarRail />

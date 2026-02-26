@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { getBlogPosts } from "@/lib/services/blog";
+import { api, BlogPost } from "@/lib/api";
 
 export async function NewsInsights() {
     // Fetch posts and take the latest 3
-    const posts = await getBlogPosts();
+    const posts = await api.getBlogPosts();
     const latestPosts = posts.slice(0, 3);
 
     return (

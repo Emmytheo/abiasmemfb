@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getBlogPosts, type BlogPost } from "@/lib/services/blog";
+import { api, type BlogPost } from "@/lib/api";
 import { BlogCard } from "@/components/blog/blog-card";
 import { Search } from "lucide-react";
 
@@ -12,7 +12,7 @@ export default function BlogListingPage() {
     useEffect(() => {
         async function fetchPosts() {
             try {
-                const data = await getBlogPosts();
+                const data = await api.getBlogPosts();
                 setPosts(data);
             } finally {
                 setLoading(false);

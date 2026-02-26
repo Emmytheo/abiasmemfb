@@ -26,14 +26,16 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     </div>
 
                     {/* Top Right Actions */}
-                    <div className="flex items-center gap-4">
-                        <ThemeCustomizer />
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <div className="hidden sm:block">
+                            <ThemeCustomizer />
+                        </div>
                         {/* Visual representation of user matching LMS theme */}
-                        <div className="flex items-center gap-2 border rounded-full px-3 py-1.5 bg-muted/30 shadow-sm">
-                            <div className="h-6 w-6 rounded-full bg-primary flex flex-col justify-center items-center text-[10px] text-primary-foreground font-bold shadow-sm">
+                        <div className="flex items-center gap-2 border rounded-full px-2 sm:px-3 py-1.5 bg-muted/30 shadow-sm">
+                            <div className="h-6 w-6 rounded-full bg-primary flex flex-col justify-center items-center text-[10px] text-primary-foreground font-bold shadow-sm shrink-0">
                                 A
                             </div>
-                            <span className="text-sm font-medium text-foreground">Alex Wealth</span>
+                            <span className="hidden sm:inline text-sm font-medium text-foreground">Alex Wealth</span>
                         </div>
                     </div>
                 </header>

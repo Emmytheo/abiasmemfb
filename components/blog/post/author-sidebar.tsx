@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BlogPost } from "@/lib/services/blog";
+import { BlogPost } from "@/lib/api";
 import { useState, useEffect } from "react";
 
 interface BlogPostAuthorSidebarProps {

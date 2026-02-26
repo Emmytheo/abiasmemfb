@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, LayoutGrid, List } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Column<T> {
     header: string;
@@ -49,6 +50,14 @@ export function GenericDataTable<T extends { id: string | number }>({
     actionButton,
 }: GenericDataTableProps<T>) {
     const [searchQuery, setSearchQuery] = React.useState("");
+    const isMobile = useIsMobile();
+    const [viewMode, setViewMode] = React.useState<string>("list");
+
+    React.useEffect(() => {
+        if (gridRenderItem) {
+            setViewMode(isMobile ? "grid" : "list");
+        }
+    }, [isMobile, gridRenderItem]);
 
     const filteredData = React.useMemo(() => {
         if (!searchQuery || !searchKey) return data;
@@ -86,7 +95,7 @@ export function GenericDataTable<T extends { id: string | number }>({
                 </div>
             </CardHeader>
             <CardContent>
-                <Tabs defaultValue="list" className="w-full">
+                <Tabs value={viewMode} onValueChange={setViewMode} className="w-full">
                     <div className="flex items-center justify-between mb-4">
                         <div className="text-sm text-muted-foreground">
                             Showing {filteredData.length} records

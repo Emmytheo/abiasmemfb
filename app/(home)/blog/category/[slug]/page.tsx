@@ -3,12 +3,12 @@ import { CategoryHeader } from "@/components/blog/category/category-header";
 import { CategorySidebar } from "@/components/blog/category/category-sidebar";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { getPostsByCategory, getBlogPosts } from "@/lib/services/blog";
+import { api } from "@/lib/api";
 import { Suspense } from "react";
 
 // Generate static params for categories
 export async function generateStaticParams() {
-    const posts = await getBlogPosts();
+    const posts = await api.getBlogPosts();
     // Unique categories
     const categories = Array.from(new Set(posts.map(post => post.category)));
 
@@ -20,7 +20,7 @@ export async function generateStaticParams() {
 async function CategoryPageContent({ params }: { params: { slug: string } }) {
     const { slug } = await params;
     const decodedCategory = decodeURIComponent(slug).replace(/-/g, ' ');
-    const posts = await getPostsByCategory(slug);
+    const posts = await api.getPostsByCategory(slug);
 
     return (
         <div className="bg-background min-h-screen">

@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GenericDataTable } from "@/components/data-table";
-import { dashboardApi } from "@/lib/dashboard-api/api";
-import { Account } from "@/lib/dashboard-api/types";
+import { api, Account } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 
 export default function AccountsPage() {
@@ -11,7 +10,7 @@ export default function AccountsPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        dashboardApi.getAllAccounts().then((accounts) => {
+        api.getAllAccounts().then((accounts) => {
             setData(accounts);
             setLoading(false);
         });

@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GenericDataTable } from "@/components/data-table";
-import { dashboardApi } from "@/lib/dashboard-api/api";
-import { Loan } from "@/lib/dashboard-api/types";
+import { api, Loan } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 
 export default function LoansPage() {
@@ -11,7 +10,7 @@ export default function LoansPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        dashboardApi.getAllLoans().then((loans) => {
+        api.getAllLoans().then((loans) => {
             setData(loans);
             setLoading(false);
         });

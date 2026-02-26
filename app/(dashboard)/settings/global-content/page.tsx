@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { GenericDataTable } from "@/components/data-table";
-import { dashboardApi } from "@/lib/dashboard-api/api";
-import { SystemConfig } from "@/lib/dashboard-api/types";
+import { api, SystemConfig } from "@/lib/api";
 
 export default function GlobalContentSettingsPage() {
     const [data, setData] = useState<SystemConfig[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        dashboardApi.getConfigsByCategory("Global Content").then((configs) => {
+        api.getConfigsByCategory("Global Content").then((configs) => {
             setData(configs);
             setLoading(false);
         });
