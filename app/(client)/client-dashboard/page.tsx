@@ -24,8 +24,10 @@ export default function ClientDashboard() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeframe, setTimeframe] = useState<'6M' | '1Y' | 'ALL'>('6M');
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        setIsMounted(true);
         async function loadData() {
             try {
                 const [userData, accountsData, loansData, txsData] = await Promise.all([
@@ -53,7 +55,7 @@ export default function ClientDashboard() {
 
     const chartData = useMemo(() => {
         const months = timeframe === '6M' ? 6 : timeframe === '1Y' ? 12 : 24;
-        const now = new Date();
+        const now = isMounted ? new Date() : new Date('2024-01-01T00:00:00.000Z');
         const dataPoints = Array(months).fill(0);
         const labels: string[] = [];
 
@@ -73,7 +75,7 @@ export default function ClientDashboard() {
 
         return { points: dataPoints, labels };
 
-    }, [timeframe, portfolioValue]);
+    }, [timeframe, portfolioValue, isMounted]);
 
     const { chartPath, chartFill, chartPoints } = useMemo(() => {
         const width = 1000;

@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Transaction } from "@/lib/api";
 
 export function VolumeChart({ transactions }: { transactions: Transaction[] }) {
     const [timeframe, setTimeframe] = useState<'7D' | '30D'>('7D');
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const chartData = useMemo(() => {
-        const now = new Date();
+        const now = isMounted ? new Date() : new Date('2024-01-01T00:00:00.000Z');
         const days = timeframe === '7D' ? 7 : 30;
         const dataPoints = Array(days).fill(0);
         const labels: string[] = [];
@@ -35,7 +40,7 @@ export function VolumeChart({ transactions }: { transactions: Transaction[] }) {
         const basePoints = dataPoints.map((val) => val + Math.random() * 50000 + 10000);
 
         return { points: basePoints, labels };
-    }, [transactions, timeframe]);
+    }, [transactions, timeframe, isMounted]);
 
     const width = 800;
     const height = 240;
