@@ -87,6 +87,9 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
     const isRejected = app.status === 'rejected';
     const nextStage = !isApproved && !isRejected && currentStageIndex < product.workflow_stages.length - 1 ? product.workflow_stages[currentStageIndex + 1] : null;
 
+    const activeTerms = product.financial_terms?.find(t => t.blockType === (product.category === 'accounts' ? 'savings-terms' : 'loan-terms')) as any;
+    const interestRate = activeTerms?.interest_rate || 0;
+
     return (
         <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24">
             <div className="flex items-center justify-between">
@@ -103,7 +106,7 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mx-4">
 
                 {/* Main Content Area */}
                 <div className="lg:col-span-2 space-y-6">
@@ -238,7 +241,7 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-muted-foreground">Interest</span>
-                                    <span className="font-medium text-emerald-500">{product.interest_rate}%</span>
+                                    <span className="font-medium text-emerald-500">{interestRate}%</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-muted-foreground">User ID</span>

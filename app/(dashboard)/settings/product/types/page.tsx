@@ -12,19 +12,55 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Plus, Eye, Edit, Trash } from "lucide-react";
+import { toast } from "sonner";
 
-const DATA = [
-    { id: "type_1", category_name: "Savings", name: "Student Savings Max", description: "Zero maintenance fee for students.", status: "active" },
-    { id: "type_2", category_name: "Loans", name: "Salary Advance", description: "Quick loans against upcoming salary.", status: "active" },
-    { id: "type_3", category_name: "Current Accounts", name: "SME Plus", description: "For small scale enterprises.", status: "active" },
-];
+import { api } from "@/lib/api";
+import { ProductType } from "@/lib/api/types";
 
 export default function ProductTypesPage() {
+    const [data, setData] = React.useState<ProductType[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
 
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const types = await api.getAllProductTypes();
+            setData(types);
+        } catch (error) {
+            console.error("Failed to load product types:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleDelete = (id: string) => {
+        toast("Are you sure you want to delete this product type?", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        await api.deleteProductType(id);
+                        setData(prev => prev.filter(item => item.id !== id));
+                        toast.success("Product type deleted.");
+                    } catch (error) {
+                        toast.error("Failed to delete product type.");
+                    }
+                }
+            },
+            cancel: {
+                label: "Cancel",
+                onClick: () => { }
+            }
+        });
+    };
     const actionColumn = {
         header: "Actions",
         accessorKey: "id",
-        cell: (item: typeof DATA[0]) => (
+        cell: (item: ProductType) => (
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -45,7 +81,7 @@ export default function ProductTypesPage() {
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id)}>
                         <Trash className="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -58,7 +94,7 @@ export default function ProductTypesPage() {
             <GenericDataTable
                 title="Product Types"
                 description="Specific individual products offered to customers."
-                data={DATA}
+                data={data}
                 searchPlaceholder="Search product types..."
                 searchKey="name"
                 actionButton={
@@ -70,8 +106,13 @@ export default function ProductTypesPage() {
                 }
                 columns={[
                     { header: "Product Type", accessorKey: "name", cell: (item) => <span className="font-semibold">{item.name}</span> },
-                    { header: "Parent Category", accessorKey: "category_name" },
-                    { header: "Description", accessorKey: "description" },
+                    { header: "Parent Category", accessorKey: "category" },
+                    {
+                        header: "Description", accessorKey: "description", cell: (item) => {
+                            const text = item.description?.replace(/<[^>]*>?/gm, '') || '';
+                            return <span className="block max-w-[150px] md:max-w-[250px] lg:max-w-[400px] truncate" title={text}>{text}</span>;
+                        }
+                    },
                     { header: "Status", accessorKey: "status", cell: (item) => <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs">{item.status}</span> },
                     actionColumn
                 ]}
@@ -94,8 +135,8 @@ export default function ProductTypesPage() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
-                        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{item.category_name}</div>
-                        <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
+                        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{item.category}</div>
+                        <p className="text-sm text-muted-foreground mb-4 line-clamp-3">{item.description?.replace(/<[^>]*>?/gm, '')}</p>
                     </div>
                 )}
             />

@@ -33,6 +33,31 @@ export const SupabaseAdapter: ApiAdapter = {
     deleteProductType: async (id) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+    // Product Classes & Categories (Placeholders for now)
+    async getAllProductClasses() {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    async createProductClass() {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    async updateProductClass() {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    async deleteProductClass() {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    async getAllProductCategories() {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    async createProductCategory() {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    async updateProductCategory() {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    async deleteProductCategory() {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
 
     // Product Applications
     createProductApplication: async (data) => {
@@ -80,6 +105,10 @@ export const SupabaseAdapter: ApiAdapter = {
 
     // Careers
     getOpenPositions: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    // Pages
+    getPageBySlug: async (slug: string) => {
         throw new Error("Supabase Adapter not fully implemented");
     }
 };

@@ -7,18 +7,66 @@ import { BlogPostSocialSidebar } from "@/components/blog/post/social-sidebar";
 import { BlogPostAuthorSidebar } from "@/components/blog/post/author-sidebar";
 import { BlogPostMobileActions } from "@/components/blog/post/mobile-actions";
 import { ReadingProgress } from "@/components/blog/post/reading-progress";
+import { draftMode } from "next/headers";
+import { getPayload } from "payload";
+import configPromise from "@payload-config";
 
-// Generate static params for basic SSG behavior (optional but good for known slugs)
 export async function generateStaticParams() {
-    const posts = await api.getBlogPosts();
-    return posts.map((post) => ({
-        slug: post.slug,
-    }));
+    try {
+        const posts = await api.getBlogPosts();
+        if (!posts || posts.length === 0) {
+            return [{ slug: 'example-post' }];
+        }
+        return posts.map((post) => ({
+            slug: post.slug,
+        }));
+    } catch (e) {
+        return [{ slug: 'example-post' }];
+    }
 }
 
 async function BlogPostPageContent({ params }: { params: { slug: string } }) {
-    const { slug } = await params;
-    const post = await api.getBlogPostBySlug(slug);
+    const { slug } = await params as any;
+
+    // 1. Try the published API first
+    let post: BlogPost | undefined = await api.getBlogPostBySlug(slug);
+
+    // 2. Fallback: if not found (draft/unpublished), fetch directly from Payload with draft:true.
+    //    This lets the Payload live-preview iframe show brand-new posts without requiring
+    //    cookie-based draft mode (since the iframe can't receive Set-Cookie redirects).
+    if (!post) {
+        try {
+            const payload = await getPayload({ config: configPromise });
+            const { docs } = await payload.find({
+                collection: 'posts' as any,
+                where: { slug: { equals: slug } },
+                draft: true,
+                overrideAccess: true,
+                depth: 2,
+                limit: 1,
+            });
+            if (docs[0]) {
+                const doc = docs[0] as any;
+                post = {
+                    slug: doc.slug,
+                    title: doc.title,
+                    excerpt: doc.excerpt || '',
+                    content: typeof doc.content === 'object' ? JSON.stringify(doc.content) : String(doc.content || ''),
+                    coverImage: typeof doc.featuredImage === 'object' && doc.featuredImage ? doc.featuredImage.url : 'https://images.unsplash.com/photo-1554469384-e58fac16e23a',
+                    author: {
+                        name: typeof doc.author === 'object' && doc.author ? doc.author.name || doc.author.email : 'Admin',
+                        role: 'Contributor',
+                        avatar: 'https://ui-avatars.com/api/?name=Author'
+                    },
+                    date: new Date(doc.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                    category: typeof doc.category === 'object' && doc.category ? doc.category.name || doc.category.title : 'General',
+                    tags: Array.isArray(doc.tags) ? doc.tags.map((t: any) => typeof t === 'object' ? t.name || t.title : String(t)) : [],
+                    featured: false,
+                    readTime: '5 min read',
+                } as BlogPost;
+            }
+        } catch { /* ignore */ }
+    }
 
     if (!post) {
         notFound();

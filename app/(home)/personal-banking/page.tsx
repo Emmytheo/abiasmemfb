@@ -25,7 +25,11 @@ export default function PersonalBanking() {
 
     useEffect(() => {
         api.getAllProductTypes().then(types => {
-            setProducts(types.filter(t => t.category === 'accounts'));
+            const isAccountCategory = (catName: string) => {
+                const name = catName.toLowerCase();
+                return name.includes("account") || name.includes("saving") || name.includes("deposit") || name.includes("current");
+            };
+            setProducts(types.filter(t => isAccountCategory(t.category) && t.status === 'active'));
             setLoading(false);
         });
     }, []);
@@ -56,27 +60,48 @@ export default function PersonalBanking() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {products.map(prod => (
-                            <div key={prod.id} className="group bg-card text-card-foreground rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border flex flex-col relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent to-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                                <div className="w-14 h-14 rounded-xl bg-blue-50/50 dark:bg-blue-900/30 flex items-center justify-center mb-6 group-hover:bg-primary transition-colors duration-300">
-                                    {getIconForProduct(prod.name)}
-                                </div>
-                                <h3 className="text-xl font-bold text-foreground mb-3 font-display">{prod.name}</h3>
-                                <p className="text-muted-foreground text-sm leading-relaxed mb-6 flex-grow line-clamp-3">
-                                    {prod.description}
-                                </p>
+                        {products.map(prod => {
+                            const isAccountCategory = (catName: string) => {
+                                const name = catName.toLowerCase();
+                                return name.includes("account") || name.includes("saving") || name.includes("deposit") || name.includes("current");
+                            };
+                            const isAccount = isAccountCategory(prod.category);
+                            const prodTerms = prod.financial_terms?.[0] as any;
+                            return (
+                                <div key={prod.id} className="group bg-card text-card-foreground rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border flex flex-col relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent to-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                                    <div className="w-14 h-14 rounded-xl bg-blue-50/50 dark:bg-blue-900/30 flex items-center justify-center mb-6 group-hover:bg-primary transition-colors duration-300">
+                                        {getIconForProduct(prod.name)}
+                                    </div>
+                                    <h3 className="text-xl font-bold text-foreground mb-3 font-display">{prod.name}</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed mb-6 flex-grow line-clamp-3">
+                                        {prod.description?.replace(/<[^>]*>?/gm, '')}
+                                    </p>
 
-                                <div className="space-y-2 mb-6 text-xs font-mono text-muted-foreground bg-muted/40 p-4 rounded-xl border">
-                                    <div className="flex justify-between p-1"><span>Interest Rate</span><span className="font-bold text-emerald-500">{prod.interest_rate}%</span></div>
-                                    {prod.min_amount != null && <div className="flex justify-between p-1"><span>Min Deposit</span><span className="font-bold">₦{prod.min_amount.toLocaleString()}</span></div>}
-                                </div>
+                                    <div className="flex items-center gap-4 mt-auto mb-6 pt-4 border-t w-full">
+                                        {prodTerms?.blockType !== 'savings-terms' && (
+                                            <>
+                                                <div>
+                                                    <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Interest</p>
+                                                    <p className="text-sm font-bold text-primary">{prodTerms?.interest_rate || 0}% <span className="text-[9px] text-muted-foreground font-normal">p.a</span></p>
+                                                </div>
+                                                <div className="w-px h-8 bg-border"></div>
+                                            </>
+                                        )}
+                                        <div>
+                                            <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
+                                                {prodTerms?.blockType === 'savings-terms' ? 'Min Deposit' : prodTerms?.blockType === 'fixed-deposit-terms' ? 'Min Deposit' : 'Max Amount'}
+                                            </p>
+                                            <p className="text-sm font-bold">₦{((prodTerms?.blockType === 'savings-terms' ? prodTerms?.min_balance : prodTerms?.blockType === 'fixed-deposit-terms' ? prodTerms?.min_amount : prodTerms?.max_amount) || 0).toLocaleString()}</p>
+                                        </div>
+                                    </div>
 
-                                <Link className="inline-flex items-center text-primary font-semibold text-sm hover:text-accent transition-colors mt-auto group" href={`/product/${prod.id}`}>
-                                    Apply Now <ArrowRight className="ml-1 flex-shrink-0 group-hover:translate-x-1 transition-transform" size={16} />
-                                </Link>
-                            </div>
-                        ))}
+                                    <Link className="inline-flex items-center text-primary font-semibold text-sm hover:text-accent transition-colors mt-auto group" href={`/product/${prod.id}`}>
+                                        Apply Now <ArrowRight className="ml-1 flex-shrink-0 group-hover:translate-x-1 transition-transform" size={16} />
+                                    </Link>
+                                </div>
+                            )
+                        })}
                     </div>
                 )}
             </main>

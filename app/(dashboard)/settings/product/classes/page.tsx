@@ -21,39 +21,99 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Plus, Eye, Edit, Trash } from "lucide-react";
+import { toast } from "sonner";
 
-// Dummy data for classes
-const INITIAL_DATA = [
-    { id: "cls_1", name: "Retail Products", description: "Products designed for individual consumers.", status: "active", created_at: new Date().toISOString() },
-    { id: "cls_2", name: "Corporate Products", description: "Products designed for businesses and orgs.", status: "active", created_at: new Date().toISOString() },
-];
+import { api } from "@/lib/api";
+import { ProductClass } from "@/lib/api/types";
 
 export default function ProductClassesPage() {
-    const [data, setData] = React.useState(INITIAL_DATA);
+    const [data, setData] = React.useState<ProductClass[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
 
+    // Fetch data
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const classes = await api.getAllProductClasses();
+            setData(classes);
+        } catch (error) {
+            console.error("Failed to load classes:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchData();
+    }, []);
+
     // Viewing/Editing State
-    const [selectedItem, setSelectedItem] = React.useState<typeof INITIAL_DATA[0] | null>(null);
+    const [selectedItem, setSelectedItem] = React.useState<ProductClass | null>(null);
     const [isViewOpen, setIsViewOpen] = React.useState(false);
 
-    const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        const newClass = {
-            id: `cls_${Date.now()}`,
-            name: formData.get("name") as string,
-            description: formData.get("description") as string,
-            status: "active",
-            created_at: new Date().toISOString()
-        };
-        setData([...data, newClass]);
-        setIsCreateOpen(false);
+
+        try {
+            const newClass = await api.createProductClass({
+                name: formData.get("name") as string,
+                description: formData.get("description") as string,
+                status: "active",
+            });
+            setData([...data, newClass]);
+            setIsCreateOpen(false);
+            toast.success("Product class created successfully.");
+        } catch (error) {
+            toast.error("Failed to create product class.");
+        }
+    };
+
+    const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!selectedItem) return;
+
+        const formData = new FormData(e.currentTarget);
+        try {
+            const updated = await api.updateProductClass(selectedItem.id, {
+                name: formData.get("name") as string,
+                description: formData.get("description") as string,
+                status: formData.get("status") as 'active' | 'inactive',
+            });
+            setData(data.map(item => item.id === updated.id ? updated : item));
+            setIsViewOpen(false);
+            toast.success("Product class updated successfully.");
+        } catch (error) {
+            toast.error("Failed to update product class.");
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        toast("Are you sure you want to delete this class?", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        await api.deleteProductClass(id);
+                        setData(prev => prev.filter(item => item.id !== id));
+                        toast.success("Product class deleted.");
+                    } catch (error) {
+                        toast.error("Failed to delete product class.");
+                    }
+                }
+            },
+            cancel: {
+                label: "Cancel",
+                onClick: () => { }
+            }
+        });
     };
 
     const actionColumn = {
         header: "Actions",
         accessorKey: "id",
-        cell: (item: typeof INITIAL_DATA[0]) => (
+        cell: (item: ProductClass) => (
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -70,7 +130,7 @@ export default function ProductClassesPage() {
                         <Edit className="mr-2 h-4 w-4" /> Edit Class
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id)}>
                         <Trash className="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -125,7 +185,12 @@ export default function ProductClassesPage() {
                 }
                 columns={[
                     { header: "Class Name", accessorKey: "name", cell: (item) => <span className="font-semibold">{item.name}</span> },
-                    { header: "Description", accessorKey: "description" },
+                    {
+                        header: "Description", accessorKey: "description", cell: (item) => {
+                            const text = item.description || '';
+                            return <span className="block max-w-[150px] md:max-w-[250px] lg:max-w-[400px] truncate" title={text}>{text}</span>;
+                        }
+                    },
                     { header: "Status", accessorKey: "status", cell: (item) => <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs">{item.status}</span> },
                     actionColumn
                 ]}
@@ -161,35 +226,40 @@ export default function ProductClassesPage() {
                         </SheetDescription>
                     </SheetHeader>
                     {selectedItem && (
-                        <div className="space-y-6">
+                        <form onSubmit={handleUpdate} className="space-y-6">
                             <div className="space-y-2">
                                 <Label>Class ID</Label>
                                 <Input value={selectedItem.id} disabled className="bg-muted" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Class Name</Label>
-                                <Input defaultValue={selectedItem.name} />
+                                <Input name="name" defaultValue={selectedItem.name} required />
                             </div>
                             <div className="space-y-2">
                                 <Label>Description</Label>
                                 <textarea
+                                    name="description"
                                     defaultValue={selectedItem.description}
                                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Status</Label>
-                                <div className="pt-1">
-                                    <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-sm font-medium">
-                                        {selectedItem.status}
-                                    </span>
-                                </div>
+                                <Label htmlFor="status">Status</Label>
+                                <select
+                                    id="status"
+                                    name="status"
+                                    defaultValue={selectedItem.status}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
                             </div>
                             <div className="pt-6 flex justify-end gap-2 border-t">
                                 <Button type="button" variant="outline" onClick={() => setIsViewOpen(false)}>Close</Button>
                                 <Button type="submit">Save Changes</Button>
                             </div>
-                        </div>
+                        </form>
                     )}
                 </SheetContent>
             </Sheet>

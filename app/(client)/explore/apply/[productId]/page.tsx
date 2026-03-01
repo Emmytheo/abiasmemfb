@@ -40,9 +40,19 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
                 });
                 setFormData(initial);
 
-                // Set default requested amount to min_amount if applicable
-                if (typeData.category !== 'accounts') {
-                    setRequestedAmount(typeData.min_amount || 0);
+                const isAccountCategory = (catName: string) => {
+                    const name = catName.toLowerCase();
+                    return name.includes("account") || name.includes("saving") || name.includes("deposit") || name.includes("current");
+                };
+                const isAccount = isAccountCategory(typeData.category);
+                const terms = typeData.financial_terms?.[0] as any;
+
+                if (terms) {
+                    if (terms.blockType === 'savings-terms') {
+                        setRequestedAmount(terms.min_balance || 0);
+                    } else {
+                        setRequestedAmount(terms.min_amount || 0);
+                    }
                 }
             }
             setLoading(false);
@@ -124,25 +134,39 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-8 bg-card pb-8">
 
-                        {/* If it's a loan or investment, ask for Amount */}
-                        {product.category !== 'accounts' && (
-                            <div className="space-y-3 bg-primary/5 p-6 rounded-xl border border-primary/20">
-                                <label className="text-sm font-semibold text-primary block">Requested Amount (₦)</label>
-                                <input
-                                    type="number"
-                                    required
-                                    min={product.min_amount}
-                                    max={product.max_amount}
-                                    value={requestedAmount}
-                                    onChange={(e) => setRequestedAmount(Number(e.target.value))}
-                                    className="w-full bg-background border-2 border-primary/30 rounded-lg text-lg h-12 px-4 focus:outline-none focus:border-primary font-mono shadow-inner"
-                                />
-                                <div className="flex justify-between text-xs text-muted-foreground font-medium">
-                                    <span>Min: ₦{product.min_amount?.toLocaleString()}</span>
-                                    <span>Max: ₦{product.max_amount?.toLocaleString()}</span>
+                        {/* Universal Amount Request Input */}
+                        {(() => {
+                            const terms = product.financial_terms?.[0] as any;
+                            if (!terms) return null;
+
+                            const isLoan = terms.blockType === 'loan-terms';
+                            const isSavings = terms.blockType === 'savings-terms';
+                            const isFixed = terms.blockType === 'fixed-deposit-terms';
+
+                            const minVal = isSavings ? terms.min_balance : terms.min_amount;
+                            const maxVal = isLoan ? terms.max_amount : undefined;
+
+                            const label = isLoan ? "Requested Loan Amount (₦)" : isFixed ? "Initial Deposit Amount (₦)" : "Opening Balance (₦)";
+
+                            return (
+                                <div className="space-y-3 bg-primary/5 p-6 rounded-xl border border-primary/20">
+                                    <label className="text-sm font-semibold text-primary block">{label}</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min={minVal}
+                                        max={maxVal}
+                                        value={requestedAmount === undefined ? '' : requestedAmount}
+                                        onChange={(e) => setRequestedAmount(e.target.value ? Number(e.target.value) : undefined)}
+                                        className="w-full bg-background border-2 border-primary/30 rounded-lg text-lg h-12 px-4 focus:outline-none focus:border-primary font-mono shadow-inner"
+                                    />
+                                    <div className="flex justify-between text-xs text-muted-foreground font-medium">
+                                        <span>Min: ₦{(minVal || 0).toLocaleString()}</span>
+                                        {maxVal !== undefined && <span>Max: ₦{(maxVal || 0).toLocaleString()}</span>}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )
+                        })()}
 
                         {/* Dynamic Admin-Defined Fields */}
                         <div className="space-y-6">

@@ -40,17 +40,56 @@ export interface FormField {
     description?: string;
 }
 
+export interface ProductClass {
+    id: string;
+    name: string;
+    description: string;
+    status: 'active' | 'inactive';
+    created_at: string;
+}
+
+export interface ProductCategory {
+    id: string;
+    class_id: string;
+    name: string;
+    description: string;
+    status: 'active' | 'inactive';
+    created_at: string;
+}
+
+export interface LoanTermsConfig {
+    blockType: 'loan-terms';
+    interest_rate: number;
+    min_amount: number;
+    max_amount: number;
+    min_duration?: number;
+    max_duration?: number;
+}
+
+export interface SavingsTermsConfig {
+    blockType: 'savings-terms';
+    interest_rate?: number;
+    min_balance: number;
+    monthly_maintenance_fee?: number;
+}
+
+export interface FixedDepositTermsConfig {
+    blockType: 'fixed-deposit-terms';
+    interest_rate: number;
+    min_amount: number;
+    lockup_period: number;
+    penalty_rate?: number;
+}
+
+export type ProductFinancialTerms = LoanTermsConfig | SavingsTermsConfig | FixedDepositTermsConfig;
+
 export interface ProductType {
     id: string;
     name: string;
-    category: 'loans' | 'accounts' | 'investments';
+    category: string; // References ProductCategory ID or slug
     tagline: string;
     description: string;
-    interest_rate?: number;
-    min_amount?: number;
-    max_amount?: number;
-    min_duration?: number;
-    max_duration?: number;
+    financial_terms: ProductFinancialTerms[];
     image_url?: string;
     form_schema: FormField[];
     workflow_stages: string[]; // e.g., ['Submitted', 'Under Review', 'Approved']
@@ -90,6 +129,7 @@ export interface SystemConfig {
 }
 
 export interface BlogPost {
+    id?: string | number;
     slug: string;
     title: string;
     excerpt: string;
@@ -127,6 +167,16 @@ export interface ApiAdapter {
     getAllLoans: () => Promise<Loan[]>;
 
     // Product Configuration & Dynamic Forms
+    getAllProductClasses: () => Promise<ProductClass[]>;
+    createProductClass: (data: Omit<ProductClass, 'id' | 'created_at'>) => Promise<ProductClass>;
+    updateProductClass: (id: string, data: Partial<ProductClass>) => Promise<ProductClass>;
+    deleteProductClass: (id: string) => Promise<boolean>;
+
+    getAllProductCategories: () => Promise<ProductCategory[]>;
+    createProductCategory: (data: Omit<ProductCategory, 'id' | 'created_at'>) => Promise<ProductCategory>;
+    updateProductCategory: (id: string, data: Partial<ProductCategory>) => Promise<ProductCategory>;
+    deleteProductCategory: (id: string) => Promise<boolean>;
+
     getAllProductTypes: () => Promise<ProductType[]>;
     getProductTypeById: (id: string) => Promise<ProductType | null>;
     saveProductType: (data: ProductType) => Promise<ProductType>;
@@ -143,6 +193,9 @@ export interface ApiAdapter {
 
     // Settings (Config)
     getConfigsByCategory: (category: SystemConfig['category']) => Promise<SystemConfig[]>;
+
+    // Global CMS
+    getPageBySlug: (slug: string) => Promise<any | null>;
 
     // Blog
     getBlogPosts: () => Promise<BlogPost[]>;

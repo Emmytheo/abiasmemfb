@@ -65,42 +65,45 @@ export default function MyLoansPage() {
                             </Button>
                         </div>
                     ) : (
-                        applications.map(app => (
-                            <Card key={app.id} className="border shadow-sm flex flex-col">
-                                <CardHeader className="pb-2 flex-1">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <CardDescription className="text-xs uppercase tracking-wider font-bold text-primary">
-                                            {app.product?.name || 'Unknown Loan'}
-                                        </CardDescription>
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm border ${app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                            app.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
-                                                'bg-accent/50 text-muted-foreground border-border'
-                                            }`}>
-                                            {app.status === 'pending' ? app.workflow_stage : app.status}
-                                        </span>
-                                    </div>
-                                    <CardTitle className="text-2xl font-mono">
-                                        {app.requested_amount ? `₦${app.requested_amount.toLocaleString()}` : 'N/A'}
-                                    </CardTitle>
-                                    <p className="text-xs text-muted-foreground mt-1">Principal Amount</p>
-                                </CardHeader>
-                                <CardContent className="mt-4 pt-4 border-t bg-muted/10">
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                                        <span>Interest Rate:</span>
-                                        <span className="font-medium text-foreground">{app.product?.interest_rate}% P.A</span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-                                        <span>Applied on:</span>
-                                        <span className="font-medium text-foreground">{new Date(app.created_at).toLocaleDateString()}</span>
-                                    </div>
-                                    <Button asChild variant="outline" className="w-full justify-between group">
-                                        <Link href={`/applications/${app.id}`}>
-                                            View Details <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                                        </Link>
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        ))
+                        applications.map(app => {
+                            const prodTerms = app.product?.financial_terms?.find((t: any) => t.blockType === 'loan-terms') as any;
+                            return (
+                                <Card key={app.id} className="border shadow-sm flex flex-col">
+                                    <CardHeader className="pb-2 flex-1">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <CardDescription className="text-xs uppercase tracking-wider font-bold text-primary">
+                                                {app.product?.name || 'Unknown Loan'}
+                                            </CardDescription>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm border ${app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                app.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                                    'bg-accent/50 text-muted-foreground border-border'
+                                                }`}>
+                                                {app.status === 'pending' ? app.workflow_stage : app.status}
+                                            </span>
+                                        </div>
+                                        <CardTitle className="text-2xl font-mono">
+                                            {app.requested_amount ? `₦${app.requested_amount.toLocaleString()}` : 'N/A'}
+                                        </CardTitle>
+                                        <p className="text-xs text-muted-foreground mt-1">Principal Amount</p>
+                                    </CardHeader>
+                                    <CardContent className="mt-4 pt-4 border-t bg-muted/10">
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                                            <span>Interest Rate:</span>
+                                            <span className="font-medium text-foreground">{prodTerms?.interest_rate || 0}% P.A</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                                            <span>Applied on:</span>
+                                            <span className="font-medium text-foreground">{new Date(app.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <Button asChild variant="outline" className="w-full justify-between group">
+                                            <Link href={`/applications/${app.id}`}>
+                                                View Details <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                                            </Link>
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })
                     )}
                 </div>
             )}

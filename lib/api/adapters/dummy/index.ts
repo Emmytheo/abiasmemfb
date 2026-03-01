@@ -28,6 +28,40 @@ export const DummyAdapter: ApiAdapter = {
     },
 
     // Product Configuration & Dynamic Forms
+    getAllProductClasses: async () => {
+        await delay(300);
+        return [];
+    },
+    createProductClass: async (data) => {
+        await delay(400);
+        return { ...data, id: `cls_${Date.now()}`, created_at: new Date().toISOString() };
+    },
+    updateProductClass: async (id, data) => {
+        await delay(400);
+        return { id, ...data } as any;
+    },
+    deleteProductClass: async (id) => {
+        await delay(300);
+        return true;
+    },
+
+    getAllProductCategories: async () => {
+        await delay(300);
+        return [];
+    },
+    createProductCategory: async (data) => {
+        await delay(400);
+        return { ...data, id: `cat_${Date.now()}`, created_at: new Date().toISOString() };
+    },
+    updateProductCategory: async (id, data) => {
+        await delay(400);
+        return { id, ...data } as any;
+    },
+    deleteProductCategory: async (id) => {
+        await delay(300);
+        return true;
+    },
+
     getAllProductTypes: async () => {
         await delay(400);
         return MOCK_PRODUCT_TYPES;
@@ -85,6 +119,12 @@ export const DummyAdapter: ApiAdapter = {
     getConfigsByCategory: async (category) => {
         await delay(300);
         return MOCK_CONFIGS.filter(c => c.category === category);
+    },
+
+    // Global CMS
+    getPageBySlug: async (slug) => {
+        await delay(200);
+        return null; // Mock returns null for pages to fallback to standard routing for now
     },
 
     // Blog

@@ -66,11 +66,16 @@ export const MOCK_PRODUCT_TYPES: ProductType[] = [
         category: 'loans',
         tagline: 'Flexible financing to power your business growth.',
         description: 'The SME Growth Loan provides business owners with the capital they need to expand operations, purchase inventory, or manage cash flow. With competitive interest rates and flexible repayment terms, this product is designed to support the backbone of our economy.',
-        interest_rate: 12.5,
-        min_amount: 50000,
-        max_amount: 5000000,
-        min_duration: 3,
-        max_duration: 24,
+        financial_terms: [
+            {
+                blockType: 'loan-terms',
+                interest_rate: 12.5,
+                min_amount: 50000,
+                max_amount: 5000000,
+                min_duration: 3,
+                max_duration: 24,
+            }
+        ],
         image_url: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=400&h=200',
         status: 'active',
         created_at: new Date('2024-01-15').toISOString(),
@@ -89,8 +94,13 @@ export const MOCK_PRODUCT_TYPES: ProductType[] = [
         category: 'accounts',
         tagline: 'Earn more while you save for the future.',
         description: 'Watch your wealth grow with our High-Yield Savings account. Offering premium interest rates above the market average, this account is perfect for long-term saving goals with the flexibility to access funds when absolutely necessary.',
-        interest_rate: 8.5,
-        min_amount: 10000,
+        financial_terms: [
+            {
+                blockType: 'savings-terms',
+                interest_rate: 8.5,
+                min_balance: 10000,
+            }
+        ],
         status: 'active',
         created_at: new Date('2024-02-01').toISOString(),
         workflow_stages: ['Submitted', 'KYC Verification', 'Approved'],

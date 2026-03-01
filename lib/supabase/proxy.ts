@@ -17,7 +17,7 @@ export async function updateSession(request: NextRequest) {
   // variable. Always create a new one on each request.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
     {
       cookies: {
         getAll() {
@@ -42,10 +42,19 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
+  // IMPORTANT: If you remove getUser() and you use server-side rendering
   // with the Supabase client, your users may be randomly logged out.
-  const { data } = await supabase.auth.getClaims();
-  const user = data?.claims;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // IMPORTANT: Let ALL /admin/* routes pass through to Payload CMS.
+  // Payload has its own authentication strategy (supabaseStrategy) that runs
+  // server-side and validates users independently. Intercepting here causes
+  // false negatives because the Edge runtime cannot reliably read Supabase tokens.
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    return supabaseResponse;
+  }
 
   if (
     request.nextUrl.pathname !== "/" &&
@@ -56,7 +65,13 @@ export async function updateSession(request: NextRequest) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+
+    redirectResponse.cookies.getAll().forEach((cookie) => redirectResponse.cookies.delete(cookie.name));
+    supabaseResponse.cookies.getAll().forEach((cookie) =>
+      redirectResponse.cookies.set(cookie.name, cookie.value)
+    );
+    return redirectResponse;
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

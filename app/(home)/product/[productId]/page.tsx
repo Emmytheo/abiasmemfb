@@ -48,7 +48,12 @@ function PublicProductDetailContent({ params }: { params: Promise<{ productId: s
         );
     }
 
-    const isAccount = product.category === 'accounts';
+    const isAccountCategory = (catName: string) => {
+        const name = catName.toLowerCase();
+        return name.includes("account") || name.includes("saving") || name.includes("deposit") || name.includes("current");
+    };
+    const isAccount = isAccountCategory(product.category);
+    const activeTerms = product.financial_terms?.[0] as any;
 
     return (
         <div className="animate-in fade-in duration-700 min-h-screen bg-background">
@@ -83,7 +88,7 @@ function PublicProductDetailContent({ params }: { params: Promise<{ productId: s
                                 {product.name}
                             </h1>
                             <p className="text-xl text-muted-foreground leading-relaxed max-w-xl">
-                                {product.tagline || product.description?.substring(0, 100) + '...'}
+                                {product.tagline || product.description?.replace(/<[^>]*>?/gm, '').substring(0, 100) + '...'}
                             </p>
 
                             <div className="mt-10 flex flex-wrap gap-4">
@@ -113,22 +118,35 @@ function PublicProductDetailContent({ params }: { params: Promise<{ productId: s
                                             <div className="bg-primary/10 p-2 rounded-lg text-primary"><HeartHandshake size={20} /></div>
                                             <span>Interest Rate</span>
                                         </div>
-                                        <span className="text-lg font-bold text-emerald-500">{product.interest_rate}% p.a</span>
+                                        <span className="text-lg font-bold text-emerald-500">{activeTerms?.interest_rate || 0}% p.a</span>
                                     </li>
                                     <li className="flex justify-between items-center">
                                         <div className="flex items-center gap-3 text-muted-foreground">
                                             <div className="bg-primary/10 p-2 rounded-lg text-primary"><ShieldCheck size={20} /></div>
-                                            <span>{isAccount ? 'Min Opening Balance' : 'Max Loan Limit'}</span>
+                                            <span>
+                                                {activeTerms?.blockType === 'savings-terms' ? 'Min Opening Balance' :
+                                                    activeTerms?.blockType === 'fixed-deposit-terms' ? 'Min Deposit Amount' : 'Max Loan Limit'}
+                                            </span>
                                         </div>
-                                        <span className="text-lg font-bold">₦{((isAccount ? product.min_amount : product.max_amount) || 0).toLocaleString()}</span>
+                                        <span className="text-lg font-bold">₦{((activeTerms?.blockType === 'savings-terms' ? activeTerms?.min_balance : activeTerms?.blockType === 'fixed-deposit-terms' ? activeTerms?.min_amount : activeTerms?.max_amount) || 0).toLocaleString()}</span>
                                     </li>
-                                    <li className="flex justify-between items-center">
-                                        <div className="flex items-center gap-3 text-muted-foreground">
-                                            <div className="bg-primary/10 p-2 rounded-lg text-primary"><CheckCircle size={20} /></div>
-                                            <span>Turnaround Time</span>
-                                        </div>
-                                        <span className="text-base font-semibold">24 - 48 hours</span>
-                                    </li>
+                                    {activeTerms?.blockType !== 'savings-terms' ? (
+                                        <li className="flex justify-between items-center">
+                                            <div className="flex items-center gap-3 text-muted-foreground">
+                                                <div className="bg-primary/10 p-2 rounded-lg text-primary"><CheckCircle size={20} /></div>
+                                                <span>{activeTerms?.blockType === 'fixed-deposit-terms' ? 'Lockup Period' : 'Maximum Duration'}</span>
+                                            </div>
+                                            <span className="text-base font-semibold">{activeTerms?.blockType === 'fixed-deposit-terms' ? `${activeTerms?.lockup_period || 0} Periods` : `${activeTerms?.max_duration || 0} Months`}</span>
+                                        </li>
+                                    ) : (
+                                        <li className="flex justify-between items-center">
+                                            <div className="flex items-center gap-3 text-muted-foreground">
+                                                <div className="bg-primary/10 p-2 rounded-lg text-primary"><CheckCircle size={20} /></div>
+                                                <span>Turnaround Time</span>
+                                            </div>
+                                            <span className="text-base font-semibold">Instant Access</span>
+                                        </li>
+                                    )}
                                 </ul>
                             </div>
                         </div>

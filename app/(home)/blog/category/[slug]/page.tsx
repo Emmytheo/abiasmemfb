@@ -8,13 +8,21 @@ import { Suspense } from "react";
 
 // Generate static params for categories
 export async function generateStaticParams() {
-    const posts = await api.getBlogPosts();
-    // Unique categories
-    const categories = Array.from(new Set(posts.map(post => post.category)));
+    try {
+        const posts = await api.getBlogPosts();
+        // Unique categories
+        const categories = Array.from(new Set(posts.map(post => post.category)));
 
-    return categories.map((category) => ({
-        slug: category.toLowerCase().replace(/\s+/g, '-'),
-    }));
+        if (!categories || categories.length === 0) {
+            return [{ slug: 'example-category' }];
+        }
+
+        return categories.map((category) => ({
+            slug: category.toLowerCase().replace(/\s+/g, '-'),
+        }));
+    } catch (e) {
+        return [{ slug: 'example-category' }];
+    }
 }
 
 async function CategoryPageContent({ params }: { params: { slug: string } }) {

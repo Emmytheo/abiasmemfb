@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DualRangeSlider } from "@/components/ui/dual-range-slider";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { ProductType, FormField } from "@/lib/api/types";
+import { ProductType, FormField, ProductCategory } from "@/lib/api/types";
 
 function RichTextEditor({ value, onChange }: { value: string, onChange: (v: string) => void }) {
     const editorRef = React.useRef<HTMLDivElement>(null);
@@ -62,6 +63,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [categories, setCategories] = useState<ProductCategory[]>([]);
 
     const [product, setProduct] = useState<ProductType>({
         id: typeId,
@@ -69,11 +71,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
         category: 'loans',
         tagline: '',
         description: '',
-        interest_rate: 0,
-        min_amount: 0,
-        max_amount: 0,
-        min_duration: 1,
-        max_duration: 12,
+        financial_terms: [],
         image_url: '',
         form_schema: [],
         workflow_stages: ['Submitted', 'Under Review', 'Approved'],
@@ -98,6 +96,17 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                 setIsLoading(false);
             }
         }
+
+        async function fetchInitialData() {
+            try {
+                const cats = await api.getAllProductCategories();
+                setCategories(cats);
+            } catch (error) {
+                console.error("Failed to load categories", error);
+            }
+        }
+
+        fetchInitialData();
         if (typeId && typeId !== 'new') {
             fetchProduct();
         } else {
@@ -110,25 +119,40 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
         setIsSaving(true);
         try {
             await api.saveProductType(product);
-            router.push("/products/accounts"); // Redirect to listings
+            toast.success("Product type updated successfully.");
+            router.push("/settings/product/types"); // Redirect to listings
         } catch (error) {
             console.error("Save failed", error);
+            toast.error("Failed to update product type.");
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleDelete = async () => {
-        setIsDeleting(true);
-        try {
-            await api.deleteProductType(product.id);
-            router.push("/products/accounts");
-        } catch (error) {
-            console.error("Delete failed", error);
-        } finally {
-            setIsDeleting(false);
-        }
-    }
+        toast("Are you sure you want to delete this product type?", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    setIsDeleting(true);
+                    try {
+                        await api.deleteProductType(product.id);
+                        toast.success("Product type deleted.");
+                        router.push("/settings/product/types");
+                    } catch (error) {
+                        console.error("Delete failed", error);
+                        toast.error("Failed to delete product type.");
+                    } finally {
+                        setIsDeleting(false);
+                    }
+                }
+            },
+            cancel: {
+                label: "Cancel",
+                onClick: () => { }
+            }
+        });
+    };
 
     const updateProduct = (updates: Partial<ProductType>) => {
         setProduct(prev => ({ ...prev, ...updates }));
@@ -190,6 +214,22 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
         { step: 4, title: "App Form", icon: CheckSquare }
     ];
 
+    const selectedCatObj = categories.find(c => String(c.id) === String(product.category) || String(c.name) === String(product.category));
+    const catName = selectedCatObj ? selectedCatObj.name.toLowerCase() : (typeof product.category === 'string' ? product.category.toLowerCase() : "");
+    const isAccount = catName.includes("account") || catName.includes("saving") || catName.includes("deposit") || catName.includes("current");
+    const activeIndex = product.financial_terms.findIndex(t => t.blockType === (isAccount ? 'savings-terms' : 'loan-terms'));
+    const activeBlock = activeIndex >= 0 ? product.financial_terms[activeIndex] as any : {};
+
+    const updateFinancials = (updates: any) => {
+        const newTerms = [...product.financial_terms];
+        if (activeIndex >= 0) {
+            newTerms[activeIndex] = { ...newTerms[activeIndex], ...updates };
+        } else {
+            newTerms.push({ blockType: isAccount ? 'savings-terms' : 'loan-terms', ...updates });
+        }
+        updateProduct({ financial_terms: newTerms });
+    };
+
     if (isLoading) {
         return <div className="flex w-full justify-center p-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
     }
@@ -204,7 +244,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                         <div>
                             <div className="flex items-center gap-3 mb-1">
                                 <Button variant="ghost" size="icon" asChild className="h-8 w-8 rounded-full">
-                                    <Link href="/products/accounts">
+                                    <Link href="/settings/product/types">
                                         <ArrowLeft className="h-4 w-4" />
                                     </Link>
                                 </Button>
@@ -258,16 +298,16 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                 <div className="space-y-2 group">
                                     <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Product Name</label>
                                     <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                        <input type="text" value={product.name} onChange={e => updateProduct({ name: e.target.value })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" required />
+                                        <input type="text" value={product.name || ''} onChange={e => updateProduct({ name: e.target.value })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" required />
                                     </div>
                                 </div>
                                 <div className="space-y-2 group">
                                     <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Category</label>
                                     <div className="relative bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                        <select value={product.category} onChange={e => updateProduct({ category: e.target.value as any })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none appearance-none cursor-pointer">
-                                            <option value="loans">Loans & Credit</option>
-                                            <option value="accounts">Savings Accounts</option>
-                                            <option value="investments">Investments</option>
+                                        <select value={product.category || ''} onChange={e => updateProduct({ category: e.target.value as any })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none appearance-none cursor-pointer">
+                                            {categories.map(c => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
                                         </select>
                                         <div className="absolute right-3 top-3 pointer-events-none text-muted-foreground">
                                             <ChevronDown className="h-4 w-4" />
@@ -277,7 +317,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                 <div className="space-y-2 group md:col-span-2">
                                     <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Short Tagline</label>
                                     <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                        <input type="text" value={product.tagline} onChange={e => updateProduct({ tagline: e.target.value })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" />
+                                        <input type="text" value={product.tagline || ''} onChange={e => updateProduct({ tagline: e.target.value })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" />
                                     </div>
                                     <p className="text-xs text-muted-foreground text-right">{product.tagline?.length || 0}/100 characters</p>
                                 </div>
@@ -290,18 +330,20 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                         <section className="space-y-6 pt-4">
                             <div className="flex items-center gap-2 pb-2 border-b">
                                 <CreditCard className="text-primary h-5 w-5" />
-                                <h2 className="text-lg font-semibold">Financial Terms</h2>
+                                <h2 className="text-lg font-semibold">{isAccount ? 'Savings & Account Terms' : 'Loan Terms'}</h2>
                             </div>
 
                             <div className="bg-accent/50 rounded-xl p-6 border space-y-8">
+
+                                {/* Interest Rate (Shared conceptually, but separated in blocks) */}
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <label className="text-sm font-medium">Interest Rate (Annual)</label>
+                                        <label className="text-sm font-medium">Interest Rate (Annual PA)</label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="number"
-                                                value={product.interest_rate}
-                                                onChange={(e) => updateProduct({ interest_rate: Number(e.target.value) })}
+                                                value={activeBlock.interest_rate ?? ''}
+                                                onChange={(e) => updateFinancials({ interest_rate: e.target.value === '' ? '' : Number(e.target.value) })}
                                                 className="bg-background border rounded text-primary font-bold w-20 text-center focus:ring-1 focus:ring-primary focus:border-primary text-sm p-1 outline-none"
                                             />
                                             <span className="text-muted-foreground text-sm">%</span>
@@ -310,8 +352,8 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                     <input
                                         type="range"
                                         min="0" max="30" step="0.1"
-                                        value={product.interest_rate}
-                                        onChange={(e) => updateProduct({ interest_rate: Number(e.target.value) })}
+                                        value={activeBlock.interest_rate || 0}
+                                        onChange={(e) => updateFinancials({ interest_rate: Number(e.target.value) })}
                                         className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer accent-primary"
                                     />
                                     <div className="flex justify-between text-xs text-muted-foreground">
@@ -321,61 +363,84 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                     </div>
                                 </div>
 
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-2 group">
-                                            <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Minimum Amount (₦)</label>
-                                            <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                                <input type="number" value={product.min_amount} onChange={e => updateProduct({ min_amount: Number(e.target.value) })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 font-mono outline-none" />
+                                {isAccount ? (
+                                    <div className="space-y-6">
+                                        {/* SAVINGS SPECIFIC */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-2 group">
+                                                <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Minimum Opening Balance (₦)</label>
+                                                <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                                    <input type="number" value={activeBlock.min_balance ?? ''} onChange={e => updateFinancials({ min_balance: e.target.value === '' ? '' : Number(e.target.value) })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 font-mono outline-none" />
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="space-y-2 group">
-                                            <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Maximum Amount (₦)</label>
-                                            <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                                <input type="number" value={product.max_amount} onChange={e => updateProduct({ max_amount: Number(e.target.value) })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 font-mono outline-none" />
+                                            <div className="space-y-2 group">
+                                                <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Monthly Maintenance Fee (₦)</label>
+                                                <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                                    <input type="number" value={activeBlock.monthly_maintenance_fee ?? ''} onChange={e => updateFinancials({ monthly_maintenance_fee: e.target.value === '' ? '' : Number(e.target.value) })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 font-mono outline-none" />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="px-2">
-                                        <DualRangeSlider
-                                            min={0} max={10000000} step={50000}
-                                            value={[product.min_amount || 0, product.max_amount || 10000000]}
-                                            onChange={(val) => updateProduct({ min_amount: val[0], max_amount: val[1] })}
-                                        />
-                                        <div className="flex justify-between text-[10px] text-muted-foreground mt-2 font-mono">
-                                            <span>₦0</span>
-                                            <span>₦10,000,000+</span>
+                                ) : (
+                                    <>
+                                        {/* LOAN SPECIFIC */}
+                                        <div className="space-y-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <div className="space-y-2 group">
+                                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Minimum Loan Amount (₦)</label>
+                                                    <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                                        <input type="number" value={activeBlock.min_amount ?? ''} onChange={e => updateFinancials({ min_amount: e.target.value === '' ? '' : Number(e.target.value) })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 font-mono outline-none" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2 group">
+                                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Maximum Loan Amount (₦)</label>
+                                                    <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                                        <input type="number" value={activeBlock.max_amount ?? ''} onChange={e => updateFinancials({ max_amount: e.target.value === '' ? '' : Number(e.target.value) })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 font-mono outline-none" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="px-2">
+                                                <DualRangeSlider
+                                                    min={0} max={10000000} step={50000}
+                                                    value={[activeBlock.min_amount || 0, activeBlock.max_amount || 10000000]}
+                                                    onChange={(val) => updateFinancials({ min_amount: val[0], max_amount: val[1] })}
+                                                />
+                                                <div className="flex justify-between text-[10px] text-muted-foreground mt-2 font-mono">
+                                                    <span>₦0</span>
+                                                    <span>₦10,000,000+</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
 
-                                <div className="space-y-6 pt-2">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-2 group">
-                                            <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Min Duration (Months)</label>
-                                            <div className="flex items-center bg-background rounded-lg border p-1 border-transparent focus-within:border-primary focus-within:ring-1">
-                                                <input type="number" value={product.min_duration} onChange={e => updateProduct({ min_duration: Number(e.target.value) })} className="w-full bg-transparent border-none text-sm h-9 px-3 font-mono outline-none" />
+                                        <div className="space-y-6 pt-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <div className="space-y-2 group">
+                                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Min Duration (Months)</label>
+                                                    <div className="flex items-center bg-background rounded-lg border p-1 border-transparent focus-within:border-primary focus-within:ring-1">
+                                                        <input type="number" value={activeBlock.min_duration ?? ''} onChange={e => updateFinancials({ min_duration: e.target.value === '' ? '' : Number(e.target.value) })} className="w-full bg-transparent border-none text-sm h-9 px-3 font-mono outline-none" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2 group">
+                                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Max Duration (Months)</label>
+                                                    <div className="flex items-center bg-background rounded-lg border p-1 border-transparent focus-within:border-primary focus-within:ring-1">
+                                                        <input type="number" value={activeBlock.max_duration ?? ''} onChange={e => updateFinancials({ max_duration: e.target.value === '' ? '' : Number(e.target.value) })} className="w-full bg-transparent border-none text-sm h-9 px-3 font-mono outline-none" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="px-2">
+                                                <DualRangeSlider
+                                                    min={1} max={60} step={1}
+                                                    value={[activeBlock.min_duration || 1, activeBlock.max_duration || 12]}
+                                                    onChange={(val) => updateFinancials({ min_duration: val[0], max_duration: val[1] })}
+                                                />
+                                                <div className="flex justify-between text-[10px] text-muted-foreground mt-2 font-mono">
+                                                    <span>1 Month</span>
+                                                    <span>60 Months</span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="space-y-2 group">
-                                            <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Max Duration (Months)</label>
-                                            <div className="flex items-center bg-background rounded-lg border p-1 border-transparent focus-within:border-primary focus-within:ring-1">
-                                                <input type="number" value={product.max_duration} onChange={e => updateProduct({ max_duration: Number(e.target.value) })} className="w-full bg-transparent border-none text-sm h-9 px-3 font-mono outline-none" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="px-2">
-                                        <DualRangeSlider
-                                            min={1} max={60} step={1}
-                                            value={[product.min_duration || 1, product.max_duration || 12]}
-                                            onChange={(val) => updateProduct({ min_duration: val[0], max_duration: val[1] })}
-                                        />
-                                        <div className="flex justify-between text-[10px] text-muted-foreground mt-2 font-mono">
-                                            <span>1 Month</span>
-                                            <span>60 Months</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                    </>
+                                )}
                             </div>
                         </section>
                     </div>
@@ -467,7 +532,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                                 <label className="text-xs font-medium text-muted-foreground">Field Label</label>
                                                 <input
                                                     type="text"
-                                                    value={field.label}
+                                                    value={field.label || ''}
                                                     onChange={(e) => updateFormField(index, { label: e.target.value })}
                                                     className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
                                                 />
@@ -475,7 +540,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                             <div className="space-y-1">
                                                 <label className="text-xs font-medium text-muted-foreground">Input Type</label>
                                                 <select
-                                                    value={field.type}
+                                                    value={field.type || 'text'}
                                                     onChange={(e) => updateFormField(index, { type: e.target.value as any })}
                                                     className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
                                                 >
@@ -507,7 +572,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                                 <label className="text-[10px] font-bold uppercase">Required</label>
                                                 <input
                                                     type="checkbox"
-                                                    checked={field.required}
+                                                    checked={!!field.required}
                                                     onChange={(e) => updateFormField(index, { required: e.target.checked })}
                                                     className="w-4 h-4 accent-primary"
                                                 />
@@ -561,7 +626,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                         )}
                     </div>
 
-                </form>
+                </form >
             </main>
 
             {/* Right Panel: Live Preview */}
@@ -606,18 +671,18 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                         <p className="text-muted-foreground text-xs mt-1 line-clamp-2">{product.tagline || 'Short tagline describing the value proposition.'}</p>
 
                                         <div className="flex items-center gap-4 mt-4 pt-3 border-t">
-                                            {product.category !== 'accounts' && (
-                                                <>
-                                                    <div>
-                                                        <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Interest</p>
-                                                        <p className="text-sm font-bold text-primary">{product.interest_rate}% <span className="text-[9px] text-muted-foreground font-normal">p.a</span></p>
-                                                    </div>
-                                                    <div className="w-px h-8 bg-border"></div>
-                                                </>
-                                            )}
+
+                                            <>
+                                                <div>
+                                                    <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Interest</p>
+                                                    <p className="text-sm font-bold text-primary">{activeBlock.interest_rate || 0}% <span className="text-[9px] text-muted-foreground font-normal">p.a</span></p>
+                                                </div>
+                                                <div className="w-px h-8 bg-border"></div>
+                                            </>
+
                                             <div>
-                                                <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">{product.category === 'accounts' ? 'Min Deposit' : 'Max Amount'}</p>
-                                                <p className="text-sm font-bold">₦{((product.category === 'accounts' ? product.min_amount : product.max_amount) || 0).toLocaleString()}</p>
+                                                <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">{isAccount ? 'Min Deposit' : 'Max Amount'}</p>
+                                                <p className="text-sm font-bold">₦{((isAccount ? activeBlock.min_balance : activeBlock.max_amount) || 0).toLocaleString()}</p>
                                             </div>
                                         </div>
 

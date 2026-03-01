@@ -10,7 +10,6 @@ import {
     Info,
     CreditCard,
     FileText,
-    Settings,
     Lightbulb,
     Smartphone,
     UploadCloud,
@@ -22,21 +21,71 @@ import {
     ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { ProductCategory } from "@/lib/api/types";
+import { DualRangeSlider } from "@/components/ui/dual-range-slider";
 
 export default function CreateProductTypePage() {
     const router = useRouter();
 
     const [isSaving, setIsSaving] = React.useState(false);
     const [interestRate, setInterestRate] = React.useState(10.0);
+    const [minAmount, setMinAmount] = React.useState<number | "">("");
+    const [maxAmount, setMaxAmount] = React.useState<number | "">("");
+    const [minDuration, setMinDuration] = React.useState<number>(1);
+    const [maxDuration, setMaxDuration] = React.useState<number>(12);
     const [currentStep, setCurrentStep] = React.useState(1);
+    const [selectedCategory, setSelectedCategory] = React.useState<string>("");
 
-    const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    const [categories, setCategories] = React.useState<ProductCategory[]>([]);
+
+    const selectedCatObj = categories.find(c => String(c.id) === String(selectedCategory));
+    const catName = selectedCatObj ? selectedCatObj.name.toLowerCase() : "";
+    const isAccount = catName.includes("account") || catName.includes("saving") || catName.includes("deposit") || catName.includes("current");
+
+    React.useEffect(() => {
+        api.getAllProductCategories().then(setCategories).catch(console.error);
+    }, []);
+
+    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
-        setTimeout(() => {
-            setIsSaving(false);
+        try {
+            const formData = new FormData(e.currentTarget);
+            await api.saveProductType({
+                id: `type_${Date.now()}`,
+                name: formData.get("name") as string,
+                category: formData.get("category") as string,
+                tagline: formData.get("tagline") as string,
+                description: "Product generated from dashboard UI.", // Add rich text later
+                status: "active",
+                financial_terms: [
+                    isAccount ? {
+                        blockType: "savings-terms",
+                        interest_rate: Number(interestRate),
+                        min_balance: Number(formData.get("min_amount") || 0)
+                    } : {
+                        blockType: "loan-terms",
+                        interest_rate: Number(interestRate),
+                        min_amount: Number(minAmount || 0),
+                        max_amount: Number(maxAmount || 0),
+                        min_duration: minDuration,
+                        max_duration: maxDuration
+                    }
+                ],
+                form_schema: [], // Empty for now, wait until form builder implemented
+                workflow_stages: ['Submitted'],
+                created_at: new Date().toISOString(),
+            });
             router.push("/settings/product/types");
-        }, 800);
+            toast.success("Product type saved successfully.");
+        } catch (error) {
+            console.error("Failed to save product type:", error);
+            toast.error("Failed to save product type.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const steps = [
@@ -110,17 +159,23 @@ export default function CreateProductTypePage() {
                                 <div className="space-y-2 group">
                                     <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Product Name</label>
                                     <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                        <input type="text" placeholder="e.g. Premium Business Checking" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" required />
+                                        <input type="text" name="name" placeholder="e.g. Premium Business Checking" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" required />
                                     </div>
                                 </div>
                                 <div className="space-y-2 group">
                                     <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Category</label>
                                     <div className="relative bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                        <select defaultValue="" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none appearance-none cursor-pointer" required>
+                                        <select
+                                            name="category"
+                                            value={selectedCategory}
+                                            onChange={(e) => setSelectedCategory(e.target.value)}
+                                            className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none appearance-none cursor-pointer"
+                                            required
+                                        >
                                             <option value="" disabled>Select Category...</option>
-                                            <option value="loans">Loans & Credit</option>
-                                            <option value="savings">Savings Accounts</option>
-                                            <option value="investment">Investments</option>
+                                            {categories.map(c => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
                                         </select>
                                         <div className="absolute right-3 top-3 pointer-events-none text-muted-foreground">
                                             <ChevronDown className="h-4 w-4" />
@@ -130,7 +185,7 @@ export default function CreateProductTypePage() {
                                 <div className="space-y-2 group md:col-span-2">
                                     <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Short Tagline</label>
                                     <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                        <input type="text" placeholder="A brief, appealing summary of this product." className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" />
+                                        <input type="text" name="tagline" placeholder="A brief, appealing summary of this product." className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" />
                                     </div>
                                     <p className="text-xs text-muted-foreground text-right">0/100 characters</p>
                                 </div>
@@ -175,39 +230,74 @@ export default function CreateProductTypePage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {isAccount ? (
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Minimum Amount</label>
+                                        <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Minimum Deposit / Balance</label>
                                         <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
                                             <span className="pl-3 text-muted-foreground font-serif text-sm">₦</span>
-                                            <input type="number" placeholder="0" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" />
+                                            <input type="number" name="min_amount" value={minAmount} onChange={(e) => setMinAmount(e.target.value === "" ? "" : Number(e.target.value))} placeholder="0" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" required />
                                         </div>
                                     </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Maximum Amount</label>
-                                        <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
-                                            <span className="pl-3 text-muted-foreground font-serif text-sm">₦</span>
-                                            <input type="number" placeholder="50,000" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" />
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-2 group">
+                                                <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Minimum Amount</label>
+                                                <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                                    <span className="pl-3 text-muted-foreground font-serif text-sm">₦</span>
+                                                    <input type="number" name="min_amount" value={minAmount} onChange={(e) => setMinAmount(e.target.value === "" ? "" : Number(e.target.value))} placeholder="0" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" required />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2 group">
+                                                <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Maximum Amount</label>
+                                                <div className="flex items-center bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                                    <span className="pl-3 text-muted-foreground font-serif text-sm">₦</span>
+                                                    <input type="number" name="max_amount" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value === "" ? "" : Number(e.target.value))} placeholder="500000" className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-2 font-mono outline-none" required />
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
+                                        <div className="px-2 mt-2">
+                                            <DualRangeSlider
+                                                min={0} max={10000000} step={50000}
+                                                value={[Number(minAmount) || 0, Number(maxAmount) || 10000000]}
+                                                onChange={(val) => { setMinAmount(val[0]); setMaxAmount(val[1]); }}
+                                            />
+                                            <div className="flex justify-between text-[10px] text-muted-foreground mt-2 font-mono">
+                                                <span>₦0</span>
+                                                <span>₦10,000,000+</span>
+                                            </div>
+                                        </div>
 
-                                {/* Tenure Pseudo-Slider */}
-                                <div className="space-y-4 pt-2">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-sm font-medium">Loan Tenure Range</label>
-                                        <span className="text-sm text-primary font-mono bg-primary/10 px-2 py-0.5 rounded">1 - 12 Months</span>
-                                    </div>
-                                    <div className="relative w-full h-1.5 bg-background rounded-full">
-                                        <div className="absolute left-[0%] right-[66%] top-0 bottom-0 bg-primary rounded-full"></div>
-                                        <div className="absolute left-[0%] top-1/2 -translate-y-1/2 w-4 h-4 bg-primary border-2 border-background rounded-full shadow cursor-pointer hover:scale-110 transition-transform"></div>
-                                        <div className="absolute right-[66%] top-1/2 -translate-y-1/2 w-4 h-4 bg-primary border-2 border-background rounded-full shadow cursor-pointer hover:scale-110 transition-transform"></div>
-                                    </div>
-                                    <div className="flex justify-between text-xs text-muted-foreground">
-                                        <span>1 Month</span>
-                                        <span>36 Months</span>
-                                    </div>
-                                </div>
+                                        {/* Tenure Slider */}
+                                        <div className="space-y-4 pt-2 mt-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <div className="space-y-2 group">
+                                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Min Duration (Months)</label>
+                                                    <div className="flex items-center bg-background rounded-lg border p-1 border-transparent focus-within:border-primary focus-within:ring-1">
+                                                        <input type="number" value={minDuration} onChange={e => setMinDuration(Number(e.target.value))} className="w-full bg-transparent border-none text-sm h-9 px-3 font-mono outline-none" required />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2 group">
+                                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">Max Duration (Months)</label>
+                                                    <div className="flex items-center bg-background rounded-lg border p-1 border-transparent focus-within:border-primary focus-within:ring-1">
+                                                        <input type="number" value={maxDuration} onChange={e => setMaxDuration(Number(e.target.value))} className="w-full bg-transparent border-none text-sm h-9 px-3 font-mono outline-none" required />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="px-2">
+                                                <DualRangeSlider
+                                                    min={1} max={60} step={1}
+                                                    value={[minDuration, maxDuration]}
+                                                    onChange={(val) => { setMinDuration(val[0]); setMaxDuration(val[1]); }}
+                                                />
+                                                <div className="flex justify-between text-[10px] text-muted-foreground mt-2 font-mono">
+                                                    <span>1 Month</span>
+                                                    <span>60 Months</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </section>
                     </div>
@@ -324,8 +414,7 @@ export default function CreateProductTypePage() {
                                             </div>
                                             <div className="w-px h-8 bg-border"></div>
                                             <div>
-                                                <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Tenure</p>
-                                                <p className="text-sm font-bold">- <span className="text-[9px] text-muted-foreground font-normal">mos</span></p>
+                                                <p className="text-sm font-bold">{isAccount ? `₦${Number(minAmount || 0).toLocaleString()}` : maxDuration} <span className="text-[9px] text-muted-foreground font-normal">{isAccount ? '' : 'mos'}</span></p>
                                             </div>
                                         </div>
 

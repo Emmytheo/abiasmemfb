@@ -17,6 +17,10 @@ import {
     PlusCircleIcon,
     MailIcon,
     Building,
+    BookOpen,
+    Newspaper,
+    LayoutTemplate,
+    Workflow,
 } from "lucide-react";
 
 import {
@@ -73,13 +77,43 @@ const navGroups = [
         ],
     },
     {
-        title: "Misc",
+        title: "Content",
         items: [
+            {
+                title: "Blog Management",
+                url: "/blog-management",
+                icon: Newspaper,
+            },
             {
                 title: "Global Content",
                 url: "/settings/global-content",
                 icon: Globe,
             },
+            {
+                title: "Page Builder",
+                url: "/admin/collections/pages",
+                icon: LayoutTemplate,
+            },
+        ],
+    },
+    {
+        title: "Workflows & Automation",
+        items: [
+            {
+                title: "Workflows",
+                url: "/workflows",
+                icon: Workflow,
+            },
+            {
+                title: "Run History",
+                url: "/workflows/runs",
+                icon: LayoutDashboard, // Will reuse or switch to History icon later
+            },
+        ],
+    },
+    {
+        title: "Misc",
+        items: [
             {
                 title: "Product Settings",
                 url: "/settings/product",

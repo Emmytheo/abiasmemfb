@@ -25,12 +25,17 @@ export default function Business() {
 
     useEffect(() => {
         api.getAllProductTypes().then(types => {
-            setProducts(types.filter(t => t.category === 'loans'));
+            const isLoanCategory = (catName: string) => {
+                const name = catName.toLowerCase();
+                return name.includes("loan") || name.includes("credit") || name.includes("mortgage");
+            };
+            setProducts(types.filter(t => isLoanCategory(t.category) && t.status === 'active'));
             setLoading(false);
         });
     }, []);
 
     const featuredProduct = products.length > 0 ? products[0] : null;
+    const featuredTerms = featuredProduct?.financial_terms?.[0] as any;
 
     return (
         <div className="animate-in fade-in duration-700">
@@ -81,18 +86,18 @@ export default function Business() {
                                             {featuredProduct.name}
                                         </h2>
                                         <p className="text-lg text-muted-foreground leading-relaxed">
-                                            {featuredProduct.description}
+                                            {featuredProduct.description?.replace(/<[^>]*>?/gm, '')}
                                         </p>
                                         <div className="bg-muted p-6 rounded-xl border-l-4 border-accent">
                                             <h3 className="font-display font-bold text-xl mb-4 text-foreground">Key Features</h3>
                                             <ul className="space-y-3">
                                                 <li className="flex items-start">
                                                     <CheckCircle className="text-accent mr-2 flex-shrink-0 mt-0.5" size={18} />
-                                                    <span className="text-muted-foreground text-sm font-medium">Competitive Interest: {featuredProduct.interest_rate}%</span>
+                                                    <span className="text-muted-foreground text-sm font-medium">Competitive Interest: {featuredTerms?.interest_rate || 0}%</span>
                                                 </li>
                                                 <li className="flex items-start">
                                                     <CheckCircle className="text-accent mr-2 flex-shrink-0 mt-0.5" size={18} />
-                                                    <span className="text-muted-foreground text-sm font-medium">Limits between ₦{featuredProduct.min_amount?.toLocaleString() || 0} to ₦{featuredProduct.max_amount?.toLocaleString() || 0}</span>
+                                                    <span className="text-muted-foreground text-sm font-medium">Limits between ₦{featuredTerms?.min_amount?.toLocaleString() || 0} to ₦{featuredTerms?.max_amount?.toLocaleString() || 0}</span>
                                                 </li>
                                                 <li className="flex items-start">
                                                     <CheckCircle className="text-accent mr-2 flex-shrink-0 mt-0.5" size={18} />
@@ -117,25 +122,39 @@ export default function Business() {
                                 <p className="text-muted-foreground max-w-2xl mx-auto">Comprehensive financial solutions tailored to every stage of your personal and business journey.</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                {products.map(prod => (
-                                    <div key={prod.id} className="bg-card text-card-foreground p-8 rounded-2xl shadow-lg border hover:-translate-y-1 transition-transform duration-300 flex flex-col">
-                                        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-6">
-                                            {getIconForLoan(prod.name)}
-                                        </div>
-                                        <h4 className="text-xl font-bold text-foreground mb-3">{prod.name}</h4>
-                                        <p className="text-muted-foreground leading-relaxed text-sm mb-6 flex-grow">{prod.tagline}</p>
+                                {products.map(prod => {
+                                    const prodTerms = prod.financial_terms?.find((t: any) => t.blockType === 'loan-terms') as any;
+                                    return (
+                                        <div key={prod.id} className="bg-card text-card-foreground p-8 rounded-2xl shadow-lg border hover:-translate-y-1 transition-transform duration-300 flex flex-col">
+                                            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-6">
+                                                {getIconForLoan(prod.name)}
+                                            </div>
+                                            <h4 className="text-xl font-bold text-foreground mb-3">{prod.name}</h4>
+                                            <p className="text-muted-foreground leading-relaxed text-sm mb-6 flex-grow">{prod.tagline}</p>
 
-                                        <div className="space-y-1 mb-6 text-xs text-muted-foreground font-mono bg-muted/30 p-3 rounded-lg border">
-                                            <div className="flex justify-between"><span>Max Limit</span><span className="font-semibold text-foreground">₦{prod.max_amount?.toLocaleString() || 'N/A'}</span></div>
-                                            <div className="flex justify-between"><span>Rate</span><span className="font-semibold text-emerald-500">{prod.interest_rate}%</span></div>
-                                        </div>
+                                            <div className="flex items-center gap-4 mt-auto mb-6 pt-4 border-t w-full">
+                                                {prod.category !== 'accounts' && (
+                                                    <>
+                                                        <div>
+                                                            <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Interest</p>
+                                                            <p className="text-sm font-bold text-primary">{prodTerms?.interest_rate || 0}% <span className="text-[9px] text-muted-foreground font-normal">p.a</span></p>
+                                                        </div>
+                                                        <div className="w-px h-8 bg-border"></div>
+                                                    </>
+                                                )}
+                                                <div>
+                                                    <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">{prod.category === 'accounts' ? 'Min Deposit' : 'Max Amount'}</p>
+                                                    <p className="text-sm font-bold">₦{((prod.category === 'accounts' ? prodTerms?.min_balance : prodTerms?.max_amount) || 0).toLocaleString()}</p>
+                                                </div>
+                                            </div>
 
-                                        <Link className="inline-flex justify-between w-full items-center text-primary font-semibold text-sm hover:text-accent transition-colors" href={`/product/${prod.id}`}>
-                                            <span>Learn More</span>
-                                            <ArrowRight size={16} />
-                                        </Link>
-                                    </div>
-                                ))}
+                                            <Link className="inline-flex justify-between w-full items-center text-primary font-semibold text-sm hover:text-accent transition-colors" href={`/product/${prod.id}`}>
+                                                <span>Learn More</span>
+                                                <ArrowRight size={16} />
+                                            </Link>
+                                        </div>
+                                    )
+                                })}
 
                                 {/* Contact Card */}
                                 <div className="bg-primary p-8 rounded-2xl shadow-lg hover:-translate-y-1 transition-transform duration-300 flex flex-col justify-center items-center text-center">

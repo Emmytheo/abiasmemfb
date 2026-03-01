@@ -5,8 +5,20 @@ import { Newsletter } from "@/components/newsletter";
 import { SuccessStories } from "@/components/home/success-stories";
 import { NewsInsights } from "@/components/home/news-insights";
 import { Suspense } from "react";
+import { api } from "@/lib/api";
+import { PageRenderer } from "@/components/payload/PageRenderer";
 
-export default function Home() {
+async function HomeContent() {
+  const pageData = await api.getPageBySlug('home');
+
+  if (pageData && pageData.layout && pageData.layout.length > 0) {
+    return (
+      <main className="flex flex-col min-h-screen">
+        <PageRenderer layout={pageData.layout} />
+      </main>
+    );
+  }
+
   return (
     <>
       {/* Hero Section */}
@@ -500,4 +512,12 @@ export default function Home() {
       </Suspense>
     </>
   );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center flex-col space-y-4"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div><p className="text-muted-foreground animate-pulse">Loading Abia MFB...</p></div>}>
+      <HomeContent />
+    </Suspense>
+  )
 }

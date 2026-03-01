@@ -21,39 +21,106 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Plus, Eye, Edit, Trash } from "lucide-react";
+import { toast } from "sonner";
 
-const INITIAL_DATA = [
-    { id: "cat_1", class_name: "Retail Products", name: "Savings", description: "Standard savings accounts.", status: "active" },
-    { id: "cat_2", class_name: "Retail Products", name: "Loans", description: "Personal loan facilities.", status: "active" },
-    { id: "cat_3", class_name: "Corporate Products", name: "Current Accounts", description: "Business operating accounts.", status: "active" },
-];
+import { api } from "@/lib/api";
+import { ProductCategory, ProductClass } from "@/lib/api/types";
 
 export default function ProductCategoriesPage() {
-    const [data, setData] = React.useState(INITIAL_DATA);
+    const [data, setData] = React.useState<ProductCategory[]>([]);
+    const [classes, setClasses] = React.useState<ProductClass[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
 
+    // Fetch data
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [fetchedCategories, fetchedClasses] = await Promise.all([
+                api.getAllProductCategories(),
+                api.getAllProductClasses()
+            ]);
+            setData(fetchedCategories);
+            setClasses(fetchedClasses);
+        } catch (error) {
+            console.error("Failed to load categories:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchData();
+    }, []);
+
     // Viewing/Editing State
-    const [selectedItem, setSelectedItem] = React.useState<typeof INITIAL_DATA[0] | null>(null);
+    const [selectedItem, setSelectedItem] = React.useState<ProductCategory | null>(null);
     const [isViewOpen, setIsViewOpen] = React.useState(false);
 
-    const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        const newCategory = {
-            id: `cat_${Date.now()}`,
-            class_name: formData.get("class_name") as string,
-            name: formData.get("name") as string,
-            description: formData.get("description") as string,
-            status: "active"
-        };
-        setData([...data, newCategory]);
-        setIsCreateOpen(false);
+
+        try {
+            const newCategory = await api.createProductCategory({
+                class_id: formData.get("class_id") as string,
+                name: formData.get("name") as string,
+                description: formData.get("description") as string,
+                status: "active",
+            });
+            setData([...data, newCategory]);
+            setIsCreateOpen(false);
+            toast.success("Product category created successfully.");
+        } catch (error) {
+            toast.error("Failed to create product category.");
+        }
+    };
+
+    const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!selectedItem) return;
+
+        const formData = new FormData(e.currentTarget);
+        try {
+            const updated = await api.updateProductCategory(selectedItem.id, {
+                class_id: formData.get("class_id") as string,
+                name: formData.get("name") as string,
+                description: formData.get("description") as string,
+                status: formData.get("status") as 'active' | 'inactive',
+            });
+            setData(data.map(item => item.id === updated.id ? updated : item));
+            setIsViewOpen(false);
+            toast.success("Product category updated successfully.");
+        } catch (error) {
+            toast.error("Failed to update product category.");
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        toast("Are you sure you want to delete this category?", {
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        await api.deleteProductCategory(id);
+                        setData(prev => prev.filter(item => item.id !== id));
+                        toast.success("Product category deleted.");
+                    } catch (error) {
+                        toast.error("Failed to delete product category.");
+                    }
+                }
+            },
+            cancel: {
+                label: "Cancel",
+                onClick: () => { }
+            }
+        });
     };
 
     const actionColumn = {
         header: "Actions",
         accessorKey: "id",
-        cell: (item: typeof INITIAL_DATA[0]) => (
+        cell: (item: ProductCategory) => (
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -70,7 +137,7 @@ export default function ProductCategoriesPage() {
                         <Edit className="mr-2 h-4 w-4" /> Edit Category
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id)}>
                         <Trash className="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -102,15 +169,17 @@ export default function ProductCategoriesPage() {
                             </SheetHeader>
                             <form onSubmit={handleCreate} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="class_name">Parent Class</Label>
+                                    <Label htmlFor="class_id">Parent Class</Label>
                                     <select
-                                        id="class_name"
-                                        name="class_name"
+                                        id="class_id"
+                                        name="class_id"
                                         required
                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <option value="Retail Products">Retail Products</option>
-                                        <option value="Corporate Products">Corporate Products</option>
+                                        <option value="">Select a class...</option>
+                                        {classes.map(c => (
+                                            <option key={c.id} value={c.name}>{c.name}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="space-y-2">
@@ -137,8 +206,13 @@ export default function ProductCategoriesPage() {
                 }
                 columns={[
                     { header: "Category Name", accessorKey: "name", cell: (item) => <span className="font-semibold">{item.name}</span> },
-                    { header: "Parent Class", accessorKey: "class_name" },
-                    { header: "Description", accessorKey: "description" },
+                    { header: "Parent Class", accessorKey: "class_id" },
+                    {
+                        header: "Description", accessorKey: "description", cell: (item) => {
+                            const text = item.description || '';
+                            return <span className="block max-w-[150px] md:max-w-[250px] lg:max-w-[400px] truncate" title={text}>{text}</span>;
+                        }
+                    },
                     { header: "Status", accessorKey: "status", cell: (item) => <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs">{item.status}</span> },
                     actionColumn
                 ]}
@@ -159,7 +233,7 @@ export default function ProductCategoriesPage() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
-                        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{item.class_name}</div>
+                        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{item.class_id}</div>
                         <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
                     </div>
                 )}
@@ -175,7 +249,7 @@ export default function ProductCategoriesPage() {
                         </SheetDescription>
                     </SheetHeader>
                     {selectedItem && (
-                        <div className="space-y-6">
+                        <form onSubmit={handleUpdate} className="space-y-6">
                             <div className="space-y-2">
                                 <Label>Category ID</Label>
                                 <Input value={selectedItem.id} disabled className="bg-muted" />
@@ -183,37 +257,44 @@ export default function ProductCategoriesPage() {
                             <div className="space-y-2">
                                 <Label>Parent Class</Label>
                                 <select
-                                    defaultValue={selectedItem.class_name}
+                                    name="class_id"
+                                    defaultValue={selectedItem.class_id}
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    <option value="Retail Products">Retail Products</option>
-                                    <option value="Corporate Products">Corporate Products</option>
+                                    {classes.map(c => (
+                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="space-y-2">
                                 <Label>Category Name</Label>
-                                <Input defaultValue={selectedItem.name} />
+                                <Input name="name" defaultValue={selectedItem.name} required />
                             </div>
                             <div className="space-y-2">
                                 <Label>Description</Label>
                                 <textarea
+                                    name="description"
                                     defaultValue={selectedItem.description}
                                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Status</Label>
-                                <div className="pt-1">
-                                    <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-sm font-medium">
-                                        {selectedItem.status}
-                                    </span>
-                                </div>
+                                <Label htmlFor="status">Status</Label>
+                                <select
+                                    id="status"
+                                    name="status"
+                                    defaultValue={selectedItem.status}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
                             </div>
                             <div className="pt-6 flex justify-end gap-2 border-t">
                                 <Button type="button" variant="outline" onClick={() => setIsViewOpen(false)}>Close</Button>
                                 <Button type="submit">Save Changes</Button>
                             </div>
-                        </div>
+                        </form>
                     )}
                 </SheetContent>
             </Sheet>
