@@ -16,7 +16,7 @@ type LexicalNode = {
     url?: string
     rel?: string
     newTab?: boolean
-    fields?: { url?: string; alt?: string; caption?: any }
+    fields?: { url?: string; alt?: string; caption?: any; newTab?: boolean }
     value?: { url?: string; alt?: string; filename?: string; width?: number; height?: number }
     direction?: string | null
     indent?: number

@@ -9,10 +9,10 @@ export const ScheduledJobs: CollectionConfig = {
         description: 'Cron, one-time, and interval schedules for automated workflow runs.',
     },
     access: {
-        read: ({ req }) => req.user?.role === 'admin' ?? false,
-        create: ({ req }) => req.user?.role === 'admin' ?? false,
+        read: ({ req }) => req.user?.role === 'admin',
+        create: ({ req }) => req.user?.role === 'admin',
         update: () => true,
-        delete: ({ req }) => req.user?.role === 'admin' ?? false,
+        delete: ({ req }) => req.user?.role === 'admin',
     },
     fields: [
         {

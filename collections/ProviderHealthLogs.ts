@@ -9,10 +9,10 @@ export const ProviderHealthLogs: CollectionConfig = {
         description: 'Health check history for all service providers.',
     },
     access: {
-        read: ({ req }) => req.user?.role === 'admin' ?? false,
+        read: ({ req }) => req.user?.role === 'admin',
         create: () => true,
         update: () => false,
-        delete: ({ req }) => req.user?.role === 'admin' ?? false,
+        delete: ({ req }) => req.user?.role === 'admin',
     },
     fields: [
         {

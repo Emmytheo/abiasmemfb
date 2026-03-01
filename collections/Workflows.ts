@@ -9,10 +9,10 @@ export const Workflows: CollectionConfig = {
         description: 'Visual workflow definitions for automating product and service processes.',
     },
     access: {
-        read: ({ req }) => req.user?.role === 'admin' ?? false,
-        create: ({ req }) => req.user?.role === 'admin' ?? false,
-        update: ({ req }) => req.user?.role === 'admin' ?? false,
-        delete: ({ req }) => req.user?.role === 'admin' ?? false,
+        read: ({ req }) => req.user?.role === 'admin',
+        create: ({ req }) => req.user?.role === 'admin',
+        update: ({ req }) => req.user?.role === 'admin',
+        delete: ({ req }) => req.user?.role === 'admin',
     },
     fields: [
         {

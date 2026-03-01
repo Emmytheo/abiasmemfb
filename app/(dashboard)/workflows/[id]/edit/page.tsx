@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Play, Save } from 'lucide-react'
 import { FlowEditor } from '@/components/workflow/FlowEditor'
-import { ThemeSwitcher } from '@/components/theme-switcher'
+import { ThemeCustomizer } from '@/components/theme-customizer'
 
 export default async function WorkflowEditorPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -67,7 +67,7 @@ export default async function WorkflowEditorPage({ params }: { params: Promise<{
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <ThemeSwitcher />
+                    <ThemeCustomizer />
                     <button className="h-8 px-3 text-xs bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-md font-medium transition-colors flex items-center gap-2">
                         <Play size={14} /> Test Run
                     </button>

@@ -56,10 +56,10 @@ export interface AuthorOption {
 }
 
 interface BlogPostFormProps {
-    initialData?: Partial<BlogPostFormValues> & { id?: string, featuredImageUrl?: string };
+    initialData?: Partial<BlogPostFormValues> & { id?: string | number, featuredImageUrl?: string };
     categories: CategoryOption[];
     authors: AuthorOption[];
-    onSubmit: (data: BlogPostFormValues) => Promise<{ success: boolean; error?: string; id?: string }>;
+    onSubmit: (data: BlogPostFormValues) => Promise<{ success: boolean; error?: string; id?: string | number }>;
     onImageUpload: (file: File) => Promise<{ id: string; url: string } | null>;
 }
 

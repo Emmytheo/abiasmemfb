@@ -9,10 +9,10 @@ export const WorkflowExecutions: CollectionConfig = {
         description: 'Individual run records for every workflow execution.',
     },
     access: {
-        read: ({ req }) => req.user?.role === 'admin' ?? false,
+        read: ({ req }) => req.user?.role === 'admin',
         create: () => true,  // internal server actions create records
         update: () => true,
-        delete: ({ req }) => req.user?.role === 'admin' ?? false,
+        delete: ({ req }) => req.user?.role === 'admin',
     },
     fields: [
         {

@@ -9,10 +9,10 @@ export const Secrets: CollectionConfig = {
         description: 'AES-256-GCM encrypted vault for API keys, SMTP credentials, tokens and more.',
     },
     access: {
-        read: ({ req }) => req.user?.role === 'admin' ?? false,
-        create: ({ req }) => req.user?.role === 'admin' ?? false,
-        update: ({ req }) => req.user?.role === 'admin' ?? false,
-        delete: ({ req }) => req.user?.role === 'admin' ?? false,
+        read: ({ req }) => req.user?.role === 'admin',
+        create: ({ req }) => req.user?.role === 'admin',
+        update: ({ req }) => req.user?.role === 'admin',
+        delete: ({ req }) => req.user?.role === 'admin',
     },
     fields: [
         { name: 'name', type: 'text', required: true },
