@@ -41,6 +41,9 @@ export enum TaskType {
     // Compliance
     KYC_CHECK = 'KYC_CHECK',
     CREDIT_SCORE_CHECK = 'CREDIT_SCORE_CHECK',
+    // Digital Ledger
+    CREATE_ACCOUNT = 'CREATE_ACCOUNT',
+    DISBURSE_LOAN = 'DISBURSE_LOAN',
     // Sub-flows & Custom
     SUB_WORKFLOW = 'SUB_WORKFLOW',
     CUSTOM_BLOCK = 'CUSTOM_BLOCK',

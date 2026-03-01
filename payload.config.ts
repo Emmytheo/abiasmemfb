@@ -23,6 +23,10 @@ import { ProviderHealthLogs } from './collections/ProviderHealthLogs'
 import { ScheduledJobs } from './collections/ScheduledJobs'
 import { CustomBlocks } from './collections/CustomBlocks'
 import { IdempotencyRecords } from './collections/IdempotencyRecords'
+// Digital Ledger collections
+import { Accounts } from './collections/Accounts'
+import { Loans } from './collections/Loans'
+import { Transactions } from './collections/Transactions'
 import { s3Storage } from '@payloadcms/storage-s3'
 import { seoPlugin } from '@payloadcms/plugin-seo'
 
@@ -82,6 +86,8 @@ export default buildConfig({
         // Workflow Engine
         Workflows, WorkflowExecutions, ServiceProviders, Secrets,
         ProviderHealthLogs, ScheduledJobs, CustomBlocks, IdempotencyRecords,
+        // Digital Ledger
+        Accounts, Loans, Transactions,
     ],
     globals: [SiteSettings],
     editor: lexicalEditor({}),

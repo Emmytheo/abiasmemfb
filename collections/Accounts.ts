@@ -1,0 +1,97 @@
+import type { CollectionConfig } from 'payload'
+
+export const Accounts: CollectionConfig = {
+    slug: 'accounts',
+    admin: {
+        useAsTitle: 'account_number',
+        group: 'Digital Ledger',
+        defaultColumns: ['account_number', 'account_type', 'user_id', 'balance', 'status', 'createdAt'],
+        description: 'Approved customer accounts with live balance and ledger tracking.',
+    },
+    access: {
+        read: ({ req }) => req.user?.role === 'admin',
+        create: ({ req }) => req.user?.role === 'admin',
+        update: ({ req }) => req.user?.role === 'admin',
+        delete: ({ req }) => req.user?.role === 'admin',
+    },
+    fields: [
+        {
+            name: 'user_id',
+            type: 'text',
+            required: true,
+            index: true,
+            admin: { description: 'The Supabase / external user ID.' },
+        },
+        {
+            name: 'account_number',
+            type: 'text',
+            required: true,
+            unique: true,
+            index: true,
+            admin: { description: '10-digit NUBAN account number (auto-generated on creation).' },
+        },
+        {
+            name: 'account_type',
+            type: 'select',
+            required: true,
+            options: [
+                { label: 'Savings', value: 'Savings' },
+                { label: 'Current', value: 'Current' },
+                { label: 'Fixed Deposit', value: 'Fixed Deposit' },
+                { label: 'Corporate', value: 'Corporate' },
+            ],
+        },
+        {
+            name: 'balance',
+            type: 'number',
+            required: true,
+            defaultValue: 0,
+            admin: { description: 'Current balance in kobo (smallest unit). Divide by 100 for Naira display.' },
+        },
+        {
+            name: 'currency',
+            type: 'text',
+            defaultValue: 'NGN',
+        },
+        {
+            name: 'status',
+            type: 'select',
+            required: true,
+            defaultValue: 'active',
+            options: [
+                { label: 'Active', value: 'active' },
+                { label: 'Dormant', value: 'dormant' },
+                { label: 'Frozen', value: 'frozen' },
+                { label: 'Closed', value: 'closed' },
+            ],
+        },
+        {
+            name: 'product_type',
+            type: 'relationship',
+            relationTo: 'product-types',
+            admin: { description: 'The product this account was opened under.' },
+        },
+        {
+            name: 'application',
+            type: 'relationship',
+            relationTo: 'product-applications',
+            admin: { description: 'The original application that triggered this account opening.' },
+        },
+        {
+            name: 'interest_rate',
+            type: 'number',
+            admin: { description: 'Annual interest rate (%) applicable to this account.' },
+        },
+        {
+            name: 'last_transaction_at',
+            type: 'date',
+            admin: { readOnly: true, description: 'Auto-updated on each transaction.' },
+        },
+        {
+            name: 'notes',
+            type: 'textarea',
+            admin: { description: 'Relationship manager notes.' },
+        },
+    ],
+    timestamps: true,
+}

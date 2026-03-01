@@ -18,4 +18,6 @@ export type ExecutionEnvironment<T extends WorkflowTask> = {
     resolveSecret: (secretId: string) => Promise<string>
     /** Fetch a ServiceProvider by its Payload collection ID */
     getProvider: (providerId: string) => Promise<import('./provider').ServiceProvider | null>
+    /** Direct access to the Payload CMS instance for executors that create/update records */
+    payload?: any
 }

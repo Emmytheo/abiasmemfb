@@ -15,6 +15,8 @@ import { SendSmsExecutor } from './SendSmsExecutor'
 import { SubWorkflowExecutor } from './SubWorkflowExecutor'
 import { CustomBlockExecutor } from './CustomBlockExecutor'
 import { TransformDataExecutor } from './TransformDataExecutor'
+import { CreateAccountExecutor } from './CreateAccountExecutor'
+import { DisburseLoanExecutor } from './DisburseLoanExecutor'
 
 import {
     LoopExecutor,
@@ -56,6 +58,8 @@ export const ExecutorRegistry: RegistryType = {
     GENERATE_DOCUMENT: GenerateDocumentExecutor,
     KYC_CHECK: KycCheckExecutor,
     CREDIT_SCORE_CHECK: CreditScoreExecutor,
+    CREATE_ACCOUNT: CreateAccountExecutor,
+    DISBURSE_LOAN: DisburseLoanExecutor,
     SUB_WORKFLOW: SubWorkflowExecutor,
     CUSTOM_BLOCK: CustomBlockExecutor,
 }

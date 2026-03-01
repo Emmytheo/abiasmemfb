@@ -26,7 +26,11 @@ export interface Loan {
     amount: number;
     interest_rate: number;
     duration_months: number;
-    status: 'pending' | 'approved' | 'rejected' | 'repaid' | 'under_review';
+    outstanding_balance?: number;
+    monthly_installment?: number;
+    next_payment_date?: string;
+    maturity_date?: string;
+    status: 'pending' | 'approved' | 'rejected' | 'repaid' | 'under_review' | 'active' | 'defaulted' | 'written_off';
     created_at: string;
 }
 

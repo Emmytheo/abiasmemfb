@@ -409,6 +409,57 @@ export const TaskRegistry: Registry = {
         ],
     },
 
+    // ── Digital Ledger ───────────────────────────────────────────
+    CREATE_ACCOUNT: {
+        type: TaskType.CREATE_ACCOUNT,
+        label: 'Create Account',
+        icon: CreditCard,
+        category: TaskCategory.COMPLIANCE,
+        description: 'Open a new bank account for a customer. Generates a NUBAN account number and creates a ledger record.',
+        inputs: [
+            { name: 'user_id', type: TaskParamType.STRING, required: true, helperText: 'Customer user ID' },
+            {
+                name: 'account_type', type: TaskParamType.SELECT, required: true,
+                options: [
+                    { label: 'Savings', value: 'Savings' },
+                    { label: 'Current', value: 'Current' },
+                    { label: 'Fixed Deposit', value: 'Fixed Deposit' },
+                    { label: 'Corporate', value: 'Corporate' },
+                ],
+            },
+            { name: 'interest_rate', type: TaskParamType.NUMBER, required: false, helperText: 'Annual rate (%)' },
+            { name: 'product_type_id', type: TaskParamType.STRING, required: false, helperText: 'Payload ID of the linked product type' },
+            { name: 'application_id', type: TaskParamType.STRING, required: false, helperText: 'Payload ID of the originating application' },
+        ],
+        outputs: [
+            { name: 'created_account_id', type: TaskParamType.STRING },
+            { name: 'account_number', type: TaskParamType.STRING },
+        ],
+    },
+
+    DISBURSE_LOAN: {
+        type: TaskType.DISBURSE_LOAN,
+        label: 'Disburse Loan',
+        icon: Layout,
+        category: TaskCategory.COMPLIANCE,
+        description: 'Disburse an approved loan amount into a customer account. Creates loan record and repayment schedule.',
+        inputs: [
+            { name: 'user_id', type: TaskParamType.STRING, required: true },
+            { name: 'account_id', type: TaskParamType.STRING, required: true, helperText: 'Target account Payload ID (use output of CREATE_ACCOUNT)' },
+            { name: 'principal_naira', type: TaskParamType.NUMBER, required: true, helperText: 'Loan amount in Naira' },
+            { name: 'interest_rate', type: TaskParamType.NUMBER, required: false, helperText: 'Annual rate (%) — defaults to 10' },
+            { name: 'duration_months', type: TaskParamType.NUMBER, required: false, helperText: 'Repayment period in months — defaults to 12' },
+            { name: 'purpose', type: TaskParamType.STRING, required: false },
+            { name: 'application_id', type: TaskParamType.STRING, required: false },
+            { name: 'product_type_id', type: TaskParamType.STRING, required: false },
+        ],
+        outputs: [
+            { name: 'loan_id', type: TaskParamType.STRING },
+            { name: 'loan_reference', type: TaskParamType.STRING },
+            { name: 'monthly_installment_naira', type: TaskParamType.STRING },
+        ],
+    },
+
     // ── Sub-flows & Custom ────────────────────────────────────────
     SUB_WORKFLOW: {
         type: TaskType.SUB_WORKFLOW,
@@ -441,3 +492,4 @@ export const TaskRegistry: Registry = {
         outputs: [],
     },
 }
+

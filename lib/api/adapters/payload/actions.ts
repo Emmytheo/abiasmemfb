@@ -32,8 +32,6 @@ export const getAllUsers = async (): Promise<User[]> => {
     }
 };
 
-export const getAllAccounts = async (): Promise<Account[]> => [];
-export const getAllLoans = async (): Promise<Loan[]> => [];
 
 // Product Configuration & Dynamic Forms
 export const getAllProductClasses = async (): Promise<ProductClass[]> => {
@@ -406,8 +404,91 @@ export const getAllApplications = async (): Promise<ProductApplication[]> => {
         return [];
     }
 };
-export const getAllTransactions = async (): Promise<Transaction[]> => [];
-export const getTransactionsByCategory = async (category: Transaction['category']): Promise<Transaction[]> => [];
+export const getAllAccounts = async (): Promise<Account[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'accounts' as any,
+            depth: 1,
+            limit: 200,
+            sort: '-createdAt',
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: doc.user_id,
+            account_number: doc.account_number,
+            account_type: doc.account_type,
+            balance: (doc.balance ?? 0) / 100, // convert kobo → Naira for UI
+            status: doc.status,
+            created_at: doc.createdAt,
+        })) as Account[];
+    } catch (e) {
+        console.error('Payload getAllAccounts Error:', e);
+        return [];
+    }
+};
+
+export const getAllLoans = async (): Promise<Loan[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'loans' as any,
+            depth: 1,
+            limit: 200,
+            sort: '-createdAt',
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: doc.user_id,
+            product_type_id: typeof doc.product_type === 'object' ? doc.product_type?.id : doc.product_type,
+            amount: (doc.principal ?? 0) / 100,          // kobo → Naira
+            interest_rate: doc.interest_rate ?? 0,
+            duration_months: doc.duration_months ?? 0,
+            outstanding_balance: (doc.outstanding_balance ?? 0) / 100,
+            monthly_installment: (doc.monthly_installment ?? 0) / 100,
+            next_payment_date: doc.next_payment_date,
+            maturity_date: doc.maturity_date,
+            status: doc.status || 'pending',
+            created_at: doc.createdAt,
+        })) as Loan[];
+    } catch (e) {
+        console.error('Payload getAllLoans Error:', e);
+        return [];
+    }
+};
+
+export const getAllTransactions = async (): Promise<Transaction[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'transactions' as any,
+            depth: 1,
+            limit: 500,
+            sort: '-createdAt',
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: typeof doc.to_account === 'object' ? doc.to_account?.user_id ?? '' : '',
+            amount: (doc.amount ?? 0) / 100,
+            type: doc.type === 'credit' || doc.type === 'disbursement' ? 'credit' : 'debit',
+            category: 'Transfer' as Transaction['category'],
+            status: doc.status,
+            reference: doc.reference,
+            narration: doc.narration,
+            channel: doc.channel,
+            created_at: doc.createdAt,
+        })) as Transaction[];
+    } catch (e) {
+        console.error('Payload getAllTransactions Error:', e);
+        return [];
+    }
+};
+
+export const getTransactionsByCategory = async (category: Transaction['category']): Promise<Transaction[]> => {
+    const all = await getAllTransactions();
+    return all.filter(t => t.category === category);
+};
+
 export const getConfigsByCategory = async (category: SystemConfig['category']): Promise<SystemConfig[]> => [];
 
 export const getPageBySlug = async (slug: string): Promise<any | null> => {

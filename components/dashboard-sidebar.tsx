@@ -21,6 +21,8 @@ import {
     Newspaper,
     LayoutTemplate,
     Workflow,
+    Receipt,
+    Clock,
 } from "lucide-react";
 
 import {
@@ -63,6 +65,11 @@ const navGroups = [
                 title: "Loans",
                 url: "/products/loans",
                 icon: CreditCard,
+            },
+            {
+                title: "Transactions",
+                url: "/products/transactions",
+                icon: Receipt,
             },
         ],
     },
@@ -108,6 +115,21 @@ const navGroups = [
                 title: "Run History",
                 url: "/workflows/runs",
                 icon: LayoutDashboard, // Will reuse or switch to History icon later
+            },
+            {
+                title: "Providers",
+                url: "/workflows/providers",
+                icon: Wifi,
+            },
+            {
+                title: "Secrets",
+                url: "/workflows/secrets",
+                icon: Settings,
+            },
+            {
+                title: "Scheduled Jobs",
+                url: "/workflows/scheduled-jobs",
+                icon: Clock,
             },
         ],
     },
