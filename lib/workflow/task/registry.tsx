@@ -242,6 +242,33 @@ export const TaskRegistry: Registry = {
         ],
     },
 
+    // ── Data ───────────────────────────────────────────────────
+    MAP_FIELDS: {
+        type: TaskType.MAP_FIELDS,
+        label: 'Map Fields',
+        icon: ArrowRightLeft,
+        category: TaskCategory.DATA,
+        description: 'Extract and map fields from a specific source object and expose them as custom outputs.',
+        inputs: [
+            {
+                name: 'inputData',
+                type: TaskParamType.JSON,
+                required: false,
+                helperText: 'Optional: Wire an object here (e.g. API response) to map from.'
+            },
+            {
+                name: 'schema',
+                type: TaskParamType.JSON,
+                required: true,
+                helperText: 'Array of keys ["id", "name"] to extract, OR an object mapping {"newKey": "oldKey"}'
+            },
+        ],
+        outputs: [
+            // Outputs will be evaluated dynamically based on the input schema keys by the NodeComponent
+            { name: 'mappedObject', type: TaskParamType.JSON }
+        ],
+    },
+
     // ── Notification ──────────────────────────────────────────────
     SEND_EMAIL: {
         type: TaskType.SEND_EMAIL,
@@ -325,24 +352,6 @@ export const TaskRegistry: Registry = {
         outputs: [
             { name: 'isValid', type: TaskParamType.BOOLEAN },
             { name: 'errors', type: TaskParamType.JSON },
-        ],
-    },
-
-    MAP_FIELDS: {
-        type: TaskType.MAP_FIELDS,
-        label: 'Map Fields',
-        icon: Layout,
-        category: TaskCategory.DATA,
-        description: 'Rename/map fields from one object structure to another.',
-        inputs: [
-            { name: 'inputData', type: TaskParamType.JSON, required: true },
-            {
-                name: 'fieldMap', type: TaskParamType.JSON, required: true,
-                helperText: '{ "sourceField": "targetField" }'
-            },
-        ],
-        outputs: [
-            { name: 'outputData', type: TaskParamType.JSON },
         ],
     },
 

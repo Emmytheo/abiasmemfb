@@ -204,16 +204,52 @@ async function executeNode(
         return { success: false }
     }
 
+    // Helper to resolve {{ }} variables dynamically from the environment
+    const resolveVariables = (val: any, env: Record<string, any>): any => {
+        if (typeof val !== 'string') return val;
+        if (!val.includes('{{')) return val;
+
+        const getValue = (path: string) => {
+            if (env[path] !== undefined) return env[path];
+            let matchedKey = '';
+            for (const key of Object.keys(env)) {
+                if (path.startsWith(key + '.') || path === key) {
+                    if (key.length > matchedKey.length) matchedKey = key;
+                }
+            }
+            if (matchedKey) {
+                let current = env[matchedKey];
+                const remaining = path.slice(matchedKey.length).replace(/^\./, '');
+                if (!remaining) return current;
+                for (const part of remaining.split('.')) {
+                    if (current === undefined || current === null) return undefined;
+                    current = current[part];
+                }
+                return current;
+            }
+            let current = env;
+            for (const part of path.split('.')) {
+                if (current === undefined || current === null) return undefined;
+                current = current[part];
+            }
+            return current;
+        };
+
+        const exactMatch = val.match(/^\{\{([^{}]+)\}\}$/);
+        if (exactMatch) return getValue(exactMatch[1].trim());
+
+        return val.replace(/\{\{([^{}]+)\}\}/g, (match, path) => {
+            const resolved = getValue(path.trim());
+            return resolved !== undefined ? (typeof resolved === 'object' ? JSON.stringify(resolved) : String(resolved)) : match;
+        });
+    };
+
     // Bind environment API to this node's isolated context
     const nodeEnvApi = {
         getInput: (inputName: string) => {
-            // 1. special injection for TRIGGER nodes
-            if (node.data.type === 'TRIGGER' && inputName === 'triggerPayload') return environment.TRIGGER_PAYLOAD
-            // 2. otherwise fetch from resolved node inputs
-            const rawVal = node.data.inputs[inputName] ?? ''
-            // evaluate variable syntax here using {{nodeId.outputName}} format if needed
-            // For simplicity in this implementation, we assume basic interpolation or direct passing
-            return rawVal
+            if (node.data.type === 'TRIGGER' && inputName === 'triggerPayload') return environment.TRIGGER_PAYLOAD;
+            const rawVal = node.data.inputs[inputName] ?? '';
+            return resolveVariables(rawVal, environment);
         },
         setOutput: (outputName: string, value: any) => {
             // Special catch for ApprovalGate

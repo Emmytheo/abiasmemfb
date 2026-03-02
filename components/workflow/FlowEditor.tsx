@@ -1,26 +1,32 @@
 'use client'
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useState, useRef, useEffect } from 'react'
 import {
     ReactFlow,
     Background,
     Controls,
     MiniMap,
-    useNodesState,
-    useEdgesState,
-    addEdge,
-    Connection,
-    Edge,
-    NodeTypes,
-    Panel,
+    useReactFlow,
     ReactFlowProvider,
+    Panel,
+    ConnectionMode,
+    MarkerType,
+    Node,
+    Edge
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-
-import { TaskMenu } from './TaskMenu'
-import { NodeComponent } from './nodes/NodeComponent'
 import { TaskRegistry } from '@/lib/workflow/task/registry'
-import { AppNode, TaskType } from '@/lib/workflow/types'
+import { NodeComponent } from './nodes/NodeComponent'
+import { TaskMenu } from './TaskMenu'
+import { Save, Hand, MousePointer2, Maximize2, X, PlusCircle, Settings2, GripVertical, Beaker } from 'lucide-react'
+import { toast } from 'sonner'
+import { saveWorkflowDefinition } from '@/app/(dashboard)/workflows/[id]/edit/actions'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { TaskType, AppNode } from '@/lib/workflow/types'
+import { VariableSelector } from './VariableSelector'
 import { v4 as uuidv4 } from 'uuid'
+import { useNodesState, useEdgesState, addEdge, Connection, NodeTypes } from '@xyflow/react' // Re-added these as they were removed but used later
+import { useTheme } from 'next-themes' // Re-added this as it was removed but used later
 
 const initialNodes: AppNode[] = [
     {
@@ -36,12 +42,7 @@ const nodeTypes: NodeTypes = {
     abiaNode: NodeComponent,
 }
 
-import { Menu, X, Loader2 } from 'lucide-react'
-import { saveWorkflowDefinition } from '@/app/(dashboard)/workflows/[id]/edit/actions'
-import { toast } from 'sonner'
-import { useTheme } from 'next-themes'
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Menu, Loader2 } from 'lucide-react'
 // Removed Shadcn Select in favor of native select for property panel reliability
 
 export interface DynamicOptions {
@@ -51,19 +52,52 @@ export interface DynamicOptions {
     applications: { id: string; label: string }[];
 }
 
+import { useImperativeHandle, forwardRef, Ref } from 'react'
+
+export interface FlowEditorRef {
+    saveWorkflow: (status: 'draft' | 'published') => Promise<void>;
+}
+
 interface FlowEditorProps {
     workflowId?: string;
     initialData?: any;
     dynamicOptions: DynamicOptions;
+    editorRef?: Ref<FlowEditorRef>;
 }
 
-function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditorProps) {
+function FlowEditorInner({ workflowId, initialData, dynamicOptions, editorRef }: FlowEditorProps) {
     const reactFlowWrapper = useRef<HTMLDivElement>(null)
     const [nodes, setNodes, onNodesChange] = useNodesState(initialData?.nodes?.length ? initialData.nodes : initialNodes)
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialData?.edges?.length ? initialData.edges : [])
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
     const [isSaving, setIsSaving] = useState(false)
-    useTheme() // keep import alive; colorMode is handled by next-themes class on <html>
+    useTheme()
+
+    useImperativeHandle(editorRef, () => ({
+        saveWorkflow: async (status: 'draft' | 'published') => {
+            if (!workflowId || workflowId === 'new') {
+                toast.error('Cannot update a new workflow without a DB record yet. Use the Create form first.')
+                return
+            }
+            if (!reactFlowInstance) return
+            setIsSaving(true)
+            try {
+                const flow = reactFlowInstance.toObject()
+                const result = await saveWorkflowDefinition(workflowId, flow)
+                // Note: Normally you would also update the status field in the DB here, 
+                // but for now we are just saving the definition layout.
+                if (result?.success) {
+                    toast.success(`Workflow saved successfully as ${status}`)
+                } else {
+                    toast.error(result?.error || 'Failed to save workflow')
+                }
+            } catch (e: any) {
+                toast.error(e.message || 'An error occurred while saving')
+            } finally {
+                setIsSaving(false)
+            }
+        }
+    }), [reactFlowInstance, workflowId])
 
     // Layout states
     const [isMenuOpen, setIsMenuOpen] = useState(true)
@@ -80,6 +114,7 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
                         ...n,
                         data: {
                             ...n.data,
+                            lastUpdated: Date.now(), // Reactive trigger
                             inputs: {
                                 ...(typeof n.data.inputs === 'object' && n.data.inputs !== null ? n.data.inputs : {}),
                                 [key]: value,
@@ -98,6 +133,7 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
                     ...prev,
                     data: {
                         ...prev.data,
+                        lastUpdated: Date.now(),
                         inputs: {
                             ...(typeof prev.data.inputs === 'object' && prev.data.inputs !== null ? prev.data.inputs : {}),
                             [key]: value,
@@ -109,9 +145,91 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
         })
     }, [setNodes])
 
+    // Intelligent Graph Synchronization 
+    // Whenever nodes change, check if any downstream nodes rely on `{{upstream_id}}`
+    // If they do, subtly touch their `lastUpdated` to force ReactFlow to re-evaluate dynamic Map Field output Handles!
+    useEffect(() => {
+        if (!reactFlowInstance) return
+        if (nodes.length <= 1) return
+
+        const touchedNodes = new Set<string>()
+
+        nodes.forEach(n => {
+            // Find all mustache interpolations inside this node's inputs
+            const inputValues = Object.values(n.data.inputs || {})
+            inputValues.forEach(val => {
+                if (typeof val === 'string' && val.includes('{{')) {
+                    // Extract the dependency node ID (e.g. {{node-123.output}})
+                    const match = val.match(/\{\{([^.]+)\./)
+                    if (match && match[1]) {
+                        const sourceId = match[1] === 'TRIGGER_PAYLOAD' ? nodes.find(x => x.data.type === TaskType.TRIGGER)?.id : match[1]
+
+                        if (sourceId) {
+                            const sourceNode = nodes.find(x => x.id === sourceId)
+                            // If the source recently updated, we must wake up the child!
+                            if (sourceNode && sourceNode.data.lastUpdated &&
+                                (!n.data.lastUpdated || sourceNode.data.lastUpdated > n.data.lastUpdated)) {
+                                touchedNodes.add(n.id)
+                            }
+                        }
+                    }
+                }
+            })
+        })
+
+        if (touchedNodes.size > 0) {
+            setNodes(nds => nds.map(n => {
+                if (touchedNodes.has(n.id)) {
+                    return {
+                        ...n,
+                        data: {
+                            ...n.data,
+                            lastUpdated: Date.now() // Cascade the update wave
+                        }
+                    }
+                }
+                return n
+            }))
+        }
+    }, [nodes, reactFlowInstance, setNodes])
+
     const onConnect = useCallback((params: Connection | Edge) => {
         setEdges((eds) => addEdge(params, eds))
-    }, [setEdges])
+
+        // Intelligent Data-Binding Auto-Injector
+        // If the user visually wires an Output Handle to an Input Handle, automatically
+        // write the mustache {{SOURCE_NODE.OUTPUT_NAME}} into the node's memory!
+        if (params.target && params.targetHandle && params.source && params.sourceHandle) {
+            setNodes((nds) => nds.map(n => {
+                if (n.id === params.target) {
+                    const task = TaskRegistry[n.data.type as TaskType]
+                    // Verify the target handle is a legitimate input field
+                    if (task && task.inputs.find(i => i.name === params.targetHandle)) {
+                        const isTrigger = String(params.source).startsWith('trigger-') || params.source === 'trigger'
+                        const prefix = isTrigger ? 'TRIGGER_PAYLOAD' : params.source
+
+                        // Update node's local input state with the bound variable
+                        const updatedNode = {
+                            ...n,
+                            data: {
+                                ...n.data,
+                                inputs: {
+                                    ...(typeof n.data.inputs === 'object' && n.data.inputs !== null ? n.data.inputs : {}),
+                                    [params.targetHandle as string]: `{{${prefix}.${params.sourceHandle}}}`
+                                }
+                            }
+                        } as AppNode
+
+                        // Sync property panel if it's the currently selected node
+                        setSelectedNode(prev => (prev && prev.id === n.id) ? updatedNode : prev)
+
+                        return updatedNode
+                    }
+                }
+                return n
+            }))
+        }
+    }, [setEdges, setNodes])
 
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault()
@@ -475,14 +593,16 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
     )
 }
 
-export function FlowEditor({ workflowId, initialData, dynamicOptions }: Partial<FlowEditorProps>) {
+export const FlowEditor = forwardRef<FlowEditorRef, Omit<FlowEditorProps, 'editorRef'>>((props, ref) => {
     return (
         <ReactFlowProvider>
             <FlowEditorInner
-                workflowId={workflowId}
-                initialData={initialData}
-                dynamicOptions={dynamicOptions || { providers: [], secrets: [], workflows: [], applications: [] }}
+                {...props}
+                dynamicOptions={props.dynamicOptions || { providers: [], secrets: [], workflows: [], applications: [] }}
+                editorRef={ref}
             />
         </ReactFlowProvider>
     )
-}
+})
+
+FlowEditor.displayName = 'FlowEditor'

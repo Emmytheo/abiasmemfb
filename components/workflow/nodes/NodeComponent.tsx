@@ -92,11 +92,20 @@ const NodeComponent = memo((props: NodeProps<AppNode>) => {
                                 {input.required && <span className="text-destructive">*</span>}
                             </div>
 
-                            {/* Simple value preview or inline input for standard props (if we implement 2-way sync) */}
-                            <div className="text-sm font-mono truncate px-1 opacity-70">
-                                {data.inputs?.[input.name]
-                                    ? (typeof data.inputs[input.name] === 'object' ? '{...}' : String(data.inputs[input.name]))
-                                    : <span className="italic opacity-50">Empty</span>}
+                            {/* Simple value preview or inline input for standard props */}
+                            <div className="text-sm font-mono truncate px-1 opacity-70 flex items-center">
+                                {data.inputs?.[input.name] !== undefined && data.inputs?.[input.name] !== '' ? (
+                                    typeof data.inputs[input.name] === 'string' && data.inputs[input.name].match(/\{\{.*\}\}/) ? (
+                                        <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-semibold border border-primary/20 truncate">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 animate-pulse" />
+                                            <span className="truncate">{data.inputs[input.name]}</span>
+                                        </div>
+                                    ) : (
+                                        typeof data.inputs[input.name] === 'object' ? '{...}' : String(data.inputs[input.name])
+                                    )
+                                ) : (
+                                    <span className="italic opacity-50">Empty</span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -104,8 +113,9 @@ const NodeComponent = memo((props: NodeProps<AppNode>) => {
             </div>
 
             {/* OUTPUTS */}
-            {task.outputs.length > 0 && (
+            {(task.outputs.length > 0 || data.type === TaskType.MAP_FIELDS) && (
                 <div className="px-4 py-3 bg-muted/30 border-t flex flex-col gap-2 rounded-b-xl">
+                    {/* Standard explicitly defined outputs */}
                     {task.outputs.map((output) => (
                         <div key={output.name} className="relative flex justify-end items-center group text-xs text-muted-foreground font-mono">
                             <div className="flex items-center gap-2 pr-1">
@@ -120,6 +130,40 @@ const NodeComponent = memo((props: NodeProps<AppNode>) => {
                             />
                         </div>
                     ))}
+
+                    {/* Dynamic Outputs specific to MAP_FIELDS task */}
+                    {data.type === TaskType.MAP_FIELDS && data.inputs?.schema && (
+                        (() => {
+                            try {
+                                const parsedSchema = typeof data.inputs.schema === 'string' ? JSON.parse(data.inputs.schema) : data.inputs.schema
+
+                                let keysToRender: string[] = []
+                                if (Array.isArray(parsedSchema)) {
+                                    keysToRender = parsedSchema.filter(k => typeof k === 'string')
+                                } else if (typeof parsedSchema === 'object' && parsedSchema !== null) {
+                                    keysToRender = Object.keys(parsedSchema)
+                                }
+
+                                return keysToRender.map((key) => (
+                                    <div key={`mapped-${key}`} className="relative flex justify-end items-center group text-xs text-primary font-mono mt-1">
+                                        <div className="flex items-center gap-2 pr-1">
+                                            <span>{key}</span>
+                                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                        </div>
+                                        <Handle
+                                            type="source"
+                                            position={Position.Right}
+                                            id={key}
+                                            className="w-3 h-3 border-2 border-background rounded-full transition-all !-right-5 hover:scale-150 !bg-amber-500"
+                                        />
+                                    </div>
+                                ))
+                            } catch (e) {
+                                // Ignore parse errors while typing
+                            }
+                            return null
+                        })()
+                    )}
                 </div>
             )}
 

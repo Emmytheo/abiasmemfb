@@ -23,16 +23,21 @@ export async function ValidateDataExecutor(env: ExecutionEnvironment<any>): Prom
 }
 
 export async function MapFieldsExecutor(env: ExecutionEnvironment<any>): Promise<boolean> {
-    const inputData = env.getInput('inputData')
-    const fieldMap = env.getInput('fieldMap')
-    const input = typeof inputData === 'string' ? JSON.parse(inputData || '{}') : (inputData ?? {})
-    const map = typeof fieldMap === 'string' ? JSON.parse(fieldMap || '{}') : (fieldMap ?? {})
-    const output: Record<string, any> = {}
-    for (const [src, tgt] of Object.entries(map as Record<string, string>)) {
-        output[tgt] = input[src]
+    const schema = env.getInput('schema')
+
+    if (!schema || typeof schema !== 'object') {
+        env.log.error('MapFields requires a valid JSON object schema.')
+        return false
     }
-    env.setOutput('outputData', output)
-    env.log.info(`MapFields: mapped ${Object.keys(map).length} field(s)`)
+
+    // The values within the schema have already been interpolated by the `resolveVariables`
+    // function in executeWorkflow.ts before this executor is called.
+    for (const [key, value] of Object.entries(schema)) {
+        env.setOutput(key, value)
+    }
+
+    env.setOutput('mappedObject', schema)
+    env.log.info(`MapFields: mapped ${Object.keys(schema).length} field(s)`)
     return true
 }
 

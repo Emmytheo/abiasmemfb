@@ -4,7 +4,7 @@ import config from '@payload-config'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Play, Save } from 'lucide-react'
-import { FlowEditor } from '@/components/workflow/FlowEditor'
+import { WorkflowEditorLayout } from './WorkflowEditorLayout'
 import { ThemeCustomizer } from '@/components/theme-customizer'
 
 export default async function WorkflowEditorPage({ params }: { params: Promise<{ id: string }> }) {
@@ -49,40 +49,10 @@ export default async function WorkflowEditorPage({ params }: { params: Promise<{
     }
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-muted/40 animate-in fade-in duration-200">
-            <header className="h-14 bg-background border-b flex items-center justify-between px-4 shrink-0">
-                <div className="flex items-center gap-4">
-                    <Link href="/workflows" className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground">
-                        <ArrowLeft size={18} />
-                    </Link>
-                    <div className="h-4 w-px bg-border my-auto" />
-                    <div className="flex items-center gap-2">
-                        <div className="font-semibold text-sm">
-                            {id === 'new' ? 'Create New Workflow' : `Editing workflow: ${id}`}
-                        </div>
-                        <div className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 text-[10px] font-medium uppercase tracking-wider">
-                            Draft
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <ThemeCustomizer />
-                    <button className="h-8 px-3 text-xs bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-md font-medium transition-colors flex items-center gap-2">
-                        <Play size={14} /> Test Run
-                    </button>
-                    <button className="h-8 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 rounded-md font-medium transition-colors flex items-center gap-2 shadow-sm">
-                        <Save size={14} /> Save Draft
-                    </button>
-                    <button className="h-8 px-3 text-xs bg-green-600 text-white hover:bg-green-700 rounded-md font-medium transition-colors shadow-sm ml-2">
-                        Publish
-                    </button>
-                </div>
-            </header>
-
-            <div className="flex-1 w-full relative min-h-0 overflow-hidden">
-                <FlowEditor dynamicOptions={dynamicOptions} workflowId={id !== 'new' ? id : undefined} initialData={workflow?.definition as any} />
-            </div>
-        </div>
+        <WorkflowEditorLayout
+            workflowId={id}
+            workflow={workflow}
+            dynamicOptions={dynamicOptions}
+        />
     )
 }

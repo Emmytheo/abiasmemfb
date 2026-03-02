@@ -54,7 +54,9 @@ export function TaskMenu({
 
                 <div className="flex-1 overflow-y-auto px-2 space-y-6 pb-20">
                     {categories.map((cat) => {
-                        const tasks = Object.values(TaskRegistry).filter(t => t.category === cat)
+                        const tasks = Object.values(TaskRegistry)
+                            .filter(t => t.category === cat)
+                            .sort((a, b) => a.type.localeCompare(b.type)) // Stable Sort for React Hydration
                         if (tasks.length === 0) return null
 
                         return (
