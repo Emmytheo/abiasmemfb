@@ -123,7 +123,7 @@ const navGroups = [
             },
             {
                 title: "Secrets",
-                url: "/workflows/secrets",
+                url: "/workflows/vault",
                 icon: Settings,
             },
             {

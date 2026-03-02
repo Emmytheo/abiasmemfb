@@ -31,7 +31,7 @@ export default async function WorkflowEditorPage({ params }: { params: Promise<{
         // For secrets we mask/hide encryptedValue, but id and name are always public 
         dynamicOptions.secrets = secretsRes.docs.map(d => ({ id: String(d.id), label: d.name }))
         dynamicOptions.workflows = workflowsRes.docs.map(d => ({ id: String(d.id), label: d.name }))
-        dynamicOptions.applications = appsRes.docs.map(d => ({ id: String(d.slug), label: d.name }))
+        dynamicOptions.applications = appsRes.docs.map(d => ({ id: String(d.id), label: d.name }))
 
         if (id !== 'new') {
             workflow = await payload.findByID({

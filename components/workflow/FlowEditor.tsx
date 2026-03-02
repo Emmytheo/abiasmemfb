@@ -42,13 +42,7 @@ import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+// Removed Shadcn Select in favor of native select for property panel reliability
 
 export interface DynamicOptions {
     providers: { id: string; label: string }[];
@@ -308,11 +302,15 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
 
             {/* Property Panel — sibling of ReactFlow wrapper, outside pointer-event scope */}
             <div className={`
-                h-full transition-all duration-300 ease-in-out flex-shrink-0 border-l bg-background
+                h-full transition-all duration-300 ease-in-out flex-shrink-0 border-l bg-background relative z-20
                 ${selectedNode ? 'w-80 opacity-100' : 'w-0 opacity-0 pointer-events-none border-l-0'}
             `} style={{ minWidth: 0 }}>
                 {selectedNode && (
-                    <aside className="w-full h-full border-l bg-background p-4 flex flex-col gap-4 overflow-y-auto z-10">
+                    <aside
+                        className="w-full h-full border-l bg-background p-4 flex flex-col gap-4 overflow-y-auto z-10"
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="flex items-center justify-between pb-4 border-b shrink-0">
                             <div className="flex items-center gap-2">
                                 <div className="bg-primary/10 p-2 rounded-md text-primary">
@@ -335,7 +333,7 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
                             Configuration
                         </div>
 
-                        <div className="flex-1 flex flex-col gap-4 overflow-y-auto pb-10">
+                        <div className="flex-1 flex flex-col gap-4 overflow-y-auto pb-10 relative z-30 pointer-events-auto">
                             {TaskRegistry[selectedNode.data.type].inputs.map((inputSchema) => {
                                 // Handle conditional rendering for TRIGGER config fields
                                 if (selectedNode.data.type === TaskType.TRIGGER) {
@@ -353,41 +351,38 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
                                         </label>
 
                                         {inputSchema.name === 'applicationType' ? (
-                                            <Select
+                                            <select
+                                                className="flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-background"
                                                 value={selectedNode.data.inputs?.[inputSchema.name] || ''}
-                                                onValueChange={(val) => onNodeDataChange(selectedNode.id, inputSchema.name, val)}
+                                                onChange={(e) => onNodeDataChange(selectedNode.id, inputSchema.name, e.target.value)}
                                             >
-                                                <SelectTrigger><SelectValue placeholder="Select a Product Type..." /></SelectTrigger>
-                                                <SelectContent position="popper" sideOffset={4}>
-                                                    {dynamicOptions?.applications?.map(a => (
-                                                        <SelectItem key={a.id} value={a.id}>{a.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                                <option value="" disabled>Select a Product Type...</option>
+                                                {dynamicOptions?.applications?.map(a => (
+                                                    <option key={a.id} value={a.id}>{a.label}</option>
+                                                ))}
+                                            </select>
                                         ) : inputSchema.type === 'STRING' && inputSchema.name === 'workflowId' ? (
-                                            <Select
+                                            <select
+                                                className="flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-background"
                                                 value={selectedNode.data.inputs?.[inputSchema.name] || ''}
-                                                onValueChange={(val) => onNodeDataChange(selectedNode.id, inputSchema.name, val)}
+                                                onChange={(e) => onNodeDataChange(selectedNode.id, inputSchema.name, e.target.value)}
                                             >
-                                                <SelectTrigger><SelectValue placeholder="Select a workflow..." /></SelectTrigger>
-                                                <SelectContent position="popper" sideOffset={4}>
-                                                    {dynamicOptions?.workflows?.map(w => (
-                                                        <SelectItem key={w.id} value={w.id}>{w.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                                <option value="" disabled>Select a workflow...</option>
+                                                {dynamicOptions?.workflows?.map(w => (
+                                                    <option key={w.id} value={w.id}>{w.label}</option>
+                                                ))}
+                                            </select>
                                         ) : inputSchema.type === 'STRING' && inputSchema.options ? (
-                                            <Select
+                                            <select
+                                                className="flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-background"
                                                 value={selectedNode.data.inputs?.[inputSchema.name] || ''}
-                                                onValueChange={(val) => onNodeDataChange(selectedNode.id, inputSchema.name, val)}
+                                                onChange={(e) => onNodeDataChange(selectedNode.id, inputSchema.name, e.target.value)}
                                             >
-                                                <SelectTrigger><SelectValue placeholder={`Select ${inputSchema.name}...`} /></SelectTrigger>
-                                                <SelectContent position="popper" sideOffset={4}>
-                                                    {inputSchema.options.map(opt => (
-                                                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                                <option value="" disabled>Select {inputSchema.name}...</option>
+                                                {inputSchema.options.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
                                         ) : inputSchema.type === 'STRING' ? (
                                             <Input
                                                 type="text"
@@ -396,41 +391,38 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
                                                 placeholder={inputSchema.helperText || `Enter ${inputSchema.name}...`}
                                             />
                                         ) : inputSchema.type === 'PROVIDER' ? (
-                                            <Select
+                                            <select
+                                                className="flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-background"
                                                 value={selectedNode.data.inputs?.[inputSchema.name] || ''}
-                                                onValueChange={(val) => onNodeDataChange(selectedNode.id, inputSchema.name, val)}
+                                                onChange={(e) => onNodeDataChange(selectedNode.id, inputSchema.name, e.target.value)}
                                             >
-                                                <SelectTrigger><SelectValue placeholder="Select a provider..." /></SelectTrigger>
-                                                <SelectContent position="popper" sideOffset={4}>
-                                                    {dynamicOptions?.providers?.map(p => (
-                                                        <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                                <option value="" disabled>Select a provider...</option>
+                                                {dynamicOptions?.providers?.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.label}</option>
+                                                ))}
+                                            </select>
                                         ) : inputSchema.type === 'CREDENTIAL' ? (
-                                            <Select
+                                            <select
+                                                className="flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-background"
                                                 value={selectedNode.data.inputs?.[inputSchema.name] || ''}
-                                                onValueChange={(val) => onNodeDataChange(selectedNode.id, inputSchema.name, val)}
+                                                onChange={(e) => onNodeDataChange(selectedNode.id, inputSchema.name, e.target.value)}
                                             >
-                                                <SelectTrigger><SelectValue placeholder="Select a secret..." /></SelectTrigger>
-                                                <SelectContent position="popper" sideOffset={4}>
-                                                    {dynamicOptions?.secrets?.map(s => (
-                                                        <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                                <option value="" disabled>Select a secret...</option>
+                                                {dynamicOptions?.secrets?.map(s => (
+                                                    <option key={s.id} value={s.id}>{s.label}</option>
+                                                ))}
+                                            </select>
                                         ) : inputSchema.type === 'SELECT' ? (
-                                            <Select
+                                            <select
+                                                className="flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-background"
                                                 value={selectedNode.data.inputs?.[inputSchema.name] || ''}
-                                                onValueChange={(val) => onNodeDataChange(selectedNode.id, inputSchema.name, val)}
+                                                onChange={(e) => onNodeDataChange(selectedNode.id, inputSchema.name, e.target.value)}
                                             >
-                                                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                                                <SelectContent position="popper" sideOffset={4}>
-                                                    {inputSchema.options?.map(opt => (
-                                                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                                <option value="" disabled>Select...</option>
+                                                {inputSchema.options?.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
                                         ) : inputSchema.type === 'NUMBER' ? (
                                             <Input
                                                 type="number"
@@ -438,16 +430,14 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions }: FlowEditor
                                                 onChange={(e) => onNodeDataChange(selectedNode.id, inputSchema.name, Number(e.target.value))}
                                             />
                                         ) : inputSchema.type === 'BOOLEAN' ? (
-                                            <Select
+                                            <select
+                                                className="flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-background"
                                                 value={String(selectedNode.data.inputs?.[inputSchema.name] || 'false')}
-                                                onValueChange={(val) => onNodeDataChange(selectedNode.id, inputSchema.name, val === 'true')}
+                                                onChange={(e) => onNodeDataChange(selectedNode.id, inputSchema.name, e.target.value === 'true')}
                                             >
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="false">False</SelectItem>
-                                                    <SelectItem value="true">True</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                                <option value="false">False</option>
+                                                <option value="true">True</option>
+                                            </select>
                                         ) : (
                                             <Textarea
                                                 className="min-h-[80px] font-mono text-sm"
