@@ -38,9 +38,16 @@ import { NavUser } from "@/components/nav-user";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
 
-const navGroups = [
+type NavGroup = {
+    title: string;
+    items: { title: string; url: string; icon: any }[];
+    minRole?: "user" | "customer";
+};
+
+const navGroups: NavGroup[] = [
     {
         title: "General",
+        minRole: "user",
         items: [
             {
                 title: "Overview",
@@ -51,6 +58,7 @@ const navGroups = [
     },
     {
         title: "My Portfolio",
+        minRole: "customer",
         items: [
             {
                 title: "My Assets & Accounts",
@@ -71,6 +79,7 @@ const navGroups = [
     },
     {
         title: "Explore Products",
+        minRole: "user",
         items: [
             {
                 title: "Open Account",
@@ -86,6 +95,7 @@ const navGroups = [
     },
     {
         title: "Services Hub",
+        minRole: "customer",
         items: [
             { title: "Pay Bills", url: "/pay/bills", icon: Tag },
             { title: "Utilities", url: "/pay/utilities", icon: Lightbulb },
@@ -95,6 +105,7 @@ const navGroups = [
     },
     {
         title: "Support & Settings",
+        minRole: "user",
         items: [
             {
                 title: "Preferences",
@@ -105,11 +116,26 @@ const navGroups = [
     },
 ];
 
-export function ClientSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-    // Temporary mock user
+const ROLE_LEVEL: Record<string, number> = { user: 0, customer: 1, admin: 2 };
+
+interface ClientSidebarProps extends React.ComponentProps<typeof Sidebar> {
+    userRole?: "user" | "customer" | "admin";
+    userName?: string;
+    userEmail?: string;
+}
+
+export function ClientSidebar({ userRole = "user", userName, userEmail, ...props }: ClientSidebarProps) {
+    const roleLevel = ROLE_LEVEL[userRole] ?? 0;
+
+    // Filter nav groups based on user role
+    const filteredGroups = navGroups.filter((group) => {
+        const minLevel = ROLE_LEVEL[group.minRole || "user"] ?? 0;
+        return roleLevel >= minLevel;
+    });
+
     const sidebarUser = {
-        name: "Alex Client",
-        email: "alex.wealth@abiabank.local",
+        name: userName || "User",
+        email: userEmail || "",
         avatar: "",
     };
 
@@ -148,7 +174,7 @@ export function ClientSidebar({ ...props }: React.ComponentProps<typeof Sidebar>
                 </SidebarGroup>
             </SidebarHeader>
             <SidebarContent className="px-2 py-4">
-                <NavMain groups={navGroups} />
+                <NavMain groups={filteredGroups} />
             </SidebarContent>
             <SidebarFooter>
                 <div className="sm:hidden px-2 pb-2 flex justify-center">

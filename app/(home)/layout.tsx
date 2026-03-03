@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Playfair_Display } from "next/font/google";
+import { Plus_Jakarta_Sans, Rubik } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "../globals.css";
 
@@ -24,20 +24,27 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-const playfairDisplay = Playfair_Display({
-  variable: "--font-display",
+const rubik = Rubik({
+  variable: "--font-rubik",
   subsets: ["latin"],
   display: "swap",
-  weight: ["500", "700"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 import { Suspense } from "react";
+import { createClient } from "@/lib/supabase/server";
+import type { AppRole } from "@/lib/auth/roles";
 
-export default function HomeLayout({
+export default async function HomeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fetch auth state server-side for the Navbar
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userRole: AppRole | null = user ? (user.user_metadata?.role || "user") : null;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -47,7 +54,7 @@ export default function HomeLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${plusJakartaSans.variable} ${playfairDisplay.variable} font-sans antialiased bg-background text-foreground`}>
+      <body className={`${plusJakartaSans.variable} ${rubik.variable} font-sans antialiased bg-background text-foreground`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -56,7 +63,7 @@ export default function HomeLayout({
         >
           <PaletteProvider>
             <Suspense fallback={null}>
-              <Navbar />
+              <Navbar userRole={userRole} />
             </Suspense>
             {children}
             <Footer />

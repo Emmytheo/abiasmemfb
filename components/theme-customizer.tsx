@@ -28,7 +28,7 @@ export function ThemeCustomizer() {
                     <span className="sr-only">Toggle theme and palette</span>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-56 z-[200]">
                 <DropdownMenuLabel>Mode</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2">
                     <Sun className="h-4 w-4" /> Light

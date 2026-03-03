@@ -74,8 +74,8 @@ export async function recordIdempotency(
         collection: 'idempotency-records',
         data: {
             key,
-            workflowId,
-            executionId,
+            workflowId: String(workflowId),
+            executionId: String(executionId),
             trigger,
             expiresAt: expiresAt.toISOString(),
         },

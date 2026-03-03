@@ -41,6 +41,7 @@ import { NavMain } from "@/components/nav-main";
 import { Button } from "@/components/ui/button";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
+import { NavUser } from "@/components/nav-user";
 
 const navGroups = [
     {
@@ -114,7 +115,7 @@ const navGroups = [
             {
                 title: "Run History",
                 url: "/workflows/runs",
-                icon: LayoutDashboard, // Will reuse or switch to History icon later
+                icon: LayoutDashboard,
             },
             {
                 title: "Providers",
@@ -144,13 +145,16 @@ const navGroups = [
         ],
     },
 ];
-import { NavUser } from "@/components/nav-user";
 
-export function DashboardSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-    // Temporary mock user matching the header
+interface DashboardSidebarProps extends React.ComponentProps<typeof Sidebar> {
+    userName?: string;
+    userEmail?: string;
+}
+
+export function DashboardSidebar({ userName, userEmail, ...props }: DashboardSidebarProps) {
     const sidebarUser = {
-        name: "Admin User",
-        email: "admin@abiabank.local",
+        name: userName || "Admin",
+        email: userEmail || "",
         avatar: "",
     };
 

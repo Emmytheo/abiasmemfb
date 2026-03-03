@@ -9,7 +9,7 @@ export const Users: CollectionConfig = {
     },
     auth: {
         strategies: [supabaseStrategy],
-        disableLocalStrategy: true, // Prevents default email/password login
+        disableLocalStrategy: true,
     },
     fields: [
         {
@@ -33,11 +33,21 @@ export const Users: CollectionConfig = {
             },
         },
         {
+            name: 'name',
+            type: 'text',
+            admin: {
+                description: 'Display name for the admin user.',
+            },
+        },
+        {
             name: 'role',
             type: 'select',
-            options: ['admin', 'customer'],
-            defaultValue: 'customer',
+            options: ['admin'],
+            defaultValue: 'admin',
             required: true,
-        }
+            admin: {
+                description: 'All Payload users are admins. Regular users/customers are managed in Supabase only.',
+            },
+        },
     ],
 }

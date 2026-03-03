@@ -48,9 +48,33 @@ export async function executeWorkflow(options: ExecuteOptions): Promise<string> 
     }
 
     // 3. Setup phases from execution plan
-    const executionPlan = workflow.executionPlan ?? []
-    if (executionPlan.length === 0) {
-        throw new Error('Workflow has no compiled execution plan. Please republish.')
+    let executionPlan = workflow.executionPlan ?? []
+
+    // Auto-compile if missing (for workflows published before the auto-compile feature)
+    if (executionPlan.length === 0 && workflow.definition?.nodes) {
+        const { FlowToExecutionPlan } = await import('./executionPlan')
+        const nodes = workflow.definition.nodes as AppNode[]
+        const edges = workflow.definition.edges || []
+        const result = FlowToExecutionPlan(nodes, edges)
+
+        if (result.error) {
+            const errorMsg = result.error.type === 'NO_ENTRY_POINT'
+                ? 'Workflow must have a Trigger node as entry point.'
+                : `Some nodes have missing required inputs: ${result.error.invalidElements?.map((e: any) => e.nodeId).join(', ')}`
+            throw new Error(`Execution plan missing and compilation failed: ${errorMsg}`)
+        }
+        executionPlan = result.executionPlan
+
+        // Sneakily save it back so next runs are faster
+        await payload.update({
+            collection: 'workflows',
+            id: workflowId,
+            data: { executionPlan }
+        })
+    }
+
+    if (!executionPlan || executionPlan.length === 0) {
+        throw new Error('Workflow has no compileable execution plan and no nodes. Please edit and republish.')
     }
 
     const phasesForDb = executionPlan.flatMap((phaseMap: any) =>
@@ -66,10 +90,11 @@ export async function executeWorkflow(options: ExecuteOptions): Promise<string> 
     )
 
     // 4. Create Execution Record
+    const parsedWorkflowId = !isNaN(Number(workflowId)) ? Number(workflowId) : workflowId
     const execution = await payload.create({
         collection: 'workflow-executions',
         data: {
-            workflow: workflowId,
+            workflow: parsedWorkflowId,
             trigger,
             status: 'PENDING',
             inputData: inputData ?? {},

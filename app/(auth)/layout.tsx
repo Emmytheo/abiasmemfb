@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Rubik, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+import { PaletteProvider } from "@/context/palette-context";
 import "../globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -55,7 +56,9 @@ export default function AuthLayout({
                     enableSystem
                     disableTransitionOnChange
                 >
-                    {children}
+                    <PaletteProvider>
+                        {children}
+                    </PaletteProvider>
                 </ThemeProvider>
                 <Toaster />
             </body>

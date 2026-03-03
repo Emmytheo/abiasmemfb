@@ -12,7 +12,14 @@ export const supabaseStrategy: AuthStrategy = {
                 return { user: null }
             }
 
-            // Query by supabase_id — a custom field, always queryable regardless of disableLocalStrategy
+            // Only admin users get Payload shadow accounts.
+            // Check user_metadata.role — if not 'admin', reject access to Payload CMS.
+            const role = user.user_metadata?.role || 'user'
+            if (role !== 'admin') {
+                return { user: null }
+            }
+
+            // Query existing shadow user
             const { docs } = await payload.find({
                 collection: 'users',
                 overrideAccess: true,
@@ -33,8 +40,8 @@ export const supabaseStrategy: AuthStrategy = {
                 }
             }
 
-            // Auto-create the shadow user. Guard against race conditions by
-            // catching duplicate-key ValidationErrors and re-querying.
+            // Auto-create the shadow user for admins.
+            // Guard against race conditions with try/catch + re-query.
             try {
                 const newUser = await payload.create({
                     collection: 'users',
@@ -42,6 +49,7 @@ export const supabaseStrategy: AuthStrategy = {
                     data: {
                         supabase_id: user.id,
                         email: user.email!,
+                        name: user.user_metadata?.full_name || user.user_metadata?.name || '',
                         role: 'admin',
                     },
                 })
@@ -53,8 +61,7 @@ export const supabaseStrategy: AuthStrategy = {
                     } as any
                 }
             } catch (createError: any) {
-                // Race condition: another concurrent request already created the user.
-                // Re-query and return the existing shadow user.
+                // Race condition: another request already created the user.
                 const { docs: retryDocs } = await payload.find({
                     collection: 'users',
                     overrideAccess: true,
@@ -73,7 +80,7 @@ export const supabaseStrategy: AuthStrategy = {
                     }
                 }
 
-                console.error('PAYLOAD AUTH: User creation failed and re-query found nothing:', createError)
+                console.error('PAYLOAD AUTH: Admin shadow creation failed:', createError)
                 return { user: null }
             }
         } catch (e) {

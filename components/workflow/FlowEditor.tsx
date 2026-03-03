@@ -19,7 +19,7 @@ import { NodeComponent } from './nodes/NodeComponent'
 import { TaskMenu } from './TaskMenu'
 import { Save, Hand, MousePointer2, Maximize2, X, PlusCircle, Settings2, GripVertical, Beaker } from 'lucide-react'
 import { toast } from 'sonner'
-import { saveWorkflowDefinition } from '@/app/(dashboard)/workflows/[id]/edit/actions'
+import { saveWorkflowDefinition, createWorkflowAndSave } from '@/app/(dashboard)/workflows/[id]/edit/actions'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { TaskType, AppNode } from '@/lib/workflow/types'
@@ -52,20 +52,17 @@ export interface DynamicOptions {
     applications: { id: string; label: string }[];
 }
 
-import { useImperativeHandle, forwardRef, Ref } from 'react'
-
-export interface FlowEditorRef {
-    saveWorkflow: (status: 'draft' | 'published') => Promise<void>;
-}
+export type SaveWorkflowFn = (status: 'draft' | 'published') => Promise<void>
 
 interface FlowEditorProps {
     workflowId?: string;
     initialData?: any;
     dynamicOptions: DynamicOptions;
-    editorRef?: Ref<FlowEditorRef>;
+    onReady?: (saveFn: SaveWorkflowFn) => void;
+    runningExecutionId?: string | null;
 }
 
-function FlowEditorInner({ workflowId, initialData, dynamicOptions, editorRef }: FlowEditorProps) {
+function FlowEditorInner({ workflowId, initialData, dynamicOptions, onReady, runningExecutionId }: FlowEditorProps) {
     const reactFlowWrapper = useRef<HTMLDivElement>(null)
     const [nodes, setNodes, onNodesChange] = useNodesState(initialData?.nodes?.length ? initialData.nodes : initialNodes)
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialData?.edges?.length ? initialData.edges : [])
@@ -73,23 +70,33 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions, editorRef }:
     const [isSaving, setIsSaving] = useState(false)
     useTheme()
 
-    useImperativeHandle(editorRef, () => ({
-        saveWorkflow: async (status: 'draft' | 'published') => {
-            if (!workflowId || workflowId === 'new') {
-                toast.error('Cannot update a new workflow without a DB record yet. Use the Create form first.')
-                return
-            }
-            if (!reactFlowInstance) return
+    // Expose save function to parent via callback when ReactFlow is ready
+    useEffect(() => {
+        if (!onReady || !reactFlowInstance) return
+        const saveFn: SaveWorkflowFn = async (status) => {
             setIsSaving(true)
             try {
                 const flow = reactFlowInstance.toObject()
-                const result = await saveWorkflowDefinition(workflowId, flow)
-                // Note: Normally you would also update the status field in the DB here, 
-                // but for now we are just saving the definition layout.
-                if (result?.success) {
-                    toast.success(`Workflow saved successfully as ${status}`)
+                const dbStatus = status === 'published' ? 'PUBLISHED' as const : 'DRAFT' as const
+
+                if (!workflowId || workflowId === 'new') {
+                    // CREATE new workflow
+                    const result = await createWorkflowAndSave(flow, dbStatus)
+                    if (result?.success && result.workflowId) {
+                        toast.success('Workflow created successfully!')
+                        // Navigate to the new workflow's edit page
+                        window.location.href = `/workflows/${result.workflowId}/edit`
+                    } else {
+                        toast.error(result?.error || 'Failed to create workflow')
+                    }
                 } else {
-                    toast.error(result?.error || 'Failed to save workflow')
+                    // UPDATE existing workflow
+                    const result = await saveWorkflowDefinition(workflowId, flow, dbStatus)
+                    if (result?.success) {
+                        toast.success(`Workflow ${status === 'published' ? 'published' : 'saved'} successfully`)
+                    } else {
+                        toast.error(result?.error || 'Failed to save workflow')
+                    }
                 }
             } catch (e: any) {
                 toast.error(e.message || 'An error occurred while saving')
@@ -97,7 +104,64 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions, editorRef }:
                 setIsSaving(false)
             }
         }
-    }), [reactFlowInstance, workflowId])
+        onReady(saveFn)
+    }, [reactFlowInstance, workflowId, onReady])
+
+    // Execution polling
+    useEffect(() => {
+        if (!runningExecutionId) {
+            // Clear statuses when not running
+            setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, executionStatus: undefined } })))
+            return
+        }
+
+        let isPolling = true
+        let pollTimeout: ReturnType<typeof setTimeout>
+
+        const pollExecution = async () => {
+            if (!isPolling) return
+            try {
+                const res = await fetch(`/api/workflows/executions/${runningExecutionId}`)
+                const data = await res.json()
+
+                if (data.success && data.phases) {
+                    const statusMap: Record<string, string> = {}
+                    data.phases.forEach((p: any) => {
+                        statusMap[p.nodeId] = p.status
+                    })
+
+                    setNodes((nds) =>
+                        nds.map((n) => {
+                            const newStatus = statusMap[n.id]
+                            if (n.data.executionStatus !== newStatus) {
+                                return { ...n, data: { ...n.data, executionStatus: newStatus } }
+                            }
+                            return n
+                        })
+                    )
+
+                    // Stop polling if completed or failed
+                    if (data.status === 'COMPLETED' || data.status === 'FAILED' || data.status === 'CANCELLED') {
+                        isPolling = false
+                        return
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to poll execution status:', err)
+            }
+
+            if (isPolling) {
+                pollTimeout = setTimeout(pollExecution, 1500)
+            }
+        }
+
+        pollExecution()
+
+        return () => {
+            isPolling = false
+            clearTimeout(pollTimeout)
+        }
+    }, [runningExecutionId, setNodes])
 
     // Layout states
     const [isMenuOpen, setIsMenuOpen] = useState(true)
@@ -593,16 +657,13 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions, editorRef }:
     )
 }
 
-export const FlowEditor = forwardRef<FlowEditorRef, Omit<FlowEditorProps, 'editorRef'>>((props, ref) => {
+export function FlowEditor(props: FlowEditorProps) {
     return (
         <ReactFlowProvider>
             <FlowEditorInner
                 {...props}
                 dynamicOptions={props.dynamicOptions || { providers: [], secrets: [], workflows: [], applications: [] }}
-                editorRef={ref}
             />
         </ReactFlowProvider>
     )
-})
-
-FlowEditor.displayName = 'FlowEditor'
+}

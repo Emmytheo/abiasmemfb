@@ -1,9 +1,8 @@
-'use client'
 import React, { memo } from 'react'
-import { FormField } from '@/components/ui/form' // if you use it, or customize below
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react'
 import { TaskRegistry } from '@/lib/workflow/task/registry'
 import { AppNode, TaskParamType, TaskType } from '@/lib/workflow/types'
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 
 const getColorForParamType = (type: TaskParamType) => {
     switch (type) {
@@ -31,6 +30,32 @@ const NodeComponent = memo((props: NodeProps<AppNode>) => {
 
     if (!task) return <div className="p-4 bg-destructive text-white rounded-md">Unknown Task: {data.type}</div>
 
+    const renderExecutionStatus = () => {
+        if (!data.executionStatus) return null
+        switch (data.executionStatus) {
+            case 'RUNNING':
+                return <Loader2 size={16} className="text-blue-500 animate-spin" />
+            case 'COMPLETED':
+                return <CheckCircle2 size={16} className="text-green-500" />
+            case 'FAILED':
+                return <XCircle size={16} className="text-red-500" />
+            case 'PENDING':
+                return <Loader2 size={16} className="text-muted-foreground" />
+            default:
+                return null
+        }
+    }
+
+    const getStatusBorderClass = () => {
+        if (!data.executionStatus) return selected ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+        switch (data.executionStatus) {
+            case 'RUNNING': return 'border-blue-500 ring-2 ring-blue-500/20'
+            case 'COMPLETED': return 'border-green-500 ring-2 ring-green-500/20'
+            case 'FAILED': return 'border-red-500 ring-2 ring-red-500/20'
+            default: return selected ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+        }
+    }
+
     // Special handling for GROUP nodes to make them act as visual dashed containers
     // Note: To make GROUP fully nestable, ReactFlow requires updating the exact drag/drop handling 
     // to map parentNode properties, but visually we can style it as a wide block.
@@ -55,19 +80,21 @@ const NodeComponent = memo((props: NodeProps<AppNode>) => {
     }
 
     return (
-        <div className={`min-w-[280px] bg-card rounded-xl border-2 shadow-sm transition-all relative ${selected ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}>
-
+        <div className={`min-w-[280px] bg-card rounded-xl border-2 shadow-sm transition-all relative ${getStatusBorderClass()}`}>
             {/* HEADER */}
-            <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-3 rounded-t-xl">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                    <task.icon size={18} />
-                </div>
-                <div className="flex-1">
-                    <div className="font-semibold text-sm">{task.label}</div>
-                    <div className="text-xs text-muted-foreground line-clamp-1" title={task.description}>
-                        {task.description}
+            <div className="px-4 py-3 bg-muted/50 border-b flex items-center justify-between gap-3 rounded-t-xl">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <task.icon size={18} />
+                    </div>
+                    <div className="flex-1">
+                        <div className="font-semibold text-sm">{task.label}</div>
+                        <div className="text-xs text-muted-foreground line-clamp-1" title={task.description}>
+                            {task.description}
+                        </div>
                     </div>
                 </div>
+                {renderExecutionStatus()}
             </div>
 
             {/* INPUTS */}

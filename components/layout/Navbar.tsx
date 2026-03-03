@@ -12,8 +12,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
+import type { AppRole } from "@/lib/auth/roles";
 
-export function Navbar() {
+interface NavbarProps {
+    userRole?: AppRole | null;
+}
+
+export function Navbar({ userRole }: NavbarProps) {
     const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
 
@@ -81,25 +86,22 @@ export function Navbar() {
                     </div>
                     <div className="hidden md:flex items-center gap-4">
                         <ThemeCustomizer />
-                        <Link
-                            href="/auth/login"
-                            className="inline-flex items-center justify-center px-6 py-2.5 border border-primary dark:border-accent text-sm font-medium rounded-full text-primary dark:text-accent bg-transparent hover:bg-primary hover:text-white dark:hover:bg-accent dark:hover:text-primary transition-all duration-300"
-                        >
-                            Sign In
-                        </Link>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger className="flex items-center justify-center w-10 h-10 rounded-full bg-muted/50 border border-border hover:bg-muted transition-colors outline-none shrink-0 overflow-hidden">
-                                <UserCircle className="w-6 h-6 text-muted-foreground" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem asChild>
-                                    <Link href="/client-dashboard" className="w-full cursor-pointer">Client Portal</Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href="/dashboard" className="w-full cursor-pointer">Admin Portal</Link>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        {!userRole ? (
+                            <Link
+                                href="/auth/login"
+                                className="inline-flex items-center justify-center px-6 py-2.5 border border-primary dark:border-accent text-sm font-medium rounded-full text-primary dark:text-accent bg-transparent hover:bg-primary hover:text-white dark:hover:bg-accent dark:hover:text-primary transition-all duration-300"
+                            >
+                                Sign In
+                            </Link>
+                        ) : (
+                            <Link
+                                href={userRole === "admin" ? "/dashboard" : "/client-dashboard"}
+                                className="inline-flex items-center justify-center px-6 py-2.5 bg-primary dark:bg-accent text-sm font-medium rounded-full text-primary-foreground dark:text-accent-foreground hover:opacity-90 transition-all duration-300 gap-2"
+                            >
+                                <UserCircle className="w-4 h-4" />
+                                {userRole === "admin" ? "Admin Portal" : "Client Portal"}
+                            </Link>
+                        )}
                     </div>
                     <div className="flex md:hidden items-center gap-4">
                         <ThemeCustomizer />
@@ -161,26 +163,24 @@ export function Navbar() {
                             Help & Support
                         </Link>
                         <div className="pt-4 pb-2 space-y-3">
-                            <Link
-                                href="/auth/login"
-                                className="w-full flex items-center justify-center px-6 py-3 border border-primary dark:border-accent text-base font-medium rounded-full text-primary dark:text-accent bg-transparent hover:bg-primary hover:text-white dark:hover:bg-accent dark:hover:text-primary transition-all duration-300"
-                            >
-                                Sign In
-                            </Link>
-                            <div className="grid grid-cols-2 gap-2">
+                            {!userRole ? (
                                 <Link
-                                    href="/client-dashboard"
-                                    className="flex items-center justify-center px-4 py-3 bg-muted text-foreground text-sm font-medium rounded-full hover:bg-accent hover:text-accent-foreground transition-all duration-300"
+                                    href="/auth/login"
+                                    onClick={() => setIsOpen(false)}
+                                    className="w-full flex items-center justify-center px-6 py-3 border border-primary dark:border-accent text-base font-medium rounded-full text-primary dark:text-accent bg-transparent hover:bg-primary hover:text-white dark:hover:bg-accent dark:hover:text-primary transition-all duration-300"
                                 >
-                                    Client Portal
+                                    Sign In
                                 </Link>
+                            ) : (
                                 <Link
-                                    href="/dashboard"
-                                    className="flex items-center justify-center px-4 py-3 bg-muted text-foreground text-sm font-medium rounded-full hover:bg-accent hover:text-accent-foreground transition-all duration-300"
+                                    href={userRole === "admin" ? "/dashboard" : "/client-dashboard"}
+                                    onClick={() => setIsOpen(false)}
+                                    className="w-full flex items-center justify-center px-6 py-3 bg-primary dark:bg-accent text-base font-medium rounded-full text-primary-foreground dark:text-accent-foreground hover:opacity-90 transition-all duration-300 gap-2"
                                 >
-                                    Admin Portal
+                                    <UserCircle className="w-5 h-5" />
+                                    {userRole === "admin" ? "Admin Portal" : "Client Portal"}
                                 </Link>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

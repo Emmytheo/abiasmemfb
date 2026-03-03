@@ -1,4 +1,4 @@
-export type Role = 'customer' | 'admin';
+export type Role = 'user' | 'customer' | 'admin';
 
 export interface User {
     id: string;
@@ -121,6 +121,7 @@ export interface Transaction {
     category: 'Bills' | 'School Fees' | 'Utilities' | 'e-Pins' | 'Transfer';
     status: 'successful' | 'pending' | 'failed';
     reference: string;
+    narration?: string;
     created_at: string;
 }
 
