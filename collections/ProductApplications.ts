@@ -16,29 +16,37 @@ export const ProductApplications: CollectionConfig = {
     hooks: {
         afterChange: [
             async ({ doc, operation, req }) => {
+                // Only attempt workflow trigger on creation, and only if the product type has a linked workflow.
+                // The application record is ALWAYS saved first — the workflow is optional.
                 if (operation === 'create' && doc.product_type_id) {
                     const { payload } = req
-                    const productType = await payload.findByID({
-                        collection: 'product-types',
-                        id: typeof doc.product_type_id === 'object' ? doc.product_type_id.id : doc.product_type_id
-                    }).catch(() => null)
 
-                    if (productType?.workflow) {
-                        const wfId = typeof productType.workflow === 'object' ? productType.workflow.id : productType.workflow
+                    try {
+                        const productType = await payload.findByID({
+                            collection: 'product-types',
+                            id: typeof doc.product_type_id === 'object' ? doc.product_type_id.id : doc.product_type_id,
+                            depth: 0,
+                        }).catch(() => null)
 
-                        // Dynamically import engine to prevent boot issues
-                        const { executeWorkflow } = await import('@/lib/workflow/executeWorkflow')
+                        // Only trigger workflow if one is explicitly linked to this product type
+                        if (productType?.workflow) {
+                            const wfId = typeof productType.workflow === 'object' ? productType.workflow.id : productType.workflow
 
-                        try {
+                            const { executeWorkflow } = await import('@/lib/workflow/executeWorkflow')
                             await executeWorkflow({
                                 workflowId: wfId,
                                 trigger: 'APPLICATION_SUBMIT',
                                 inputData: doc
+                            }).catch((e: any) => {
+                                payload.logger.error(`Workflow trigger failed for app ${doc.id}: ${e.message}`)
+                                // Workflow failure does NOT roll back the application — it was already saved
                             })
-                            // We don't block the hook on completion, it runs async
-                        } catch (e: any) {
-                            payload.logger.error(`Workflow trigger failed for app ${doc.id}: ${e.message}`)
+                        } else {
+                            payload.logger.info(`Application ${doc.id} submitted for product ${doc.product_type_id} — no workflow linked, skipping trigger.`)
                         }
+                    } catch (e: any) {
+                        // Catch-all: never let a hook error surface to the user
+                        req.payload.logger.error(`Applications afterChange hook error: ${e.message}`)
                     }
                 }
                 return doc

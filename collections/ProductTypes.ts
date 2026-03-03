@@ -117,5 +117,20 @@ export const ProductTypes: CollectionConfig = {
                 description: 'The automated workflow executed when a user applies for this product.'
             }
         },
+        {
+            name: 'workflow_stages',
+            type: 'array',
+            admin: {
+                description: 'The human-readable stage names shown to customers in the application tracker (e.g. Submitted, Under Review, Approved).'
+            },
+            defaultValue: [
+                { stage: 'Submitted' },
+                { stage: 'Under Review' },
+                { stage: 'Approved' },
+            ],
+            fields: [
+                { name: 'stage', type: 'text', required: true },
+            ]
+        },
     ],
 }

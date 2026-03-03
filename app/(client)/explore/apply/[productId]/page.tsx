@@ -4,10 +4,12 @@ import { use, useEffect, useState, FormEvent, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { ProductType, User } from "@/lib/api/types";
+import { ProductType } from "@/lib/api/types";
+import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Send } from "lucide-react";
+import { Loader2, ArrowLeft, Send, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 function ApplyProductContent({ params }: { params: Promise<{ productId: string }> }) {
     const resolvedParams = use(params);
@@ -15,7 +17,7 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
     const productId = resolvedParams.productId;
 
     const [product, setProduct] = useState<ProductType | null>(null);
-    const [user, setUser] = useState<User | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -25,28 +27,23 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
     const [requestedAmount, setRequestedAmount] = useState<number | undefined>(undefined);
 
     useEffect(() => {
-        Promise.all([
-            api.getProductTypeById(productId),
-            api.getCurrentUser()
-        ]).then(([typeData, userData]) => {
-            setProduct(typeData);
-            setUser(userData);
+        async function load() {
+            // Get the authenticated Supabase user directly — never returns null if logged in
+            const supabase = createClient();
+            const { data: { user: supaUser } } = await supabase.auth.getUser();
+            setUserId(supaUser?.id ?? null);
 
-            // Initialize form data defaults
+            const typeData = await api.getProductTypeById(productId);
+            setProduct(typeData);
+
             if (typeData?.form_schema) {
                 const initial: Record<string, any> = {};
                 typeData.form_schema.forEach(field => {
-                    initial[field.id] = field.type === 'number' ? '' : '';
+                    initial[field.id] = '';
                 });
                 setFormData(initial);
 
-                const isAccountCategory = (catName: string) => {
-                    const name = catName.toLowerCase();
-                    return name.includes("account") || name.includes("saving") || name.includes("deposit") || name.includes("current");
-                };
-                const isAccount = isAccountCategory(typeData.category);
                 const terms = typeData.financial_terms?.[0] as any;
-
                 if (terms) {
                     if (terms.blockType === 'savings-terms') {
                         setRequestedAmount(terms.min_balance || 0);
@@ -56,7 +53,8 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
                 }
             }
             setLoading(false);
-        });
+        }
+        load();
     }, [productId]);
 
     const handleInputChange = (fieldId: string, value: any) => {
@@ -68,27 +66,39 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!product || !user) return;
+        if (!product) return;
+
+        if (!userId) {
+            toast.error("Not signed in", { description: "Please log in to submit an application." });
+            return;
+        }
 
         setSubmitting(true);
         try {
             await api.createProductApplication({
-                user_id: user.id,
+                user_id: userId,
                 product_type_id: product.id,
                 status: 'pending',
-                workflow_stage: product.workflow_stages[0] || 'Submitted',
+                // Always default to 'Submitted' — workflow_stages is optional and set by admin later
+                workflow_stage: 'Submitted',
                 submitted_data: formData,
                 requested_amount: requestedAmount
             });
 
-            // Route based on category
-            if (product.category === 'accounts') {
-                router.push("/my-products");
-            } else {
-                router.push("/my-loans");
-            }
-        } catch (error) {
+            toast.success("Application Submitted!", {
+                description: "Your application has been received and is being reviewed.",
+                icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+            });
+
+            // Redirect based on product financial terms type (not category ID relationship)
+            const terms = product.financial_terms?.[0] as any;
+            const isLoan = terms?.blockType === 'loan-terms';
+            router.push(isLoan ? "/my-loans" : "/my-products");
+        } catch (error: any) {
             console.error("Application submission failed:", error);
+            toast.error("Submission Failed", {
+                description: error?.message || "Something went wrong. Please try again.",
+            });
             setSubmitting(false);
         }
     };

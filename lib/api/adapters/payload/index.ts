@@ -8,7 +8,9 @@ export const PayloadAdapter: ApiAdapter = {
 
     // Products (Accounts, Loans)
     getAllAccounts: actions.getAllAccounts,
+    getUserAccounts: actions.getUserAccounts,
     getAllLoans: actions.getAllLoans,
+    getUserLoans: actions.getUserLoans,
 
     // Product Configuration & Dynamic Forms
     getAllProductClasses: actions.getAllProductClasses,

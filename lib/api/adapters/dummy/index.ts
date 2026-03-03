@@ -22,9 +22,19 @@ export const DummyAdapter: ApiAdapter = {
         return MOCK_ACCOUNTS;
     },
 
+    getUserAccounts: async (userId) => {
+        await delay(400);
+        return MOCK_ACCOUNTS.filter(a => a.user_id === userId);
+    },
+
     getAllLoans: async () => {
         await delay(500);
         return MOCK_LOANS;
+    },
+
+    getUserLoans: async (userId) => {
+        await delay(400);
+        return MOCK_LOANS.filter(l => l.user_id === userId);
     },
 
     // Product Configuration & Dynamic Forms

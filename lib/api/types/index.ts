@@ -169,7 +169,9 @@ export interface ApiAdapter {
 
     // Products (Accounts, Loans)
     getAllAccounts: () => Promise<Account[]>;
+    getUserAccounts: (userId: string) => Promise<Account[]>;
     getAllLoans: () => Promise<Loan[]>;
+    getUserLoans: (userId: string) => Promise<Loan[]>;
 
     // Product Configuration & Dynamic Forms
     getAllProductClasses: () => Promise<ProductClass[]>;

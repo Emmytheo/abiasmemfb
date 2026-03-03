@@ -223,7 +223,10 @@ export const getAllProductTypes = async (): Promise<ProductType[]> => {
             financial_terms: doc.financial_terms || [],
             image_url: doc.image_url,
             form_schema: doc.form_schema || [],
-            workflow_stages: ['Submitted', 'Under Review', 'Approved'],
+            // Map Payload array-of-object format [{stage: string}] to string[]
+            workflow_stages: Array.isArray(doc.workflow_stages)
+                ? doc.workflow_stages.map((s: any) => s.stage || s).filter(Boolean)
+                : ['Submitted', 'Under Review', 'Approved'],
             created_at: doc.createdAt,
         })) as ProductType[];
     } catch (e) {
@@ -246,7 +249,10 @@ export const getProductTypeById = async (id: string): Promise<ProductType | null
             financial_terms: doc.financial_terms || [],
             image_url: doc.image_url,
             form_schema: doc.form_schema || [],
-            workflow_stages: ['Submitted', 'Under Review', 'Approved'],
+            // Map Payload array-of-object format [{stage: string}] to string[]
+            workflow_stages: Array.isArray(doc.workflow_stages)
+                ? doc.workflow_stages.map((s: any) => s.stage || s).filter(Boolean)
+                : ['Submitted', 'Under Review', 'Approved'],
             created_at: doc.createdAt,
         } as ProductType;
     } catch (e) {
@@ -297,7 +303,9 @@ export const saveProductType = async (data: ProductType): Promise<ProductType> =
             financial_terms: doc.financial_terms || [],
             image_url: doc.image_url,
             form_schema: doc.form_schema || [],
-            workflow_stages: doc.workflow_stages || ['Submitted', 'Under Review', 'Approved'],
+            workflow_stages: Array.isArray(doc.workflow_stages)
+                ? doc.workflow_stages.map((s: any) => s.stage || s).filter(Boolean)
+                : ['Submitted', 'Under Review', 'Approved'],
             created_at: doc.createdAt,
         } as ProductType;
     } catch (e) {
@@ -453,6 +461,61 @@ export const getAllLoans = async (): Promise<Loan[]> => {
         })) as Loan[];
     } catch (e) {
         console.error('Payload getAllLoans Error:', e);
+        return [];
+    }
+};
+
+export const getUserAccounts = async (userId: string): Promise<Account[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'accounts' as any,
+            where: { user_id: { equals: userId } },
+            depth: 1,
+            limit: 100,
+            sort: '-createdAt',
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: doc.user_id,
+            account_number: doc.account_number,
+            account_type: doc.account_type,
+            balance: (doc.balance ?? 0) / 100, // kobo → Naira
+            status: doc.status,
+            created_at: doc.createdAt,
+        })) as Account[];
+    } catch (e) {
+        console.error('Payload getUserAccounts Error:', e);
+        return [];
+    }
+};
+
+export const getUserLoans = async (userId: string): Promise<Loan[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'loans' as any,
+            where: { user_id: { equals: userId } },
+            depth: 1,
+            limit: 100,
+            sort: '-createdAt',
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: doc.user_id,
+            product_type_id: typeof doc.product_type === 'object' ? doc.product_type?.id : doc.product_type,
+            amount: (doc.principal ?? 0) / 100,          // kobo → Naira
+            interest_rate: doc.interest_rate ?? 0,
+            duration_months: doc.duration_months ?? 0,
+            outstanding_balance: (doc.outstanding_balance ?? 0) / 100,
+            monthly_installment: (doc.monthly_installment ?? 0) / 100,
+            next_payment_date: doc.next_payment_date,
+            maturity_date: doc.maturity_date,
+            status: doc.status || 'pending',
+            created_at: doc.createdAt,
+        })) as Loan[];
+    } catch (e) {
+        console.error('Payload getUserLoans Error:', e);
         return [];
     }
 };
