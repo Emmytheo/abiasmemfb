@@ -4,28 +4,29 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { GenericDataTable } from "@/components/data-table";
 import { api } from "@/lib/api";
-import { ProductApplication, ProductType } from "@/lib/api/types";
+import { Account, User } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 
-type EnrichedApp = ProductApplication & { product?: ProductType };
+type EnrichedAccount = Account & { user?: User };
 
 export default function AdminAccountsPage() {
-    const [data, setData] = useState<EnrichedApp[]>([]);
+    const [data, setData] = useState<EnrichedAccount[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function loadData() {
             try {
-                const [apps, types] = await Promise.all([
-                    api.getAllApplications(),
-                    api.getAllProductTypes()
+                const [accounts, users] = await Promise.all([
+                    api.getAllAccounts(),
+                    api.getAllUsers()
                 ]);
 
-                const enriched = apps
-                    .map(app => ({ ...app, product: types.find(t => t.id === app.product_type_id) }))
-                    .filter(app => app.product?.category === 'accounts');
+                const enriched = accounts.map(acc => ({ 
+                    ...acc, 
+                    user: users.find(u => u.id === acc.user_id) 
+                }));
 
                 setData(enriched);
             } finally {
@@ -35,52 +36,57 @@ export default function AdminAccountsPage() {
         loadData();
     }, []);
 
-    if (loading) return <div className="p-8">Loading applications...</div>;
+    if (loading) return <div className="p-8">Loading accounts...</div>;
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <GenericDataTable
-                title="Customer Account Applications"
-                description="Manage and review customer applications for savings and corporate accounts."
+                title="Customer Accounts"
+                description="Manage and review active customer accounts and balances."
                 data={data}
-                searchPlaceholder="Search by Reference ID..."
-                searchKey="id"
+                searchPlaceholder="Search by Account Number..."
+                searchKey="account_number"
                 columns={[
                     {
-                        header: "Reference",
-                        accessorKey: "id",
-                        cell: (item) => <span className="font-mono text-xs">{item.id.split('_')[1]?.toUpperCase()}</span>
+                        header: "Account No",
+                        accessorKey: "account_number",
+                        cell: (item) => <span className="font-mono text-sm tracking-widest">{item.account_number}</span>
                     },
                     {
-                        header: "Product",
-                        accessorKey: "product_type_id",
-                        cell: (item) => <span className="font-medium">{item.product?.name || 'Unknown'}</span>
+                        header: "Customer",
+                        accessorKey: "user_id",
+                        cell: (item) => (
+                            <div className="flex flex-col">
+                                <span className="font-medium text-sm">{item.user?.full_name || 'Unknown User'}</span>
+                                <span className="text-xs text-muted-foreground">{item.user?.email}</span>
+                            </div>
+                        )
+                    },
+                    {
+                        header: "Type",
+                        accessorKey: "account_type",
+                        cell: (item) => <span className="font-medium capitalize">{item.account_type.replace('-', ' ')}</span>
+                    },
+                    {
+                        header: "Balance",
+                        accessorKey: "balance",
+                        cell: (item) => <span className="font-bold">₦{item.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     },
                     {
                         header: "Status",
                         accessorKey: "status",
                         cell: (item) => (
-                            <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize">
+                            <Badge variant={item.status === 'active' ? 'default' : item.status === 'dormant' ? 'secondary' : 'destructive'} className="capitalize">
                                 {item.status}
                             </Badge>
                         )
-                    },
-                    {
-                        header: "Current Stage",
-                        accessorKey: "workflow_stage",
-                        cell: (item) => <span className="text-xs">{item.workflow_stage}</span>
-                    },
-                    {
-                        header: "Date Applied",
-                        accessorKey: "created_at",
-                        cell: (item) => new Date(item.created_at).toLocaleDateString()
                     },
                     {
                         header: "Action",
                         accessorKey: "id",
                         cell: (item) => (
                             <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/products/applications/${item.id}`}>
+                                <Link href={`/products/accounts/${item.id}`}>
                                     <Eye className="h-4 w-4 mr-2" /> View
                                 </Link>
                             </Button>
@@ -91,21 +97,25 @@ export default function AdminAccountsPage() {
                     <div key={item.id} className="border rounded-lg p-4 bg-background shadow-sm hover:shadow-md transition-shadow relative">
                         <div className="flex justify-between items-start mb-4 gap-2">
                             <div>
-                                <h3 className="font-semibold">{item.product?.name || 'Unknown'}</h3>
-                                <p className="text-xs text-muted-foreground font-mono mt-1">Ref: {item.id.split('_')[1]?.toUpperCase()}</p>
+                                <h3 className="font-semibold text-lg">{item.account_type}</h3>
+                                <p className="text-xs font-mono mt-1 text-primary tracking-widest">{item.account_number}</p>
                             </div>
-                            <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize shrink-0">
+                            <Badge variant={item.status === 'active' ? 'default' : item.status === 'dormant' ? 'secondary' : 'destructive'} className="capitalize shrink-0">
                                 {item.status}
                             </Badge>
                         </div>
-                        <div className="text-sm border-t pt-3 mb-4">
-                            <span className="text-muted-foreground block text-xs mb-1">Workflow Stage:</span>
-                            <span className="font-medium">{item.workflow_stage}</span>
+                        <div className="flex justify-between items-center text-sm border-y py-3 mb-4">
+                            <span className="text-muted-foreground">Balance</span>
+                            <span className="font-bold text-lg">₦{item.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between items-center text-xs text-muted-foreground mt-4">
+                        <div className="flex flex-col gap-1 mb-4 text-xs">
+                            <span className="text-muted-foreground">Owner</span>
+                            <span className="font-medium">{item.user?.full_name || 'Unknown'} ({item.user?.email})</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-muted-foreground">
                             <span>{new Date(item.created_at).toLocaleDateString()}</span>
                             <Button variant="outline" size="sm" asChild>
-                                <Link href={`/products/applications/${item.id}`}>Review</Link>
+                                <Link href={`/products/accounts/${item.id}`}>Manage</Link>
                             </Button>
                         </div>
                     </div>

@@ -13,15 +13,17 @@ import {
     PiggyBank,
     ArrowDownLeft,
     Zap,
-    ShoppingBag
+    ShoppingBag,
+    FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { api, Account, Loan, Transaction, User } from "@/lib/api";
+import { api, Account, Loan, Transaction, User, ProductApplication } from "@/lib/api";
 
 export default function ClientDashboard() {
     const [user, setUser] = useState<User | null>(null);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loans, setLoans] = useState<Loan[]>([]);
+    const [applications, setApplications] = useState<ProductApplication[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeframe, setTimeframe] = useState<'6M' | '1Y' | 'ALL'>('6M');
@@ -32,15 +34,18 @@ export default function ClientDashboard() {
         setIsMounted(true);
         async function loadData() {
             try {
-                const [userData, accountsData, loansData, txsData] = await Promise.all([
-                    api.getCurrentUser(),
-                    api.getAllAccounts(),
-                    api.getAllLoans(),
-                    api.getAllTransactions()
+                const user = await api.getCurrentUser();
+                if (!user) return;
+                const [accountsData, loansData, txsData, appsData] = await Promise.all([
+                    api.getUserAccounts(user.id),
+                    api.getUserLoans(user.id),
+                    api.getAllTransactions(), // Todo: user scoped transactions
+                    api.getUserApplications(user.id)
                 ]);
-                setUser(userData);
+                setUser(user);
                 setAccounts(accountsData);
                 setLoans(loansData);
+                setApplications(appsData);
                 setTransactions(txsData.slice(0, 4)); // Only top 4 recent
             } finally {
                 setLoading(false);
@@ -50,9 +55,8 @@ export default function ClientDashboard() {
     }, []);
 
     const totalLiquidity = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-    // Mock values for visual layout, using actual dynamic bases
-    const investmentYield = 1120450;
-    const availableCredit = 8500000;
+    const availableCredit = loans.reduce((sum, loan) => sum + loan.amount, 0);
+    const investmentYield = 0; // Keeping 0 for now until investments are built
     const portfolioValue = totalLiquidity + investmentYield + availableCredit;
 
     const chartData = useMemo(() => {
@@ -288,24 +292,77 @@ export default function ClientDashboard() {
                     </div>
 
                     <div className="bg-card rounded-2xl border divide-y shadow-sm">
-                        {transactions.map(tx => (
-                            <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors">
-                                <div className="flex items-center gap-4">
-                                    <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${tx.type === 'credit' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-muted-foreground'}`}>
-                                        {tx.type === 'credit' ? <ArrowDownLeft className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold">{tx.category}</p>
-                                        <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
-                                    </div>
-                                </div>
-                                <p className={`text-sm font-bold ${tx.type === 'credit' ? 'text-emerald-500' : ''}`}>
-                                    {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </p>
+                        {transactions.length === 0 ? (
+                            <div className="p-8 text-center text-muted-foreground text-sm flex flex-col items-center justify-center gap-2">
+                                <Receipt className="h-8 w-8 text-muted-foreground/50" />
+                                No recent activity
                             </div>
-                        ))}
+                        ) : (
+                            transactions.map(tx => (
+                                <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${tx.type === 'credit' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-muted-foreground'}`}>
+                                            {tx.type === 'credit' ? <ArrowDownLeft className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold">{tx.category}</p>
+                                            <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <p className={`text-sm font-bold ${tx.type === 'credit' ? 'text-emerald-500' : ''}`}>
+                                        {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
+
+                 {/* Recent Applications */}
+                 {applications.length > 0 && (
+                    <div className="lg:col-span-3 space-y-6 mt-6">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-xl font-bold tracking-tight">Recent Applications</h4>
+                            <div className="flex gap-2">
+                                <Link href="/my-products" className="text-xs font-bold text-primary hover:underline">
+                                    View Products
+                                </Link>
+                                <span className="text-muted-foreground text-xs">•</span>
+                                <Link href="/my-loans" className="text-xs font-bold text-primary hover:underline">
+                                    View Loans
+                                </Link>
+                            </div>
+                        </div>
+
+                        <div className="bg-card rounded-2xl border flex flex-col divide-y shadow-sm">
+                            {applications.slice(0, 3).map(app => (
+                                <div key={app.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/50 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                            <FileText className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold">Product Application #{app.id.substring(0, 8)}</p>
+                                            <p className="text-xs text-muted-foreground">Submitted on {new Date(app.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        {app.requested_amount && (
+                                            <p className="text-sm font-bold">₦{app.requested_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                        )}
+                                        <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                app.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                                    'bg-accent/50 text-muted-foreground border-border'
+                                            }`}>
+                                            {app.status === 'pending' ? app.workflow_stage : app.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
             </div>
 
             {/* Footer */}

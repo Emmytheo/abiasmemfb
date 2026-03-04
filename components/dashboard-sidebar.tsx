@@ -23,6 +23,7 @@ import {
     Workflow,
     Receipt,
     Clock,
+    FileText,
 } from "lucide-react";
 
 import {
@@ -61,6 +62,11 @@ const navGroups = [
                 title: "Accounts",
                 url: "/products/accounts",
                 icon: Landmark,
+            },
+            {
+                title: "Applications",
+                url: "/products/applications",
+                icon: FileText,
             },
             {
                 title: "Loans",

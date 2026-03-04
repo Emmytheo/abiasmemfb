@@ -63,22 +63,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 >
                     <PaletteProvider>
                         <SidebarProvider>
-                            <Suspense fallback={null}>
-                                <DashboardSidebar
-                                    variant="inset"
-                                    userName={userName}
-                                    userEmail={userEmail}
-                                />
-                            </Suspense>
+                            <DashboardSidebar
+                                variant="inset"
+                                userName={userName}
+                                userEmail={userEmail}
+                            />
 
                             <SidebarInset>
                                 <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background/80 px-6 backdrop-blur-sm transition-all duration-300">
                                     <div className="flex items-center gap-4">
                                         <SidebarTrigger className="-ml-2 hover:bg-muted/50 transition-colors" />
                                         <Separator orientation="vertical" className="h-6 opacity-50" />
-                                        <Suspense fallback={null}>
-                                            <DashboardBreadcrumb />
-                                        </Suspense>
+                                        <DashboardBreadcrumb />
                                     </div>
 
                                     <div className="flex items-center gap-2 sm:gap-4">
