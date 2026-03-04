@@ -19,6 +19,20 @@ import {
 export function ThemeCustomizer() {
     const { setTheme, theme } = useTheme()
     const { palette, setPalette } = usePalette()
+    const [mounted, setMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        return (
+            <Button variant="outline" size="icon" className="relative shrink-0">
+                <PaletteIcon className="h-[1.2rem] w-[1.2rem] transition-all" />
+                <span className="sr-only">Toggle theme and palette</span>
+            </Button>
+        )
+    }
 
     return (
         <DropdownMenu>

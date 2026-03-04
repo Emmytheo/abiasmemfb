@@ -24,7 +24,7 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
             try {
                 // Fetch all to find the specific one
                 const allApps = await api.getAllApplications();
-                const currentApp = allApps.find(a => a.id === applicationId);
+                const currentApp = allApps.find(a => String(a.id) === String(applicationId));
 
                 if (currentApp) {
                     setApp(currentApp);
