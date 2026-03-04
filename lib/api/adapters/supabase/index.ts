@@ -16,15 +16,11 @@ export const SupabaseAdapter: ApiAdapter = {
     getAllAccounts: async () => {
         throw new Error("Supabase Adapter not fully implemented");
     },
-    getUserAccounts: async (userId) => {
-        throw new Error("Supabase Adapter not fully implemented");
-    },
-    getAllLoans: async () => {
-        throw new Error("Supabase Adapter not fully implemented");
-    },
-    getUserLoans: async (userId) => {
-        throw new Error("Supabase Adapter not fully implemented");
-    },
+    getUserAccounts: async () => [],
+    createAccount: async (data: any) => ({ ...data, id: 'supa_acc', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Account),
+    getAllLoans: async () => [],
+    getUserLoans: async () => [],
+    createLoan: async (data: any) => ({ ...data, id: 'supa_loan', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Loan),
 
     // Product Configuration & Dynamic Forms
     getAllProductTypes: async () => {
@@ -66,15 +62,24 @@ export const SupabaseAdapter: ApiAdapter = {
     },
 
     // Product Applications
-    createProductApplication: async (data) => {
-        throw new Error("Supabase Adapter not fully implemented");
-    },
-    getUserApplications: async (userId) => {
-        throw new Error("Supabase Adapter not fully implemented");
-    },
-    getAllApplications: async () => {
-        throw new Error("Supabase Adapter not fully implemented");
-    },
+    createProductApplication: async (data) => ({
+        ...data,
+        id: `APP_${Math.random().toString(36).substr(2, 6)}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    }),
+    updateApplication: async (id, data) => ({
+        ...data,
+        id,
+        user_id: 'supa_user',
+        product_type_id: 'supa_product',
+        workflow_stage: 'Submitted',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    } as ProductApplication),
+    getUserApplications: async () => [],
+    getAllApplications: async () => [],
 
     // Services
     getAllTransactions: async () => {

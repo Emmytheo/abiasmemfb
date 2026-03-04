@@ -360,6 +360,35 @@ export const createProductApplication = async (data: Omit<ProductApplication, 'i
     }
 };
 
+export const updateApplication = async (id: string, data: Partial<ProductApplication>): Promise<ProductApplication> => {
+    try {
+        const payload = await initPayload();
+
+        let submitData = { ...data };
+
+        const doc = await payload.update({
+            collection: 'product-applications' as any,
+            id,
+            data: submitData as any,
+        });
+
+        return {
+            id: doc.id,
+            user_id: (doc as any).user_id,
+            product_type_id: typeof (doc as any).product_type_id === 'object' ? (doc.product_type_id as any).id || (doc as any).product_type_id : (doc as any).product_type_id,
+            status: (doc as any).status,
+            workflow_stage: (doc as any).workflow_stage,
+            submitted_data: (doc as any).submitted_data,
+            requested_amount: (doc as any).requested_amount,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        } as ProductApplication;
+    } catch (e) {
+        console.error("Payload updateApplication Error:", e);
+        throw e;
+    }
+};
+
 export const getUserApplications = async (userId: string): Promise<ProductApplication[]> => {
     try {
         const payload = await initPayload();
@@ -436,6 +465,35 @@ export const getAllAccounts = async (): Promise<Account[]> => {
     }
 };
 
+export const createAccount = async (data: Omit<Account, 'id' | 'created_at' | 'updated_at'>): Promise<Account> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.create({
+            collection: 'accounts' as any,
+            data: {
+                user_id: data.user_id,
+                account_number: data.account_number,
+                account_type: data.account_type,
+                balance: Math.round(data.balance * 100), // Naira to Kobo
+                status: data.status,
+            } as any,
+        });
+
+        return {
+            id: String(doc.id),
+            user_id: (doc as any).user_id,
+            account_number: (doc as any).account_number,
+            account_type: (doc as any).account_type,
+            balance: ((doc as any).balance ?? 0) / 100,
+            status: (doc as any).status,
+            created_at: doc.createdAt,
+        } as Account;
+    } catch (e) {
+        console.error("Payload createAccount Error:", e);
+        throw e;
+    }
+};
+
 export const getAllLoans = async (): Promise<Loan[]> => {
     try {
         const payload = await initPayload();
@@ -462,6 +520,45 @@ export const getAllLoans = async (): Promise<Loan[]> => {
     } catch (e) {
         console.error('Payload getAllLoans Error:', e);
         return [];
+    }
+};
+
+export const createLoan = async (data: Omit<Loan, 'id' | 'created_at' | 'updated_at'>): Promise<Loan> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.create({
+            collection: 'loans' as any,
+            data: {
+                user_id: data.user_id,
+                product_type: data.product_type_id, // Note: payload field is product_type
+                principal: Math.round(data.amount * 100),
+                interest_rate: data.interest_rate,
+                duration_months: data.duration_months,
+                outstanding_balance: Math.round(data.outstanding_balance * 100),
+                monthly_installment: Math.round(data.monthly_installment * 100),
+                next_payment_date: data.next_payment_date,
+                maturity_date: data.maturity_date,
+                status: data.status,
+            } as any,
+        });
+
+        return {
+            id: String(doc.id),
+            user_id: (doc as any).user_id,
+            product_type_id: typeof (doc as any).product_type === 'object' ? (doc as any).product_type.id : (doc as any).product_type,
+            amount: ((doc as any).principal ?? 0) / 100,
+            interest_rate: (doc as any).interest_rate ?? 0,
+            duration_months: (doc as any).duration_months ?? 0,
+            outstanding_balance: ((doc as any).outstanding_balance ?? 0) / 100,
+            monthly_installment: ((doc as any).monthly_installment ?? 0) / 100,
+            next_payment_date: (doc as any).next_payment_date,
+            maturity_date: (doc as any).maturity_date,
+            status: (doc as any).status,
+            created_at: doc.createdAt,
+        } as Loan;
+    } catch (e) {
+        console.error("Payload createLoan Error:", e);
+        throw e;
     }
 };
 

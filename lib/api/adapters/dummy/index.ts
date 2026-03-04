@@ -27,6 +27,11 @@ export const DummyAdapter: ApiAdapter = {
         return MOCK_ACCOUNTS.filter(a => a.user_id === userId);
     },
 
+    createAccount: async (data) => {
+        await delay(500);
+        return { ...data, id: `acc_${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    },
+
     getAllLoans: async () => {
         await delay(500);
         return MOCK_LOANS;
@@ -35,6 +40,11 @@ export const DummyAdapter: ApiAdapter = {
     getUserLoans: async (userId) => {
         await delay(400);
         return MOCK_LOANS.filter(l => l.user_id === userId);
+    },
+
+    createLoan: async (data) => {
+        await delay(500);
+        return { ...data, id: `loan_${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
     },
 
     // Product Configuration & Dynamic Forms
@@ -98,8 +108,22 @@ export const DummyAdapter: ApiAdapter = {
         await delay(800);
         return {
             ...data,
-            id: `app_${Math.random().toString(36).substring(7)}`,
+            id: `APP_${Math.random().toString(36).substr(2, 6)}`,
             created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+    },
+
+    updateApplication: async (id, data) => {
+        await delay(800);
+        return {
+            ...data,
+            id,
+            user_id: 'dummy_user', // Placeholder
+            product_type_id: 'dummy_product', // Placeholder
+            workflow_stage: 'Submitted', // Placeholder
+            status: 'pending', // Placeholder
+            created_at: new Date().toISOString(), // Placeholder
             updated_at: new Date().toISOString()
         };
     },
