@@ -1,4 +1,4 @@
-import { ApiAdapter } from '../../types';
+import { ApiAdapter, ProductApplication } from '../../types';
 import { MOCK_USERS, MOCK_ACCOUNTS, MOCK_LOANS, MOCK_TRANSACTIONS, MOCK_CONFIGS, MOCK_POSTS, MOCK_JOBS, MOCK_PRODUCT_TYPES, MOCK_APPLICATIONS } from './data';
 
 // Simulate network delay for realistic mock
@@ -111,7 +111,7 @@ export const DummyAdapter: ApiAdapter = {
             id: `APP_${Math.random().toString(36).substr(2, 6)}`,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-        };
+        } as ProductApplication;
     },
 
     updateApplication: async (id, data) => {
@@ -119,13 +119,14 @@ export const DummyAdapter: ApiAdapter = {
         return {
             ...data,
             id,
-            user_id: 'dummy_user', // Placeholder
-            product_type_id: 'dummy_product', // Placeholder
-            workflow_stage: 'Submitted', // Placeholder
-            status: 'pending', // Placeholder
-            created_at: new Date().toISOString(), // Placeholder
+            user_id: data.user_id || 'dummy_user', // Placeholder
+            product_type_id: data.product_type_id || 'dummy_product', // Placeholder
+            workflow_stage: data.workflow_stage || 'Submitted', // Placeholder
+            status: data.status || 'pending', // Placeholder
+            submitted_data: data.submitted_data || {},
+            created_at: data.created_at || new Date().toISOString(), // Placeholder
             updated_at: new Date().toISOString()
-        };
+        } as ProductApplication;
     },
 
     getUserApplications: async (userId) => {

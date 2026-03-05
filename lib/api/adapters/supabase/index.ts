@@ -1,4 +1,4 @@
-import { ApiAdapter } from '../../types';
+import { ApiAdapter, Account, Loan, ProductApplication } from '../../types';
 
 // TODO: Import your actual Supabase client and types here when ready.
 // import { createClient } from '@/lib/supabase/client';

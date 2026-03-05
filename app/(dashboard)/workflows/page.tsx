@@ -18,8 +18,8 @@ export default async function WorkflowsPage() {
     const workflows = workflowsRes.docs
 
     return (
-        <div className="p-8 max-w-7xl mx-auto flex flex-col gap-8">
-            <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col gap-6 sm:gap-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
                     <p className="text-muted-foreground mt-2">
@@ -35,7 +35,7 @@ export default async function WorkflowsPage() {
                 </Link>
             </div>
 
-            <div className="border rounded-xl shadow-sm bg-background overflow-visible">
+            <div className="border rounded-xl shadow-sm bg-background overflow-x-auto">
                 {workflows.length === 0 ? (
                     <div className="p-12 text-center text-muted-foreground">
                         <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">

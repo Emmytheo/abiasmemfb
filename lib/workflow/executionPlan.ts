@@ -55,18 +55,29 @@ export function FlowToExecutionPlan(
         for (const currentNode of nodes) {
             if (planned.has(currentNode.id)) continue
 
+            // 1. Strict topological dependency check based on ALL edges
+            const incomers = getIncomers(currentNode, nodes, edges)
+            const allIncomersPlanned = incomers.every((inc) => planned.has(inc.id))
+
+            if (!allIncomersPlanned) {
+                // Upstream not fully planned yet — skip to next phase
+                continue
+            }
+
+            // 2. Validate inputs check
             const invalidInputs = getInvalidInputs(currentNode, edges, planned)
             if (invalidInputs.length > 0) {
-                const incomers = getIncomers(currentNode, nodes, edges)
                 // If all upstream nodes are planned but we still have invalid inputs → real error
-                if (incomers.every((inc) => planned.has(inc.id))) {
-                    inputWithErrors.push({ nodeId: currentNode.id, inputs: invalidInputs })
-                } else {
-                    // Upstream not fully planned yet — skip to next phase
-                    continue
-                }
+                inputWithErrors.push({ nodeId: currentNode.id, inputs: invalidInputs })
+                continue
             }
+
             nextPhase.nodes.push(currentNode)
+        }
+
+        if (nextPhase.nodes.length === 0) {
+            // Prevent infinite loop if there's a cycle or disconnected subgraph
+            break
         }
 
         for (const n of nextPhase.nodes) planned.add(n.id)

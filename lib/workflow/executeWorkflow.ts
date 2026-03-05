@@ -37,7 +37,7 @@ export async function executeWorkflow(options: ExecuteOptions): Promise<string> 
 
     // 2. Idempotency Check (if enabled)
     let idempotencyKey = ''
-    if (workflow.idempotencyEnabled) {
+    if (workflow.idempotencyEnabled && trigger !== 'MANUAL') {
         idempotencyKey = generateIdempotencyKey(workflowId, trigger, inputData)
         const windowMinutes = workflow.idempotencyWindowMinutes ?? 60
         const check = await checkIdempotency(idempotencyKey, windowMinutes)
@@ -135,7 +135,10 @@ export async function executeWorkflow(options: ExecuteOptions): Promise<string> 
     // here up to Vercel's edge/lambda timeout, but optimally this belongs in a queue worker.
     // For standard Vercel lambda (15-60s limit), this loop works:
 
-    void runExecutionLoop(execution.id as string, payload, executionPlan, inputData ?? {}).catch(err => {
+    // Next.js (especially Vercel) terminates un-awaited background promises.
+    // By awaiting this, the API request stays open until the workflow finishes.
+    // This is safe for short workflows and guarantees execution runs to completion.
+    await runExecutionLoop(execution.id as string, payload, executionPlan, inputData ?? {}).catch(err => {
         console.error(`[Workflow Engine] Fatal loop error:`, err)
     })
 
@@ -166,12 +169,12 @@ async function runExecutionLoop(executionId: string, payload: any, plan: any[], 
         // Update DB: Mark these phase nodes as RUNNING
         await updatePhaseStatuses(payload, executionId, nodes.map(n => n.id), ExecutionPhaseStatus.RUNNING)
 
-        // Execute nodes in this topological phase concurrently
-        const promises = nodes.map(node =>
-            executeNode(node, phaseNumber, environment, payload, executionId, startInput)
-        )
-
-        const results = await Promise.all(promises)
+        // Execute nodes in this topological phase sequentially
+        // (This avoids race conditions where parallel operations fetch -> modify -> update the same 'phases' array in Payload)
+        const results = []
+        for (const node of nodes) {
+            results.push(await executeNode(node, phaseNumber, environment, payload, executionId, startInput))
+        }
 
         // Evaluate phase results
         for (const res of results) {

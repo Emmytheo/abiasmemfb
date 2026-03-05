@@ -26,8 +26,10 @@ export async function saveWorkflowDefinition(workflowId: string, definition: any
         const updateData: any = { definition }
         if (status) updateData.status = status
 
-        // When publishing, compile the execution plan from the canvas graph
-        if (status === 'PUBLISHED' && definition?.nodes && definition?.edges) {
+        const isPublishing = status === 'PUBLISHED' || (!status && existing.status === 'PUBLISHED')
+
+        // When publishing or updating a published workflow, compile the execution plan from the canvas graph
+        if (isPublishing && definition?.nodes) {
             const nodes = definition.nodes as AppNode[]
             const edges = definition.edges || []
 
@@ -36,7 +38,7 @@ export async function saveWorkflowDefinition(workflowId: string, definition: any
             if (result.error) {
                 const errorMsg = result.error.type === 'NO_ENTRY_POINT'
                     ? 'Workflow must have a Trigger node as entry point.'
-                    : `Some nodes have missing required inputs: ${result.error.invalidElements?.map(e => e.nodeId).join(', ')}`
+                    : `Some nodes have missing required inputs: ${result.error.invalidElements?.map((e: any) => e.nodeId).join(', ')}`
                 return { success: false, error: errorMsg }
             }
 

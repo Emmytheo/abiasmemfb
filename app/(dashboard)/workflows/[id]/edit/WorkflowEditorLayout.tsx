@@ -90,8 +90,8 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-muted/40 animate-in fade-in duration-200">
-            <header className="h-14 bg-background border-b flex items-center justify-between px-4 shrink-0">
-                <div className="flex items-center gap-4">
+            <header className="min-h-[3.5rem] py-2 bg-background border-b flex flex-wrap items-center justify-between gap-4 px-4 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
                     <Link href="/workflows" className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground">
                         <ArrowLeft size={18} />
                     </Link>
@@ -131,7 +131,7 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
                     <ThemeCustomizer />
                     <button
                         onClick={handleTestRun}
