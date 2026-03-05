@@ -21,6 +21,12 @@ export const SupabaseAdapter: ApiAdapter = {
     getAllLoans: async () => [],
     getUserLoans: async () => [],
     createLoan: async (data: any) => ({ ...data, id: 'supa_loan', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Loan),
+    getAccountById: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getLoanById: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
 
     // Product Configuration & Dynamic Forms
     getAllProductTypes: async () => {

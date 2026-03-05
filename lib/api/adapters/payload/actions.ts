@@ -587,6 +587,31 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
     }
 };
 
+export const getAccountById = async (accountId: string): Promise<Account | null> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.findByID({
+            collection: 'accounts' as any,
+            id: accountId,
+            depth: 1,
+        });
+        if (!doc) return null;
+
+        return {
+            id: String(doc.id),
+            user_id: doc.user_id,
+            account_number: doc.account_number,
+            account_type: doc.account_type,
+            balance: (doc.balance ?? 0) / 100, // kobo → Naira
+            status: doc.status,
+            created_at: doc.createdAt,
+        } as Account;
+    } catch (e) {
+        console.error('Payload getAccountById Error:', e);
+        return null;
+    }
+};
+
 export const getUserLoans = async (userId: string): Promise<Loan[]> => {
     try {
         const payload = await initPayload();
@@ -614,6 +639,36 @@ export const getUserLoans = async (userId: string): Promise<Loan[]> => {
     } catch (e) {
         console.error('Payload getUserLoans Error:', e);
         return [];
+    }
+};
+
+export const getLoanById = async (loanId: string): Promise<Loan | null> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.findByID({
+            collection: 'loans' as any,
+            id: loanId,
+            depth: 1,
+        });
+        if (!doc) return null;
+
+        return {
+            id: String(doc.id),
+            user_id: doc.user_id,
+            product_type_id: typeof doc.product_type === 'object' ? doc.product_type?.id : doc.product_type,
+            amount: (doc.principal ?? 0) / 100,
+            interest_rate: doc.interest_rate ?? 0,
+            duration_months: doc.duration_months ?? 0,
+            outstanding_balance: (doc.outstanding_balance ?? 0) / 100,
+            monthly_installment: (doc.monthly_installment ?? 0) / 100,
+            next_payment_date: doc.next_payment_date,
+            maturity_date: doc.maturity_date,
+            status: doc.status || 'pending',
+            created_at: doc.createdAt,
+        } as Loan;
+    } catch (e) {
+        console.error('Payload getLoanById Error:', e);
+        return null;
     }
 };
 

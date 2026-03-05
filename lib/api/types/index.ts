@@ -170,9 +170,11 @@ export interface ApiAdapter {
     // Products (Accounts, Loans)
     getAllAccounts: () => Promise<Account[]>;
     getUserAccounts: (userId: string) => Promise<Account[]>;
+    getAccountById: (id: string) => Promise<Account | null>;
     createAccount: (data: Omit<Account, 'id' | 'created_at' | 'updated_at'>) => Promise<Account>;
     getAllLoans: () => Promise<Loan[]>;
     getUserLoans: (userId: string) => Promise<Loan[]>;
+    getLoanById: (id: string) => Promise<Loan | null>;
     createLoan: (data: Omit<Loan, 'id' | 'created_at' | 'updated_at'>) => Promise<Loan>;
 
     // Product Configuration & Dynamic Forms

@@ -47,6 +47,16 @@ export const DummyAdapter: ApiAdapter = {
         return { ...data, id: `loan_${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
     },
 
+    getAccountById: async (id) => {
+        await delay(300);
+        return MOCK_ACCOUNTS.find(a => a.id === id) || null;
+    },
+
+    getLoanById: async (id) => {
+        await delay(300);
+        return MOCK_LOANS.find(l => l.id === id) || null;
+    },
+
     // Product Configuration & Dynamic Forms
     getAllProductClasses: async () => {
         await delay(300);

@@ -9,9 +9,11 @@ export const PayloadAdapter: ApiAdapter = {
     // Products (Accounts, Loans)
     getAllAccounts: actions.getAllAccounts,
     getUserAccounts: actions.getUserAccounts,
+    getAccountById: actions.getAccountById,
     createAccount: actions.createAccount,
     getAllLoans: actions.getAllLoans,
     getUserLoans: actions.getUserLoans,
+    getLoanById: actions.getLoanById,
     createLoan: actions.createLoan,
 
     // Product Configuration & Dynamic Forms
