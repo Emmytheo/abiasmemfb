@@ -70,7 +70,7 @@ function ApplicationDetailContent({ params }: { params: Promise<{ applicationId:
         : String(app.id).substring(0, 8).toUpperCase();
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24">
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24">
             <div className="flex items-center gap-3">
                 <Button variant="ghost" size="icon" asChild className="rounded-full">
                     <Link href="/applications">
