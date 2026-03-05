@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, Account, Loan, Transaction, User, ProductApplication } from "@/lib/api";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ClientDashboard() {
     const [user, setUser] = useState<User | null>(null);
@@ -34,15 +35,27 @@ export default function ClientDashboard() {
         setIsMounted(true);
         async function loadData() {
             try {
-                const user = await api.getCurrentUser();
-                if (!user) return;
+                // Get user directly from Supabase auth (api.getCurrentUser returns null in Payload adapter)
+                const supabase = createClient();
+                const { data: { user: supaUser } } = await supabase.auth.getUser();
+                if (!supaUser) return;
+
+                // Construct a User-like object from Supabase auth data
+                const currentUser: User = {
+                    id: supaUser.id,
+                    email: supaUser.email || '',
+                    full_name: supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0] || 'User',
+                    role: supaUser.user_metadata?.role || 'user',
+                    created_at: supaUser.created_at || new Date().toISOString(),
+                };
+
                 const [accountsData, loansData, txsData, appsData] = await Promise.all([
-                    api.getUserAccounts(user.id),
-                    api.getUserLoans(user.id),
+                    api.getUserAccounts(currentUser.id),
+                    api.getUserLoans(currentUser.id),
                     api.getAllTransactions(), // Todo: user scoped transactions
-                    api.getUserApplications(user.id)
+                    api.getUserApplications(currentUser.id)
                 ]);
-                setUser(user);
+                setUser(currentUser);
                 setAccounts(accountsData);
                 setLoans(loansData);
                 setApplications(appsData);
@@ -318,46 +331,42 @@ export default function ClientDashboard() {
                     </div>
                 </div>
 
-                 {/* Recent Applications */}
-                 {applications.length > 0 && (
+                {/* Recent Applications */}
+                {applications.length > 0 && (
                     <div className="lg:col-span-3 space-y-6 mt-6">
                         <div className="flex items-center justify-between">
                             <h4 className="text-xl font-bold tracking-tight">Recent Applications</h4>
-                            <div className="flex gap-2">
-                                <Link href="/my-products" className="text-xs font-bold text-primary hover:underline">
-                                    View Products
-                                </Link>
-                                <span className="text-muted-foreground text-xs">•</span>
-                                <Link href="/my-loans" className="text-xs font-bold text-primary hover:underline">
-                                    View Loans
-                                </Link>
-                            </div>
+                            <Link href="/applications" className="text-xs font-bold text-primary hover:underline">
+                                View All Applications
+                            </Link>
                         </div>
 
                         <div className="bg-card rounded-2xl border flex flex-col divide-y shadow-sm">
                             {applications.slice(0, 3).map(app => (
-                                <div key={app.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/50 transition-colors">
-                                    <div className="flex items-center gap-4">
-                                        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                            <FileText className="h-5 w-5" />
+                                <Link key={app.id} href={`/applications/${app.id}`} className="block">
+                                    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/50 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                                <FileText className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold">Product Application #{String(app.id).substring(0, 8)}</p>
+                                                <p className="text-xs text-muted-foreground">Submitted on {new Date(app.created_at).toLocaleDateString()}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold">Product Application #{app.id.substring(0, 8)}</p>
-                                            <p className="text-xs text-muted-foreground">Submitted on {new Date(app.created_at).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        {app.requested_amount && (
-                                            <p className="text-sm font-bold">₦{app.requested_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                                        )}
-                                        <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                        <div className="flex items-center gap-4">
+                                            {app.requested_amount != null && app.requested_amount > 0 && (
+                                                <p className="text-sm font-bold">₦{app.requested_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                            )}
+                                            <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                                                 app.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
                                                     'bg-accent/50 text-muted-foreground border-border'
-                                            }`}>
-                                            {app.status === 'pending' ? app.workflow_stage : app.status}
-                                        </span>
+                                                }`}>
+                                                {app.status === 'pending' ? (app.workflow_stage || 'Pending') : app.status}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </div>

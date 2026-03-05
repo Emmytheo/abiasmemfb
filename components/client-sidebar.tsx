@@ -17,7 +17,8 @@ import {
     History,
     Building,
     MailIcon,
-    PhoneCall
+    PhoneCall,
+    FileText
 } from "lucide-react";
 
 import {
@@ -58,7 +59,7 @@ const navGroups: NavGroup[] = [
     },
     {
         title: "My Portfolio",
-        minRole: "customer",
+        minRole: "user",
         items: [
             {
                 title: "My Assets & Accounts",
@@ -74,6 +75,11 @@ const navGroups: NavGroup[] = [
                 title: "Transaction History",
                 url: "/my-services",
                 icon: History,
+            },
+            {
+                title: "My Applications",
+                url: "/applications",
+                icon: FileText,
             },
         ],
     },
