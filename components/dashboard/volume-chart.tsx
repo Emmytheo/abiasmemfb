@@ -36,13 +36,7 @@ export function VolumeChart({ transactions }: { transactions: Transaction[] }) {
             }
         });
 
-        // Add some deterministic base volume so the chart isn't empty if no transactions or too sparse
-        const basePoints = dataPoints.map((val, i) => {
-            const pseudoRandom = (Math.sin(i * 1234) + 1) / 2;
-            return val + pseudoRandom * 50000 + 10000;
-        });
-
-        return { points: basePoints, labels };
+        return { points: dataPoints, labels };
     }, [transactions, timeframe, isMounted]);
 
     const width = 800;

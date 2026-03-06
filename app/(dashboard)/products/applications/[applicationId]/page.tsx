@@ -63,10 +63,9 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
         ? workflowStages[currentStageIndex + 1]
         : null;
 
-    // Determine the product category for account vs loan creation
-    const productCategory = product?.category || '';
-    const isAccountProduct = productCategory.toLowerCase().includes('account') || productCategory.toLowerCase().includes('savings') || productCategory.toLowerCase().includes('current');
-    const isLoanProduct = productCategory.toLowerCase().includes('loan') || productCategory.toLowerCase().includes('credit');
+    // Determine the product category for account vs loan creation reliably via blocks
+    const financialBlocks = product?.financial_terms || [];
+    const isLoanProduct = financialBlocks.some((t: any) => t.blockType === 'loan-terms');
 
     const handleAdvanceStage = async () => {
         if (!app) return;
@@ -191,11 +190,10 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
                     </div>
                 </div>
                 {/* Status Badge */}
-                <div className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider border ${
-                    isApproved ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
-                    isRejected ? 'bg-destructive/10 text-destructive border-destructive/30' :
-                    'bg-amber-500/10 text-amber-600 border-amber-500/30'
-                }`}>
+                <div className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider border ${isApproved ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
+                        isRejected ? 'bg-destructive/10 text-destructive border-destructive/30' :
+                            'bg-amber-500/10 text-amber-600 border-amber-500/30'
+                    }`}>
                     {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending Review'}
                 </div>
             </div>
@@ -326,7 +324,7 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
                                     <h4 className="font-bold text-emerald-700 dark:text-emerald-400">Application Approved</h4>
                                     <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mt-1">
                                         {isLoanProduct ? 'A loan has been created for the customer.' :
-                                         'An account has been created for the customer.'}
+                                            'An account has been created for the customer.'}
                                     </p>
                                 </div>
                             ) : isRejected ? (

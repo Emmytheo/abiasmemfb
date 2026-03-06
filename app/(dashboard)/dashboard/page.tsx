@@ -20,9 +20,14 @@ async function DashboardOverviewContent() {
     const loans = await api.getAllLoans();
     const transactions = await api.getAllTransactions();
     const users = await api.getAllUsers();
+    const products = await api.getAllProductTypes();
 
     const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
     const totalLoans = loans.reduce((acc, curr) => acc + curr.amount, 0);
+    const defaultedLoansList = loans.filter(l => l.status === 'defaulted' || l.status === 'written_off');
+    const totalDefaulted = defaultedLoansList.reduce((acc, curr) => acc + curr.amount, 0);
+    const npfRatio = totalLoans > 0 ? (totalDefaulted / totalLoans) * 100 : 0;
+
     const userCount = users.length;
 
     // Filter pending loans as an example
@@ -55,7 +60,7 @@ async function DashboardOverviewContent() {
                             <Wallet className="h-5 w-5" />
                         </div>
                     </div>
-                    <p className="text-3xl font-bold mb-1 tracking-tight">₦{(totalBalance + 4200000000).toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 2 })}</p>
+                    <p className="text-3xl font-bold mb-1 tracking-tight">₦{(totalBalance).toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 2 })}</p>
                     <div className="flex items-center gap-2">
                         <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
                             <TrendingUp className="h-4 w-4" />+2.4%
@@ -71,7 +76,7 @@ async function DashboardOverviewContent() {
                             <FileText className="h-5 w-5" />
                         </div>
                     </div>
-                    <p className="text-3xl font-bold mb-1 tracking-tight">₦{(totalLoans + 1820000000).toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 2 })}</p>
+                    <p className="text-3xl font-bold mb-1 tracking-tight">₦{(totalLoans).toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 2 })}</p>
                     <div className="flex items-center gap-2">
                         <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
                             <TrendingUp className="h-4 w-4" />+5.1%
@@ -87,7 +92,7 @@ async function DashboardOverviewContent() {
                             <Users className="h-5 w-5" />
                         </div>
                     </div>
-                    <p className="text-3xl font-bold mb-1 tracking-tight">{(userCount + 12500).toLocaleString()}</p>
+                    <p className="text-3xl font-bold mb-1 tracking-tight">{(userCount).toLocaleString()}</p>
                     <div className="flex items-center gap-2">
                         <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
                             <TrendingUp className="h-4 w-4" />+12.5%
@@ -103,10 +108,11 @@ async function DashboardOverviewContent() {
                             <AlertTriangle className="h-5 w-5" />
                         </div>
                     </div>
-                    <p className="text-3xl font-bold mb-1 tracking-tight">0.82%</p>
+                    <p className="text-3xl font-bold mb-1 tracking-tight">{npfRatio.toFixed(2)}%</p>
                     <div className="flex items-center gap-2">
-                        <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
-                            <TrendingDown className="h-4 w-4" />-0.12%
+                        <span className={`text-xs font-bold flex items-center gap-1 ${npfRatio > 5 ? 'text-destructive' : 'text-emerald-500'}`}>
+                            {npfRatio > 5 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                            {npfRatio > 5 ? 'High Risk' : 'Healthy'}
                         </span>
                         <span className="text-muted-foreground/60 text-[10px] uppercase font-bold tracking-wider">NPF Ratio</span>
                     </div>
@@ -139,40 +145,48 @@ async function DashboardOverviewContent() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {recentLoans.map((loan, idx) => (
-                                        <tr key={loan.id} className="hover:bg-muted/20 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="size-8 rounded bg-muted flex items-center justify-center font-bold text-xs text-muted-foreground">
-                                                        U{idx}
+                                    {recentLoans.map((loan, idx) => {
+                                        const loanUser = users.find(u => String(u.id) === String(loan.user_id));
+                                        const displayName = loanUser?.email?.split('@')[0] || `User ${loan.user_id.slice(0, 4)}`;
+                                        const initial = displayName.charAt(0).toUpperCase();
+
+                                        return (
+                                            <tr key={loan.id} className="hover:bg-muted/20 transition-colors group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-8 rounded bg-muted flex items-center justify-center font-bold text-xs text-muted-foreground uppercase">
+                                                            {initial}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold">{displayName}</p>
+                                                            <p className="text-[10px] text-muted-foreground">ID: #{loan.id.slice(0, 6)}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold">User {loan.user_id.slice(0, 4)}</p>
-                                                        <p className="text-[10px] text-muted-foreground">ID: #{loan.id.slice(0, 6)}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm font-medium text-muted-foreground italic">Business Loan</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm font-bold">₦{loan.amount.toLocaleString()}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${loan.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                                                    loan.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
-                                                        'bg-primary/10 text-primary border-primary/20'
-                                                    }`}>
-                                                    {loan.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-sm font-medium text-muted-foreground italic">
+                                                        {products.find(p => String(p.id) === String(loan.product_type_id))?.name || 'Unknown Loan'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-sm font-bold">₦{loan.amount.toLocaleString()}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${loan.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                                                        loan.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                                            'bg-primary/10 text-primary border-primary/20'
+                                                        }`}>
+                                                        {loan.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

@@ -12,6 +12,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import type { AppRole } from "@/lib/auth/roles";
+import { api } from "@/lib/api";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
     variable: "--font-sans",
@@ -36,7 +37,19 @@ export default async function ClientLayout({ children }: { children: React.React
         redirect("/auth/login");
     }
 
-    const role: AppRole = user.user_metadata?.role || "user";
+    let role: AppRole = user.user_metadata?.role || "user";
+
+    // Dynamically elevate to "customer" UI role if they have active products
+    if (role === "user") {
+        const [accounts, loans] = await Promise.all([
+            api.getUserAccounts(user.id).catch(() => []),
+            api.getUserLoans(user.id).catch(() => [])
+        ]);
+        if (accounts.length > 0 || loans.length > 0) {
+            role = "customer";
+        }
+    }
+
     const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User";
     const userEmail = user.email || "";
     const initials = userName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);

@@ -213,14 +213,14 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
 
             {/* Main Tabs */}
             <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 h-auto p-1 bg-muted/50">
-                    <TabsTrigger value="details" className="py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 !h-full p-2 bg-muted dark:bg-muted/20">
+                    <TabsTrigger value="details" className="py-2.5 data-[state=active]:bg-card dark:data-[state=active]:bg-background data-[state=active]:shadow-sm">
                         <FileText className="h-4 w-4 mr-2" /> Loan Profile
                     </TabsTrigger>
-                    <TabsTrigger value="schedule" className="py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <TabsTrigger value="schedule" className="py-2.5 data-[state=active]:bg-card dark:data-[state=active]:bg-background data-[state=active]:shadow-sm">
                         <Calendar className="h-4 w-4 mr-2" /> Repayment Schedule
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <TabsTrigger value="history" className="py-2.5 data-[state=active]:bg-card dark:data-[state=active]:bg-background data-[state=active]:shadow-sm">
                         <Clock className="h-4 w-4 mr-2" /> Activity History
                     </TabsTrigger>
                 </TabsList>

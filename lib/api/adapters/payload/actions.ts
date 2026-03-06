@@ -1,5 +1,7 @@
 "use server";
 
+import { createClient } from '@supabase/supabase-js';
+
 import { User, Account, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition } from '../../types';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
@@ -17,17 +19,34 @@ export const getCurrentUser = async (): Promise<User | null> => null;
 
 export const getAllUsers = async (): Promise<User[]> => {
     try {
-        const payload = await initPayload();
-        const users = await payload.find({ collection: 'users' as any });
-        return users.docs.map(doc => ({
-            id: doc.id as string,
-            email: doc.email as string,
-            full_name: (doc as any).full_name || 'Admin',
-            role: (doc as any).role || 'admin',
-            created_at: doc.createdAt as string,
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error("Missing Supabase configuration. Cannot fetch users.");
+            return [];
+        }
+
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            {
+                auth: { persistSession: false, autoRefreshToken: false },
+            }
+        );
+
+        // Using pages to bypass the default 50 limits (if an app gets large)
+        // For now, limiting to 250 users
+        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+
+        if (error) throw error;
+
+        return users.map(u => ({
+            id: u.id,
+            email: u.email || '',
+            full_name: u.user_metadata?.full_name || u.email?.split('@')[0] || 'Unknown User',
+            role: (u.user_metadata?.role as any) || 'customer',
+            created_at: u.created_at,
         }));
     } catch (e) {
-        console.error("Payload getAllUsers Error:", e);
+        console.error("Supabase Admin getAllUsers Error:", e);
         return [];
     }
 };
