@@ -20,4 +20,6 @@ export type ExecutionEnvironment<T extends WorkflowTask> = {
     getProvider: (providerId: string) => Promise<import('./provider').ServiceProvider | null>
     /** Direct access to the Payload CMS instance for executors that create/update records */
     payload?: any
+    /** The actual ID of the current running execution document */
+    executionId: string
 }

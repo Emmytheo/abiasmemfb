@@ -30,6 +30,7 @@ import { Service, ServiceCategory } from "@/lib/api/types";
 export default function ServicesPage() {
     const [data, setData] = React.useState<Service[]>([]);
     const [categories, setCategories] = React.useState<ServiceCategory[]>([]);
+    const [workflows, setWorkflows] = React.useState<{ id: string, name: string }[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
 
@@ -39,12 +40,14 @@ export default function ServicesPage() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [servicesReq, categoriesReq] = await Promise.all([
+            const [servicesReq, categoriesReq, workflowsReq] = await Promise.all([
                 api.getAllServices(),
-                api.getServiceCategories()
+                api.getServiceCategories(),
+                api.getWorkflows()
             ]);
             setData(servicesReq);
             setCategories(categoriesReq);
+            setWorkflows(workflowsReq.docs || []);
         } catch (error) {
             console.error("Failed to load services:", error);
         } finally {
@@ -69,14 +72,23 @@ export default function ServicesPage() {
             return;
         }
 
+        const executionWf = formData.get("execution_workflow") as string;
+        const validationWf = formData.get("validation_workflow") as string;
+        const categoryId = formData.get("category") as string;
+
+        if (!categoryId) {
+            toast.error("Please select a Category.");
+            return;
+        }
+
         try {
             const newService = await api.createService({
                 name: formData.get("name") as string,
-                category: formData.get("category") as string,
+                category: categoryId,
                 provider: undefined, // Setup later or manually
                 provider_service_code: formData.get("provider_service_code") as string,
-                validation_workflow: undefined,
-                execution_workflow: undefined,
+                validation_workflow: validationWf || undefined,
+                execution_workflow: executionWf || undefined,
                 fee_type: formData.get("fee_type") as any,
                 fee_value: Number(formData.get("fee_value")) || 0,
                 form_schema: parsedSchema,
@@ -108,11 +120,22 @@ export default function ServicesPage() {
             return;
         }
 
+        const executionWf = formData.get("execution_workflow") as string;
+        const validationWf = formData.get("validation_workflow") as string;
+        const categoryId = formData.get("category") as string;
+
+        if (!categoryId) {
+            toast.error("Please select a Category.");
+            return;
+        }
+
         try {
             await api.updateService(selectedItem.id, {
                 name: formData.get("name") as string,
-                category: formData.get("category") as string,
+                category: categoryId,
                 provider_service_code: formData.get("provider_service_code") as string,
+                validation_workflow: validationWf || undefined,
+                execution_workflow: executionWf || undefined,
                 fee_type: formData.get("fee_type") as any,
                 fee_value: Number(formData.get("fee_value")) || 0,
                 form_schema: parsedSchema,
@@ -187,7 +210,7 @@ export default function ServicesPage() {
                                 <Plus className="mr-2 h-4 w-4" /> Add Service
                             </Button>
                         </SheetTrigger>
-                        <SheetContent className="overflow-y-auto sm:max-w-xl p-6">
+                        <SheetContent className="overflow-y-auto w-full sm:max-w-xl p-4 sm:p-6">
                             <SheetHeader className="mb-6">
                                 <SheetTitle>Create New Service</SheetTitle>
                                 <SheetDescription>
@@ -195,7 +218,7 @@ export default function ServicesPage() {
                                 </SheetDescription>
                             </SheetHeader>
                             <form onSubmit={handleCreate} className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Service Name</Label>
                                         <Input id="name" name="name" required placeholder="e.g. DSTV Premium" />
@@ -208,6 +231,7 @@ export default function ServicesPage() {
                                             required
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
+                                            <option value="" disabled selected>Select Category</option>
                                             {categories.map(cat => (
                                                 <option key={cat.id} value={cat.id}>{cat.name}</option>
                                             ))}
@@ -215,7 +239,7 @@ export default function ServicesPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="fee_type">Fee Type</Label>
                                         <select
@@ -233,6 +257,35 @@ export default function ServicesPage() {
                                     <div className="space-y-2">
                                         <Label htmlFor="fee_value">Fee / Surcharge Value</Label>
                                         <Input id="fee_value" name="fee_value" type="number" step="0.01" defaultValue={0} required />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="validation_workflow">Validation Workflow (Optional)</Label>
+                                        <select
+                                            id="validation_workflow"
+                                            name="validation_workflow"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="">None</option>
+                                            {workflows.map(wf => (
+                                                <option key={wf.id} value={wf.id}>{wf.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="execution_workflow">Execution Workflow <span className="text-destructive">*</span></Label>
+                                        <select
+                                            id="execution_workflow"
+                                            name="execution_workflow"
+                                            required
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="" disabled selected>Select Workflow</option>
+                                            {workflows.map(wf => (
+                                                <option key={wf.id} value={wf.id}>{wf.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
 
@@ -303,7 +356,7 @@ export default function ServicesPage() {
 
             {/* View/Edit Modal via Sheet */}
             <Sheet open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <SheetContent className="overflow-y-auto sm:max-w-xl p-6">
+                <SheetContent className="overflow-y-auto w-full sm:max-w-xl p-4 sm:p-6">
                     <SheetHeader className="mb-6">
                         <SheetTitle>Edit Service</SheetTitle>
                         <SheetDescription>
@@ -316,7 +369,7 @@ export default function ServicesPage() {
                                 <Label>Service ID</Label>
                                 <Input value={selectedItem.id} disabled className="bg-muted text-xs font-mono" />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-name">Service Name</Label>
                                     <Input id="edit-name" name="name" defaultValue={selectedItem.name} required />
@@ -340,7 +393,7 @@ export default function ServicesPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-fee_type">Fee Type</Label>
                                     <select
@@ -359,6 +412,38 @@ export default function ServicesPage() {
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-fee_value">Fee / Surcharge Value</Label>
                                     <Input id="edit-fee_value" name="fee_value" type="number" step="0.01" defaultValue={selectedItem.fee_value} required />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-validation_workflow">Validation Workflow (Optional)</Label>
+                                    <select
+                                        id="edit-validation_workflow"
+                                        name="validation_workflow"
+                                        defaultValue={typeof selectedItem.validation_workflow === 'object' ? (selectedItem.validation_workflow as any)?.id : selectedItem.validation_workflow || ''}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="">None</option>
+                                        {workflows.map(wf => (
+                                            <option key={wf.id} value={wf.id}>{wf.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-execution_workflow">Execution Workflow <span className="text-destructive">*</span></Label>
+                                    <select
+                                        id="edit-execution_workflow"
+                                        name="execution_workflow"
+                                        required
+                                        defaultValue={typeof selectedItem.execution_workflow === 'object' ? (selectedItem.execution_workflow as any)?.id : selectedItem.execution_workflow || ''}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="" disabled>Select Workflow</option>
+                                        {workflows.map(wf => (
+                                            <option key={wf.id} value={wf.id}>{wf.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 

@@ -153,7 +153,7 @@ export default function ServiceCategoriesPage() {
                                 <Plus className="mr-2 h-4 w-4" /> Add Category
                             </Button>
                         </SheetTrigger>
-                        <SheetContent className="overflow-y-auto sm:max-w-md p-6">
+                        <SheetContent className="overflow-y-auto w-full sm:max-w-md p-4 sm:p-6">
                             <SheetHeader className="mb-6">
                                 <SheetTitle>Create New Category</SheetTitle>
                                 <SheetDescription>
@@ -225,7 +225,7 @@ export default function ServiceCategoriesPage() {
 
             {/* View/Edit Modal via Sheet */}
             <Sheet open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <SheetContent className="sm:max-w-md overflow-y-auto w-[400px] p-6">
+                <SheetContent className="overflow-y-auto w-full sm:max-w-md p-4 sm:p-6">
                     <SheetHeader className="mb-6">
                         <SheetTitle>Category Details</SheetTitle>
                         <SheetDescription>

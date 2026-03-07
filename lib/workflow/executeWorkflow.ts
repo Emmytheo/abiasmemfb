@@ -284,7 +284,10 @@ async function executeNode(
             if (outputName === '__approvalGatePause__') isPausedForApproval = true
             environment[`${node.id}.${outputName}`] = value
         },
+        getEnvironment: () => environment,
         log: logCollector,
+        payload,
+        executionId,
         resolveSecret: async (id: string) => resolveSecret(id),
         getProvider: async (id: string) => {
             return await payload.findByID({ collection: 'service-providers', id }).catch(() => null)
@@ -292,15 +295,39 @@ async function executeNode(
     }
 
     const startTime = Date.now()
+
+    console.log(`\n[Workflow Engine] Phase ${phaseNumber} | Executing Node: ${node.data.type} (${node.id})`)
+    const resolvedInputs: Record<string, any> = {}
+    for (const key of Object.keys(node.data.inputs || {})) {
+        resolvedInputs[key] = nodeEnvApi.getInput(key)
+    }
+    console.log(`[Workflow Engine] -> Inputs:`, JSON.stringify(resolvedInputs))
+
     try {
         success = await executorFn(nodeEnvApi as any)
+        if (success) {
+            console.log(`[Workflow Engine] -> SUCCESS. Execution took ${Date.now() - startTime}ms`)
+            const nodeOutputs: Record<string, any> = {}
+            for (const key of Object.keys(environment)) {
+                if (key.startsWith(`${node.id}.`)) {
+                    nodeOutputs[key.substring(node.id.length + 1)] = environment[key]
+                }
+            }
+            console.log(`[Workflow Engine] -> Outputs:`, JSON.stringify(nodeOutputs))
+
+        } else {
+            console.error(`[Workflow Engine] -> FAILED.`)
+            console.error(`[Workflow Engine] -> Logs:`, JSON.stringify(logCollector.getAll(), null, 2))
+        }
     } catch (err: any) {
         logCollector.error(`Uncaught executor error: ${err.message}`)
+        console.error(`[Workflow Engine] -> CAUGHT EXCEPTION: ${err.message}`)
         success = false
     }
 
     // Handle APPROVAL_GATE pause mechanism
     if (!success && isPausedForApproval) {
+        console.log(`[Workflow Engine] -> PAUSED waiting for approval.`)
         const approvalData = JSON.parse(environment[`${node.id}.__approvalGatePause__`] || '{}')
         await payload.update({
             collection: 'workflow-executions',

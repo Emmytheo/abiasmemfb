@@ -169,6 +169,52 @@ export const DummyAdapter: ApiAdapter = {
         await delay(300);
         return [];
     },
+    getAllServices: async () => {
+        await delay(300);
+        return [];
+    },
+    createServiceCategory: async (data) => {
+        await delay(400);
+        return { ...data, id: `scat_${Date.now()}`, created_at: new Date().toISOString() } as any;
+    },
+    updateServiceCategory: async (id, data) => {
+        await delay(400);
+        return { id, ...data } as any;
+    },
+    deleteServiceCategory: async (id) => {
+        await delay(300);
+        return true;
+    },
+    createService: async (data) => {
+        await delay(400);
+        return { ...data, id: `svc_${Date.now()}`, created_at: new Date().toISOString() } as any;
+    },
+    updateService: async (id, data) => {
+        await delay(400);
+        return { id, ...data } as any;
+    },
+    deleteService: async (id) => {
+        await delay(300);
+        return true;
+    },
+    executeServiceWorkflow: async (serviceId, formData) => {
+        await delay(800);
+        return `exec_${Date.now()}`;
+    },
+    validateServiceWorkflow: async (serviceId, formData) => {
+        await delay(400);
+        return { valid: true };
+    },
+    getWorkflowExecutionById: async (executionId) => {
+        await delay(300);
+        return { id: executionId, status: 'completed' };
+    },
+
+    // Workflows
+    getWorkflows: async () => {
+        await delay(300);
+        return { docs: [] };
+    },
 
     // Settings
     getConfigsByCategory: async (category) => {

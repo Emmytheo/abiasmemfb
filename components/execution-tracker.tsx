@@ -108,8 +108,8 @@ export function ExecutionTracker({ executionId }: ExecutionTrackerProps) {
 
     return (
         <Card className={`max-w-xl mx-auto mt-8 border-2 shadow-sm ${config.border}`}>
-            <CardHeader className={`${config.bg} border-b ${config.border} pb-6 pt-8 items-center text-center space-y-4 rounded-t-lg`}>
-                <div className={`p-4 rounded-full bg-background shadow-sm ${config.color}`}>
+            <CardHeader className={`${config.bg} border-b ${config.border} pb-6 pt-8 items-center text-center space-y-4 rounded-t-lg justify-center flex flex-col`}>
+                <div className={`p-4 flex w-fit items-center justify-center rounded-full bg-background shadow-sm ${config.color}`}>
                     <StatusIcon className="h-8 w-8" />
                 </div>
                 <div>

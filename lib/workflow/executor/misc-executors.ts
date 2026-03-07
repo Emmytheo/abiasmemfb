@@ -25,22 +25,47 @@ export async function ValidateDataExecutor(env: ExecutionEnvironment<any>): Prom
 export async function MapFieldsExecutor(env: ExecutionEnvironment<any>): Promise<boolean> {
     const schema = env.getInput('schema')
 
-    if (!schema || typeof schema !== 'object') {
-        env.log.error('MapFields requires a valid JSON object schema.')
+    // Attempt to read explicit inputData mapping, but fallback to root TRIGGER_PAYLOAD
+    // because the Visual Builder UI does not inject an inputData field for MapFields!
+    const inputDataStr = env.getInput('inputData')
+    let inputData = typeof inputDataStr === 'string' ? JSON.parse(inputDataStr || '{}') : (inputDataStr || {})
+
+    // @ts-ignore - getEnvironment is injected dynamically by the engine
+    const globalEnv = typeof env.getEnvironment === 'function' ? env.getEnvironment() : {}
+
+    if (Object.keys(inputData).length === 0 && globalEnv['TRIGGER_PAYLOAD']) {
+        const rootPayload = globalEnv['TRIGGER_PAYLOAD']
+        // Trigger Payload is usually wrapped in { triggerPayload: { ... } }
+        inputData = rootPayload?.triggerPayload || rootPayload || {}
+    }
+
+    if (!schema) {
+        env.log.error('MapFields requires a valid schema.')
         return false
     }
 
-    // The values within the schema have already been interpolated by the `resolveVariables`
-    // function in executeWorkflow.ts before this executor is called.
-    for (const [key, value] of Object.entries(schema)) {
-        env.setOutput(key, value)
+    const mapped: Record<string, any> = {}
+
+    if (Array.isArray(schema)) {
+        for (const key of schema) {
+            const val = inputData[key]
+            mapped[key] = val
+            env.setOutput(key, val)
+        }
+    } else if (typeof schema === 'object') {
+        for (const [key, value] of Object.entries(schema)) {
+            mapped[key] = value
+            env.setOutput(key, value)
+        }
+    } else {
+        env.log.error('MapFields schema must be an array or object.')
+        return false
     }
 
-    env.setOutput('mappedObject', schema)
-    env.log.info(`MapFields: mapped ${Object.keys(schema).length} field(s)`)
+    env.setOutput('mappedObject', mapped)
+    env.log.info(`MapFields: mapped ${Object.keys(mapped).length} field(s)`)
     return true
 }
-
 export async function AutoApproveExecutor(env: ExecutionEnvironment<any>): Promise<boolean> {
     const inputData = env.getInput('inputData')
     const conditions = env.getInput('conditions') as string

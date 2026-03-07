@@ -876,9 +876,25 @@ export const deleteServiceCategory = async (id: string): Promise<boolean> => {
 export const createService = async (data: Omit<Service, 'id' | 'created_at'>): Promise<Service> => {
     try {
         const payload = await initPayload();
+
+        let submitData: any = { ...data };
+
+        // Payload Postgres often uses numeric IDs for relations. Cast if necessary.
+        if (typeof submitData.category === 'string' && !isNaN(Number(submitData.category))) {
+            submitData.category = Number(submitData.category);
+        }
+        if (typeof submitData.execution_workflow === 'string' && !isNaN(Number(submitData.execution_workflow))) {
+            submitData.execution_workflow = Number(submitData.execution_workflow);
+        }
+        if (typeof submitData.validation_workflow === 'string' && submitData.validation_workflow !== '' && !isNaN(Number(submitData.validation_workflow))) {
+            submitData.validation_workflow = Number(submitData.validation_workflow);
+        } else if (submitData.validation_workflow === '') {
+            delete submitData.validation_workflow;
+        }
+
         const doc = await payload.create({
             collection: 'services' as any,
-            data: data as any,
+            data: submitData,
         });
         return { ...data, id: String(doc.id), created_at: doc.createdAt } as Service;
     } catch (e) {
@@ -890,10 +906,24 @@ export const createService = async (data: Omit<Service, 'id' | 'created_at'>): P
 export const updateService = async (id: string, data: Partial<Service>): Promise<Service> => {
     try {
         const payload = await initPayload();
+
+        let submitData: any = { ...data };
+        if (typeof submitData.category === 'string' && !isNaN(Number(submitData.category))) {
+            submitData.category = Number(submitData.category);
+        }
+        if (typeof submitData.execution_workflow === 'string' && !isNaN(Number(submitData.execution_workflow))) {
+            submitData.execution_workflow = Number(submitData.execution_workflow);
+        }
+        if (typeof submitData.validation_workflow === 'string' && submitData.validation_workflow !== '' && !isNaN(Number(submitData.validation_workflow))) {
+            submitData.validation_workflow = Number(submitData.validation_workflow);
+        } else if (submitData.validation_workflow === '') {
+            submitData.validation_workflow = null;
+        }
+
         const doc = await payload.update({
             collection: 'services' as any,
             id,
-            data: data as any,
+            data: submitData,
         });
         return {
             id: String(doc.id),
@@ -965,6 +995,28 @@ export const executeServiceWorkflow = async (serviceId: string, formData: Record
     } catch (e) {
         console.error("Payload executeServiceWorkflow Error:", e);
         throw e;
+    }
+};
+
+export const getWorkflows = async (): Promise<{ docs: { id: string, name: string }[] }> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'workflows' as any,
+            where: { status: { equals: 'PUBLISHED' } },
+            depth: 0,
+            limit: 100,
+            sort: '-createdAt',
+        });
+        return {
+            docs: docs.map((doc: any) => ({
+                id: String(doc.id),
+                name: doc.name,
+            }))
+        };
+    } catch (e) {
+        console.error("Payload getWorkflows Error:", e);
+        return { docs: [] };
     }
 };
 

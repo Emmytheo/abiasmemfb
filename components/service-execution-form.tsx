@@ -15,12 +15,34 @@ interface ServiceExecutionFormProps {
     service: Service | null;
 }
 
+import { createClient } from "@/lib/supabase/client";
+
 export function ServiceExecutionForm({ service }: ServiceExecutionFormProps) {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isValidating, setIsValidating] = useState(false);
     const [formData, setFormData] = useState<Record<string, string>>({});
     const [validationData, setValidationData] = useState<Record<string, any>>({});
+    const [accounts, setAccounts] = useState<any[]>([]);
+    const [sourceAccountId, setSourceAccountId] = useState<string>('');
+
+    React.useEffect(() => {
+        if (!service) return;
+        async function fetchAccounts() {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const userAccounts = await api.getUserAccounts(user.id);
+                setAccounts(userAccounts);
+                if (userAccounts.length > 0) {
+                    const defaultAccountId = String(userAccounts[0].id);
+                    setSourceAccountId(defaultAccountId);
+                    setFormData(prev => ({ ...prev, sourceAccountId: defaultAccountId }));
+                }
+            }
+        }
+        fetchAccounts();
+    }, [service]);
 
     if (!service) {
         return (
@@ -47,8 +69,6 @@ export function ServiceExecutionForm({ service }: ServiceExecutionFormProps) {
         if (fieldSchema?.triggers_validation && value.length > 3) {
             setIsValidating(true);
             try {
-                // If it triggers validation, we might call the validation workflow
-                // Real implementation varies, but we simulate standard name enquiry here.
                 const res = await api.validateServiceWorkflow(service!.id, { ...formData, [name]: value });
                 if (res.valid) {
                     setValidationData(prev => ({ ...prev, [name]: 'Verified Account Name' }));
@@ -77,8 +97,20 @@ export function ServiceExecutionForm({ service }: ServiceExecutionFormProps) {
                 }
             }
 
+            if (!sourceAccountId) {
+                 toast.error("Please select a source account to fund this transaction.");
+                 setIsSubmitting(false);
+                 return;
+            }
+
+            // Merge dynamic form data with the required implicit session context
+            const payload = {
+                ...formData,
+                sourceAccountId
+            };
+
             // Execute via workflow engine
-            const executionId = await api.executeServiceWorkflow(service.id, formData);
+            const executionId = await api.executeServiceWorkflow(service.id, payload);
 
             toast.success(`${service.name} executed successfully!`);
 
@@ -95,6 +127,33 @@ export function ServiceExecutionForm({ service }: ServiceExecutionFormProps) {
 
     const renderField = (field: ServiceFormSchema) => {
         const id = `field-${field.name}`;
+
+        if (field.name === 'sourceAccountId') {
+            return (
+                <div key={field.name} className="space-y-2 mb-2 p-4 rounded-md border bg-accent/10">
+                    <label htmlFor={id} className="text-sm font-medium">
+                        Pay From (Source Account) <span className="text-destructive">*</span>
+                    </label>
+                    <select 
+                        id={id}
+                        value={sourceAccountId}
+                        onChange={e => {
+                            setSourceAccountId(e.target.value);
+                            setFormData(prev => ({ ...prev, [field.name]: e.target.value }));
+                        }}
+                        className="w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer"
+                        required
+                    >
+                        <option value="" disabled>Select an account...</option>
+                        {accounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>
+                                {acc.account_type} - {acc.account_number} (₦{acc.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            );
+        }
 
         if (field.type === 'select' || field.type === 'destination_bank_lookup') {
             const options = field.options ? field.options.split(',').map(o => o.trim()) : [];

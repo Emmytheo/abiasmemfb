@@ -34,8 +34,27 @@ export async function FundAccountExecutor(
     env.log.info(`FUND_ACCOUNT: Preparing to fund account ${targetAccountId} with ₦${amountNaira.toLocaleString()}`)
 
     try {
+        const resolveAccount = async (identifier: string) => {
+            // Postgres `serial` (integer) maxes out at 2,147,483,647.
+            // 10-digit NUBAN accounts (e.g. 3086167603) throw overflow errors if passed into findByID mapped to ID.
+            const isSafeInteger = !isNaN(Number(identifier)) && Number(identifier) > 0 && Number(identifier) < 2147483647
+
+            if (isSafeInteger) {
+                let doc = await payload.findByID({ collection: 'accounts', id: Number(identifier) }).catch(() => null)
+                if (doc) return doc
+            }
+
+            // Fallback: Query by account_number
+            const query = await payload.find({
+                collection: 'accounts',
+                where: { account_number: { equals: identifier } },
+                limit: 1
+            })
+            return query.docs[0] || null
+        }
+
         // 1. Fetch Target Account
-        const targetDoc = await payload.findByID({ collection: 'accounts', id: targetAccountId }).catch(() => null)
+        const targetDoc = await resolveAccount(targetAccountId)
 
         if (!targetDoc) {
             env.log.error(`FUND_ACCOUNT: Target account ${targetAccountId} not found`)
@@ -71,13 +90,15 @@ export async function FundAccountExecutor(
             }
         }
 
+        const actualTargetId = targetDoc.id as number
+
         // 3. Ledger Mutation
         const timestamp = new Date().toISOString()
         const newBalance = (targetDoc.balance ?? 0) + amountKobo
 
         await payload.update({
             collection: 'accounts',
-            id: targetAccountId,
+            id: actualTargetId,
             data: { balance: newBalance, last_transaction_at: timestamp },
         })
 
@@ -89,7 +110,7 @@ export async function FundAccountExecutor(
                 type: 'credit',
                 amount: amountKobo,
                 currency: 'NGN',
-                to_account: targetAccountId,
+                to_account: actualTargetId,
                 status: 'successful',
                 narration: 'Account Funding / Deposit',
                 channel: 'workflow',

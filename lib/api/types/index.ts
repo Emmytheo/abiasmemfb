@@ -217,6 +217,9 @@ export interface ApiAdapter {
     validateServiceWorkflow: (serviceId: string, formData: Record<string, any>) => Promise<any>;
     getWorkflowExecutionById: (executionId: string) => Promise<any>;
 
+    // Workflows
+    getWorkflows: () => Promise<{ docs: { id: string, name: string }[] }>;
+
     // Settings (Config)
     getConfigsByCategory: (category: SystemConfig['category']) => Promise<SystemConfig[]>;
 

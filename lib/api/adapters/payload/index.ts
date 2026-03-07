@@ -56,6 +56,9 @@ export const PayloadAdapter: ApiAdapter = {
     validateServiceWorkflow: actions.validateServiceWorkflow,
     getWorkflowExecutionById: actions.getWorkflowExecutionById,
 
+    // Workflows
+    getWorkflows: actions.getWorkflows,
+
     // Settings (Config)
     getConfigsByCategory: actions.getConfigsByCategory,
 

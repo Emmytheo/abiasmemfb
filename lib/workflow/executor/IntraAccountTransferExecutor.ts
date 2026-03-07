@@ -23,7 +23,8 @@ export async function IntraAccountTransferExecutor(
 
     const sourceAccountId: string = env.getInput('sourceAccountId') || ''
     const destinationAccountId: string = env.getInput('destinationAccountId') || ''
-    const amountNaira: number = Number(env.getInput('amountNaira') || 0)
+    // Allow forms to send either "amountNaira" or generic "amount"
+    const amountNaira: number = Number(env.getInput('amountNaira') || env.getInput('amount') || 0)
     const narration: string = env.getInput('narration') || 'Internal Transfer'
 
     // Optional integration flags
@@ -31,6 +32,15 @@ export async function IntraAccountTransferExecutor(
     const externalApiPayload: any = env.getInput('externalApiPayload')
 
     const amountKobo = Math.round(amountNaira * 100)
+
+    console.log('INTRA_ACCOUNT_TRANSFER: env:', env)
+    console.log('INTRA_ACCOUNT_TRANSFER: Source Account ID:', sourceAccountId)
+    console.log('INTRA_ACCOUNT_TRANSFER: Destination Account ID:', destinationAccountId)
+    console.log('INTRA_ACCOUNT_TRANSFER: Amount (Naira):', amountNaira)
+    console.log('INTRA_ACCOUNT_TRANSFER: Amount (Kobo):', amountKobo)
+    console.log('INTRA_ACCOUNT_TRANSFER: Narration:', narration)
+    console.log('INTRA_ACCOUNT_TRANSFER: External API URL:', externalApiUrl)
+    console.log('INTRA_ACCOUNT_TRANSFER: External API Payload:', externalApiPayload)
 
     if (!sourceAccountId || !destinationAccountId || amountKobo <= 0) {
         env.log.error('INTRA_ACCOUNT_TRANSFER: Missing required fields or invalid amount')
@@ -45,18 +55,41 @@ export async function IntraAccountTransferExecutor(
     env.log.info(`INTRA_ACCOUNT_TRANSFER: Preparing to transfer ₦${amountNaira.toLocaleString()} from ${sourceAccountId} to ${destinationAccountId}`)
 
     try {
-        // 1. Pre-flight Validation: Fetch both accounts
-        const sourceDoc = await payload.findByID({ collection: 'accounts', id: sourceAccountId }).catch(() => null)
-        const destDoc = await payload.findByID({ collection: 'accounts', id: destinationAccountId }).catch(() => null)
+        // 1. Pre-flight Validation: Resolve Accounts
+        // They could be Payload object IDs or 10-digit NUBAN account numbers.
+        const resolveAccount = async (identifier: string) => {
+            // Postgres `serial` (integer) maxes out at 2,147,483,647.
+            // 10-digit NUBAN accounts (e.g. 3086167603) throw overflow errors if passed into findByID mapped to ID.
+            const isSafeInteger = !isNaN(Number(identifier)) && Number(identifier) > 0 && Number(identifier) < 2147483647
+
+            if (isSafeInteger) {
+                let doc = await payload.findByID({ collection: 'accounts', id: Number(identifier) }).catch(() => null)
+                if (doc) return doc
+            }
+
+            // Fallback: Query by account_number
+            const query = await payload.find({
+                collection: 'accounts',
+                where: { account_number: { equals: identifier } },
+                limit: 1
+            })
+            return query.docs[0] || null
+        }
+
+        const sourceDoc = await resolveAccount(sourceAccountId)
+        const destDoc = await resolveAccount(destinationAccountId)
 
         if (!sourceDoc) {
-            env.log.error(`INTRA_ACCOUNT_TRANSFER: Source account ${sourceAccountId} not found`)
+            env.log.error(`INTRA_ACCOUNT_TRANSFER: Source account identifier '${sourceAccountId}' could not be resolved.`)
             return false
         }
         if (!destDoc) {
-            env.log.error(`INTRA_ACCOUNT_TRANSFER: Destination account ${destinationAccountId} not found`)
+            env.log.error(`INTRA_ACCOUNT_TRANSFER: Destination account identifier '${destinationAccountId}' could not be resolved.`)
             return false
         }
+
+        const actualSourceId = sourceDoc.id as number
+        const actualDestId = destDoc.id as number
 
         if (sourceDoc.status !== 'active' || destDoc.status !== 'active') {
             env.log.error(`INTRA_ACCOUNT_TRANSFER: One or both accounts are inactive`)
@@ -101,14 +134,14 @@ export async function IntraAccountTransferExecutor(
         // Update Source
         await payload.update({
             collection: 'accounts',
-            id: sourceAccountId,
+            id: actualSourceId,
             data: { balance: newSourceBalance, last_transaction_at: timestamp },
         })
 
         // Update Dest
         await payload.update({
             collection: 'accounts',
-            id: destinationAccountId,
+            id: actualDestId,
             data: { balance: newDestBalance, last_transaction_at: timestamp },
         })
 
@@ -121,8 +154,8 @@ export async function IntraAccountTransferExecutor(
                 type: 'transfer',
                 amount: amountKobo,
                 currency: 'NGN',
-                from_account: sourceAccountId,
-                to_account: destinationAccountId,
+                from_account: actualSourceId,
+                to_account: actualDestId,
                 status: 'successful',
                 narration: narration,
                 channel: 'workflow',
@@ -139,8 +172,8 @@ export async function IntraAccountTransferExecutor(
                 type: 'credit', // Inward transfer
                 amount: amountKobo,
                 currency: 'NGN',
-                from_account: sourceAccountId,
-                to_account: destinationAccountId,
+                from_account: actualSourceId,
+                to_account: actualDestId,
                 status: 'successful',
                 narration: narration,
                 channel: 'workflow',

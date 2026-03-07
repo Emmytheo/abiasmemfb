@@ -102,6 +102,41 @@ export const SupabaseAdapter: ApiAdapter = {
     getServicesByCategory: async (categorySlug) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+    getAllServices: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    createServiceCategory: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    updateServiceCategory: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    deleteServiceCategory: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    createService: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    updateService: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    deleteService: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    executeServiceWorkflow: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    validateServiceWorkflow: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getWorkflowExecutionById: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+
+    // Workflows
+    getWorkflows: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
 
     // Settings
     getConfigsByCategory: async (category) => {

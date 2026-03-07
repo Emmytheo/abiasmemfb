@@ -17,11 +17,12 @@ import {
     FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { api, Account, Loan, Transaction, User, ProductApplication } from "@/lib/api";
+import { api, Account, Loan, Transaction, User, ProductApplication, ServiceCategory } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ClientDashboard() {
     const [user, setUser] = useState<User | null>(null);
+    const [categories, setCategories] = useState<ServiceCategory[]>([]);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loans, setLoans] = useState<Loan[]>([]);
     const [applications, setApplications] = useState<ProductApplication[]>([]);
@@ -49,13 +50,15 @@ export default function ClientDashboard() {
                     created_at: supaUser.created_at || new Date().toISOString(),
                 };
 
-                const [accountsData, loansData, txsData, appsData] = await Promise.all([
+                const [accountsData, loansData, txsData, appsData, catsData] = await Promise.all([
                     api.getUserAccounts(currentUser.id),
                     api.getUserLoans(currentUser.id),
                     api.getAllTransactions(), // Todo: user scoped transactions
-                    api.getUserApplications(currentUser.id)
+                    api.getUserApplications(currentUser.id),
+                    api.getServiceCategories()
                 ]);
                 setUser(currentUser);
+                setCategories(catsData);
                 setAccounts(accountsData);
                 setLoans(loansData);
                 setApplications(appsData);
@@ -262,7 +265,7 @@ export default function ClientDashboard() {
                     <h4 className="text-xl font-bold tracking-tight">Quick Actions</h4>
                     <div className="grid grid-cols-1 gap-4">
 
-                        <button className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm">
+                        <Link href={`/pay/${categories.find(c => c.slug.toLowerCase().includes('transfer') || c.name.toLowerCase().includes('transfer'))?.slug || 'transfers'}`} className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm cursor-pointer">
                             <div className="size-12 rounded-lg bg-accent flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
                                 <Send className="h-5 w-5" />
                             </div>
@@ -270,9 +273,9 @@ export default function ClientDashboard() {
                                 <p className="font-bold">Transfer Funds</p>
                                 <p className="text-xs text-muted-foreground">Local and international</p>
                             </div>
-                        </button>
+                        </Link>
 
-                        <button className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm">
+                        <Link href={`/pay/${categories.find(c => c.slug.toLowerCase().includes('bill') || c.slug.toLowerCase().includes('utilit') || c.name.toLowerCase().includes('bill'))?.slug || 'utilities'}`} className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm cursor-pointer">
                             <div className="size-12 rounded-lg bg-accent flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
                                 <Receipt className="h-5 w-5" />
                             </div>
@@ -280,9 +283,9 @@ export default function ClientDashboard() {
                                 <p className="font-bold">Pay Bills</p>
                                 <p className="text-xs text-muted-foreground">Utilities, tax, and more</p>
                             </div>
-                        </button>
+                        </Link>
 
-                        <button className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm">
+                        <Link href="/applications" className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm cursor-pointer">
                             <div className="size-12 rounded-lg bg-accent flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
                                 <PiggyBank className="h-5 w-5" />
                             </div>
@@ -290,7 +293,7 @@ export default function ClientDashboard() {
                                 <p className="font-bold">Apply for Loan</p>
                                 <p className="text-xs text-muted-foreground">Instant wealth credit</p>
                             </div>
-                        </button>
+                        </Link>
 
                     </div>
                 </div>
