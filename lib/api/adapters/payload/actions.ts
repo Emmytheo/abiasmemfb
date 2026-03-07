@@ -2,10 +2,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-import { User, Account, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition } from '../../types';
+import { User, Account, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition, ServiceCategory, Service } from '../../types';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
 import { lexicalToHtml } from '@/lib/utils/lexical-to-html';
+import { executeWorkflow } from '@/lib/workflow/executeWorkflow';
 
 // Helper to initialize Payload Local API
 const initPayload = async () => {
@@ -721,6 +722,303 @@ export const getAllTransactions = async (): Promise<Transaction[]> => {
 export const getTransactionsByCategory = async (category: Transaction['category']): Promise<Transaction[]> => {
     const all = await getAllTransactions();
     return all.filter(t => t.category === category);
+};
+
+export const getServiceCategories = async (): Promise<ServiceCategory[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'service-categories' as any,
+            where: { status: { equals: 'active' } },
+            limit: 100,
+            sort: 'name',
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            name: doc.name,
+            slug: doc.slug,
+            description: doc.description,
+            icon: doc.icon,
+            status: doc.status,
+            created_at: doc.createdAt,
+        })) as ServiceCategory[];
+    } catch (e) {
+        console.error("Payload getServiceCategories Error:", e);
+        return [];
+    }
+};
+
+export const getServicesByCategory = async (categorySlug: string): Promise<Service[]> => {
+    try {
+        const payload = await initPayload();
+        // 1. First find the category ID from the slug
+        const { docs: catDocs } = await payload.find({
+            collection: 'service-categories' as any,
+            where: { slug: { equals: categorySlug } },
+            limit: 1,
+        });
+
+        if (!catDocs.length) return [];
+
+        const categoryId = catDocs[0].id;
+
+        // 2. Fetch services belonging to this category
+        const { docs } = await payload.find({
+            collection: 'services' as any,
+            where: {
+                and: [
+                    { category: { equals: categoryId } },
+                    { status: { equals: 'active' } }
+                ]
+            },
+            depth: 1,
+            limit: 200,
+            sort: 'name',
+        });
+
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            name: doc.name,
+            category: typeof doc.category === 'object' ? doc.category.id : doc.category,
+            provider: typeof doc.provider === 'object' ? doc.provider?.id : doc.provider,
+            provider_service_code: doc.provider_service_code,
+            validation_workflow: typeof doc.validation_workflow === 'object' ? doc.validation_workflow?.id : doc.validation_workflow,
+            execution_workflow: typeof doc.execution_workflow === 'object' ? doc.execution_workflow?.id : doc.execution_workflow,
+            fee_type: doc.fee_type,
+            fee_value: doc.fee_value,
+            form_schema: doc.form_schema || [],
+            status: doc.status,
+            created_at: doc.createdAt,
+        })) as Service[];
+    } catch (e) {
+        console.error("Payload getServicesByCategory Error:", e);
+        return [];
+    }
+};
+
+export const getAllServices = async (): Promise<Service[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'services' as any,
+            depth: 1, // Get names of category/provider if needed
+            limit: 500,
+            sort: 'name',
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            name: doc.name,
+            category: typeof doc.category === 'object' ? doc.category.name : doc.category,
+            provider: typeof doc.provider === 'object' ? doc.provider?.name : doc.provider,
+            provider_service_code: doc.provider_service_code,
+            validation_workflow: typeof doc.validation_workflow === 'object' ? doc.validation_workflow?.id : doc.validation_workflow,
+            execution_workflow: typeof doc.execution_workflow === 'object' ? doc.execution_workflow?.id : doc.execution_workflow,
+            fee_type: doc.fee_type,
+            fee_value: doc.fee_value,
+            form_schema: doc.form_schema || [],
+            status: doc.status,
+            created_at: doc.createdAt,
+        })) as Service[];
+    } catch (e) {
+        console.error("Payload getAllServices Error:", e);
+        return [];
+    }
+};
+
+export const createServiceCategory = async (data: Omit<ServiceCategory, 'id' | 'created_at'>): Promise<ServiceCategory> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.create({
+            collection: 'service-categories' as any,
+            data: data as any,
+        });
+        return { ...data, id: String(doc.id), created_at: doc.createdAt } as ServiceCategory;
+    } catch (e) {
+        console.error("Payload createServiceCategory Error:", e);
+        throw e;
+    }
+};
+
+export const updateServiceCategory = async (id: string, data: Partial<ServiceCategory>): Promise<ServiceCategory> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.update({
+            collection: 'service-categories' as any,
+            id,
+            data: data as any,
+        });
+        return {
+            id: String(doc.id),
+            name: doc.name,
+            slug: doc.slug,
+            description: doc.description,
+            icon: doc.icon,
+            status: doc.status,
+            created_at: doc.createdAt,
+        } as ServiceCategory;
+    } catch (e) {
+        console.error("Payload updateServiceCategory Error:", e);
+        throw e;
+    }
+};
+
+export const deleteServiceCategory = async (id: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        await payload.delete({ collection: 'service-categories' as any, id });
+        return true;
+    } catch (e) {
+        console.error("Payload deleteServiceCategory Error:", e);
+        return false;
+    }
+};
+
+export const createService = async (data: Omit<Service, 'id' | 'created_at'>): Promise<Service> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.create({
+            collection: 'services' as any,
+            data: data as any,
+        });
+        return { ...data, id: String(doc.id), created_at: doc.createdAt } as Service;
+    } catch (e) {
+        console.error("Payload createService Error:", e);
+        throw e;
+    }
+};
+
+export const updateService = async (id: string, data: Partial<Service>): Promise<Service> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.update({
+            collection: 'services' as any,
+            id,
+            data: data as any,
+        });
+        return {
+            id: String(doc.id),
+            name: doc.name,
+            category: typeof doc.category === 'object' ? doc.category.id : doc.category,
+            provider: typeof doc.provider === 'object' ? doc.provider?.id : doc.provider,
+            provider_service_code: doc.provider_service_code,
+            validation_workflow: typeof doc.validation_workflow === 'object' ? doc.validation_workflow?.id : doc.validation_workflow,
+            execution_workflow: typeof doc.execution_workflow === 'object' ? doc.execution_workflow?.id : doc.execution_workflow,
+            fee_type: doc.fee_type,
+            fee_value: doc.fee_value,
+            form_schema: doc.form_schema || [],
+            status: doc.status,
+            created_at: doc.createdAt,
+        } as Service;
+    } catch (e) {
+        console.error("Payload updateService Error:", e);
+        throw e;
+    }
+};
+
+export const deleteService = async (id: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        await payload.delete({ collection: 'services' as any, id });
+        return true;
+    } catch (e) {
+        console.error("Payload deleteService Error:", e);
+        return false;
+    }
+};
+
+export const executeServiceWorkflow = async (serviceId: string, formData: Record<string, any>): Promise<string> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'services' as any,
+            where: { id: { equals: serviceId } },
+            depth: 0,
+            limit: 1,
+        });
+
+        if (!docs.length) {
+            throw new Error(`Service ${serviceId} not found`);
+        }
+
+        const service = docs[0];
+        const workflowId = typeof service.execution_workflow === 'object' ? service.execution_workflow?.id : service.execution_workflow;
+
+        if (!workflowId) {
+            throw new Error(`Service ${service.name} does not have an execution workflow configured.`);
+        }
+
+        // Pass the form data and the original service metadata into the workflow engine
+        const executionId = await executeWorkflow({
+            workflowId: String(workflowId),
+            trigger: 'MANUAL',
+            inputData: {
+                ...formData,
+                _serviceName: service.name,
+                _serviceId: service.id,
+                _providerServiceCode: service.provider_service_code,
+                _feeValue: service.fee_value,
+                _feeType: service.fee_type
+            }
+        });
+
+        return String(executionId);
+    } catch (e) {
+        console.error("Payload executeServiceWorkflow Error:", e);
+        throw e;
+    }
+};
+
+export const validateServiceWorkflow = async (serviceId: string, formData: Record<string, any>): Promise<any> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'services' as any,
+            where: { id: { equals: serviceId } },
+            depth: 0,
+            limit: 1,
+        });
+
+        if (!docs.length) {
+            throw new Error(`Service ${serviceId} not found`);
+        }
+
+        const service = docs[0];
+        const workflowId = typeof service.validation_workflow === 'object' ? service.validation_workflow?.id : service.validation_workflow;
+
+        if (!workflowId) {
+            // If no validation workflow is configured, just return success so the frontend knows to proceed
+            return { valid: true };
+        }
+
+        const executionId = await executeWorkflow({
+            workflowId: String(workflowId),
+            trigger: 'MANUAL',
+            inputData: formData
+        });
+
+        return { valid: true, executionId: String(executionId) };
+    } catch (e) {
+        console.error("Payload validateServiceWorkflow Error:", e);
+        throw e;
+    }
+};
+
+export const getWorkflowExecutionById = async (executionId: string): Promise<any> => {
+    try {
+        const payload = await initPayload();
+        // The ID might be an integer depending on Payload configuration for workflow-executions
+        const parsedId = !isNaN(Number(executionId)) ? Number(executionId) : executionId;
+
+        const doc = await payload.findByID({
+            collection: 'workflow-executions' as any,
+            id: parsedId,
+            depth: 1, // Get some basic relations if needed, but primarily we want the phases Array
+        });
+        return doc;
+    } catch (e) {
+        console.error("Payload getWorkflowExecutionById Error:", e);
+        return null;
+    }
 };
 
 export const getConfigsByCategory = async (category: SystemConfig['category']): Promise<SystemConfig[]> => [];

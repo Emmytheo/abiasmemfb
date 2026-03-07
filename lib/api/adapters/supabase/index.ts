@@ -95,6 +95,14 @@ export const SupabaseAdapter: ApiAdapter = {
         throw new Error("Supabase Adapter not fully implemented");
     },
 
+    // Service Integrations
+    getServiceCategories: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getServicesByCategory: async (categorySlug) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+
     // Settings
     getConfigsByCategory: async (category) => {
         throw new Error("Supabase Adapter not fully implemented");

@@ -23,6 +23,8 @@ import { ProviderHealthLogs } from './collections/ProviderHealthLogs'
 import { ScheduledJobs } from './collections/ScheduledJobs'
 import { CustomBlocks } from './collections/CustomBlocks'
 import { IdempotencyRecords } from './collections/IdempotencyRecords'
+import { ServiceCategories } from './collections/ServiceCategories'
+import { Services } from './collections/Services'
 // Digital Ledger collections
 import { Accounts } from './collections/Accounts'
 import { Loans } from './collections/Loans'
@@ -86,6 +88,8 @@ export default buildConfig({
         // Workflow Engine
         Workflows, WorkflowExecutions, ServiceProviders, Secrets,
         ProviderHealthLogs, ScheduledJobs, CustomBlocks, IdempotencyRecords,
+        // Service Pipeline
+        ServiceCategories, Services,
         // Digital Ledger
         Accounts, Loans, Transactions,
     ],

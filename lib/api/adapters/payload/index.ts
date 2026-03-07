@@ -42,6 +42,20 @@ export const PayloadAdapter: ApiAdapter = {
     getAllTransactions: actions.getAllTransactions,
     getTransactionsByCategory: actions.getTransactionsByCategory,
 
+    // Service Integrations
+    getServiceCategories: actions.getServiceCategories,
+    getServicesByCategory: actions.getServicesByCategory,
+    getAllServices: actions.getAllServices,
+    createServiceCategory: actions.createServiceCategory,
+    updateServiceCategory: actions.updateServiceCategory,
+    deleteServiceCategory: actions.deleteServiceCategory,
+    createService: actions.createService,
+    updateService: actions.updateService,
+    deleteService: actions.deleteService,
+    executeServiceWorkflow: actions.executeServiceWorkflow,
+    validateServiceWorkflow: actions.validateServiceWorkflow,
+    getWorkflowExecutionById: actions.getWorkflowExecutionById,
+
     // Settings (Config)
     getConfigsByCategory: actions.getConfigsByCategory,
 

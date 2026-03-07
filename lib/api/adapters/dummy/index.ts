@@ -160,6 +160,16 @@ export const DummyAdapter: ApiAdapter = {
         return MOCK_TRANSACTIONS.filter(t => t.category === category);
     },
 
+    // Service Integrations
+    getServiceCategories: async () => {
+        await delay(300);
+        return [];
+    },
+    getServicesByCategory: async (categorySlug) => {
+        await delay(300);
+        return [];
+    },
+
     // Settings
     getConfigsByCategory: async (category) => {
         await delay(300);

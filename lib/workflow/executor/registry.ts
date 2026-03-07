@@ -17,6 +17,8 @@ import { CustomBlockExecutor } from './CustomBlockExecutor'
 import { TransformDataExecutor } from './TransformDataExecutor'
 import { CreateAccountExecutor } from './CreateAccountExecutor'
 import { DisburseLoanExecutor } from './DisburseLoanExecutor'
+import { IntraAccountTransferExecutor } from './IntraAccountTransferExecutor'
+import { FundAccountExecutor } from './FundAccountExecutor'
 
 import {
     LoopExecutor,
@@ -60,6 +62,8 @@ export const ExecutorRegistry: RegistryType = {
     CREDIT_SCORE_CHECK: CreditScoreExecutor,
     CREATE_ACCOUNT: CreateAccountExecutor,
     DISBURSE_LOAN: DisburseLoanExecutor,
+    INTRA_ACCOUNT_TRANSFER: IntraAccountTransferExecutor,
+    FUND_ACCOUNT: FundAccountExecutor,
     SUB_WORKFLOW: SubWorkflowExecutor,
     CUSTOM_BLOCK: CustomBlockExecutor,
 }

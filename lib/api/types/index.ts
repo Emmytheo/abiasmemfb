@@ -203,6 +203,20 @@ export interface ApiAdapter {
     getAllTransactions: () => Promise<Transaction[]>;
     getTransactionsByCategory: (category: Transaction['category']) => Promise<Transaction[]>;
 
+    // Service Integrations
+    getServiceCategories: () => Promise<ServiceCategory[]>;
+    getServicesByCategory: (categorySlug: string) => Promise<Service[]>;
+    getAllServices: () => Promise<Service[]>;
+    createServiceCategory: (data: Omit<ServiceCategory, 'id' | 'created_at'>) => Promise<ServiceCategory>;
+    updateServiceCategory: (id: string, data: Partial<ServiceCategory>) => Promise<ServiceCategory>;
+    deleteServiceCategory: (id: string) => Promise<boolean>;
+    createService: (data: Omit<Service, 'id' | 'created_at'>) => Promise<Service>;
+    updateService: (id: string, data: Partial<Service>) => Promise<Service>;
+    deleteService: (id: string) => Promise<boolean>;
+    executeServiceWorkflow: (serviceId: string, formData: Record<string, any>) => Promise<string>;
+    validateServiceWorkflow: (serviceId: string, formData: Record<string, any>) => Promise<any>;
+    getWorkflowExecutionById: (executionId: string) => Promise<any>;
+
     // Settings (Config)
     getConfigsByCategory: (category: SystemConfig['category']) => Promise<SystemConfig[]>;
 
@@ -219,4 +233,40 @@ export interface ApiAdapter {
 
     // Careers
     getOpenPositions: () => Promise<JobPosition[]>;
+}
+
+export interface ServiceCategory {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    icon?: string;
+    status: 'active' | 'inactive';
+    created_at: string;
+}
+
+export interface ServiceFormSchema {
+    id: string;
+    name: string; // Internal variable name
+    label: string; // UI label
+    type: 'text' | 'number' | 'email' | 'select' | 'destination_bank_lookup';
+    required: boolean;
+    placeholder?: string;
+    options?: string; // Comma-separated options for 'select'
+    triggers_validation: boolean;
+}
+
+export interface Service {
+    id: string;
+    name: string;
+    category: string; // ServiceCategory ID
+    provider?: string; // ServiceProviders ID
+    provider_service_code?: string;
+    validation_workflow?: string; // Workflows ID
+    execution_workflow?: string; // Workflows ID
+    fee_type: 'none' | 'flat' | 'percentage' | 'tiered';
+    fee_value?: number;
+    form_schema: ServiceFormSchema[];
+    status: 'active' | 'inactive';
+    created_at: string;
 }

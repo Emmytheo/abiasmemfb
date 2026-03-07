@@ -83,11 +83,11 @@ const navGroups = [
     {
         title: "Services",
         items: [
-            { title: "Bills", url: "/services/bills", icon: Tag },
-            { title: "School Fees", url: "/services/school-fees", icon: GraduationCap },
-            { title: "Utilities", url: "/services/utilities", icon: Lightbulb },
-            { title: "e-Pins", url: "/services/e-pins", icon: Hash },
-            { title: "Internet Banking", url: "/services/internet-banking", icon: Wifi },
+            {
+                title: "Service Settings",
+                url: "/settings/service",
+                icon: Tag,
+            },
         ],
     },
     {

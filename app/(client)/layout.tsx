@@ -50,6 +50,9 @@ export default async function ClientLayout({ children }: { children: React.React
         }
     }
 
+    // Fetch dynamic Service Categories for the Sidebar
+    const serviceCategories = await api.getServiceCategories().catch(() => []);
+
     const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User";
     const userEmail = user.email || "";
     const initials = userName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -77,6 +80,7 @@ export default async function ClientLayout({ children }: { children: React.React
                                 userRole={role}
                                 userName={userName}
                                 userEmail={userEmail}
+                                serviceCategories={serviceCategories}
                             />
 
                             <SidebarInset>

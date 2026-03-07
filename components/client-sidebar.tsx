@@ -18,7 +18,8 @@ import {
     Building,
     MailIcon,
     PhoneCall,
-    FileText
+    FileText,
+    User
 } from "lucide-react";
 
 import {
@@ -38,11 +39,25 @@ import { Button } from "@/components/ui/button";
 import { NavUser } from "@/components/nav-user";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
+import { ServiceCategory } from "@/lib/api/types";
 
 type NavGroup = {
     title: string;
     items: { title: string; url: string; icon: any }[];
     minRole?: "user" | "customer";
+};
+
+const IconMap: Record<string, any> = {
+    tag: Tag,
+    wifi: Wifi,
+    user: User,
+    lightbulb: Lightbulb,
+    hash: Hash,
+    landmark: Landmark,
+    creditcard: CreditCard,
+    package: Package,
+    briefcase: Briefcase,
+    listordered: ListOrdered,
 };
 
 const navGroups: NavGroup[] = [
@@ -99,16 +114,7 @@ const navGroups: NavGroup[] = [
             },
         ],
     },
-    {
-        title: "Services Hub",
-        minRole: "customer",
-        items: [
-            { title: "Pay Bills", url: "/pay/bills", icon: Tag },
-            { title: "Utilities", url: "/pay/utilities", icon: Lightbulb },
-            { title: "e-Pins", url: "/pay/e-pins", icon: Hash },
-            { title: "Transfer Funds", url: "/pay/transfers", icon: Wifi },
-        ],
-    },
+    // Services Hub will be dynamically injected here
     {
         title: "Support & Settings",
         minRole: "user",
@@ -128,13 +134,29 @@ interface ClientSidebarProps extends React.ComponentProps<typeof Sidebar> {
     userRole?: "user" | "customer" | "admin";
     userName?: string;
     userEmail?: string;
+    serviceCategories?: ServiceCategory[];
 }
 
-export function ClientSidebar({ userRole = "user", userName, userEmail, ...props }: ClientSidebarProps) {
+export function ClientSidebar({ userRole = "user", userName, userEmail, serviceCategories = [], ...props }: ClientSidebarProps) {
     const roleLevel = ROLE_LEVEL[userRole] ?? 0;
 
+    // Dynamically insert the Services Hub group if there are active categories
+    const dynamicNavGroups = [...navGroups];
+    if (serviceCategories.length > 0) {
+        // Insert right before "Support & Settings" (which is the last item)
+        dynamicNavGroups.splice(dynamicNavGroups.length - 1, 0, {
+            title: "Services Hub",
+            minRole: "customer",
+            items: serviceCategories.map(cat => ({
+                title: cat.name,
+                url: `/pay/${cat.slug}`,
+                icon: IconMap[cat.icon?.toLowerCase() || ''] || Tag,
+            }))
+        });
+    }
+
     // Filter nav groups based on user role
-    const filteredGroups = navGroups.filter((group) => {
+    const filteredGroups = dynamicNavGroups.filter((group) => {
         const minLevel = ROLE_LEVEL[group.minRole || "user"] ?? 0;
         return roleLevel >= minLevel;
     });

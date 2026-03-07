@@ -469,6 +469,45 @@ export const TaskRegistry: Registry = {
         ],
     },
 
+    INTRA_ACCOUNT_TRANSFER: {
+        type: TaskType.INTRA_ACCOUNT_TRANSFER,
+        label: 'Intra-Bank Transfer',
+        icon: ArrowRightLeft,
+        category: TaskCategory.COMPLIANCE,
+        description: 'Transfers funds internally between two accounts. Creates Debit and Credit ledger entries.',
+        inputs: [
+            { name: 'sourceAccountId', type: TaskParamType.STRING, required: true, helperText: 'Payload ID of the Source Account' },
+            { name: 'destinationAccountId', type: TaskParamType.STRING, required: true, helperText: 'Payload ID of the Destination Account' },
+            { name: 'amountNaira', type: TaskParamType.NUMBER, required: true, helperText: 'Transfer amount (₦)' },
+            { name: 'narration', type: TaskParamType.STRING, required: false },
+            { name: 'externalApiUrl', type: TaskParamType.STRING, required: false, helperText: 'Optional: Gateway URL to ping before authorizing internal ledger movement' },
+            { name: 'externalApiPayload', type: TaskParamType.JSON, required: false, helperText: 'Optional: JSON payload to pass to gateway URL' },
+        ],
+        outputs: [
+            { name: 'transfer_reference', type: TaskParamType.STRING },
+            { name: 'status', type: TaskParamType.STRING },
+            { name: 'api_response', type: TaskParamType.JSON },
+        ],
+    },
+
+    FUND_ACCOUNT: {
+        type: TaskType.FUND_ACCOUNT,
+        label: 'Fund Account',
+        icon: CreditCard,
+        category: TaskCategory.COMPLIANCE,
+        description: 'Deposits funds into a target account from an external source (e.g. Card, USSD). Creates a Credit ledger entry.',
+        inputs: [
+            { name: 'targetAccountId', type: TaskParamType.STRING, required: true, helperText: 'Payload ID of the target Account' },
+            { name: 'amountNaira', type: TaskParamType.NUMBER, required: true, helperText: 'Deposit amount (₦)' },
+            { name: 'reference', type: TaskParamType.STRING, required: true, helperText: 'The external reference from Paystack/Flutterwave/WebHook' },
+            { name: 'externalApiUrl', type: TaskParamType.STRING, required: false, helperText: 'Optional: Gateway verification URL' },
+        ],
+        outputs: [
+            { name: 'deposit_reference', type: TaskParamType.STRING },
+            { name: 'new_balance', type: TaskParamType.STRING },
+        ],
+    },
+
     // ── Sub-flows & Custom ────────────────────────────────────────
     SUB_WORKFLOW: {
         type: TaskType.SUB_WORKFLOW,
