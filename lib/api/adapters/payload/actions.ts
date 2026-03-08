@@ -522,6 +522,7 @@ export const getAllLoans = async (): Promise<Loan[]> => {
             depth: 1,
             limit: 200,
             sort: '-createdAt',
+            overrideAccess: true,
         });
         return docs.map((doc: any) => ({
             id: String(doc.id),
@@ -591,6 +592,7 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
             depth: 1,
             limit: 100,
             sort: '-createdAt',
+            overrideAccess: true,
         });
         return docs.map((doc: any) => ({
             id: String(doc.id),
@@ -614,6 +616,7 @@ export const getAccountById = async (accountId: string): Promise<Account | null>
             collection: 'accounts' as any,
             id: accountId,
             depth: 1,
+            overrideAccess: true,
         });
         if (!doc) return null;
 
@@ -641,6 +644,7 @@ export const getUserLoans = async (userId: string): Promise<Loan[]> => {
             depth: 1,
             limit: 100,
             sort: '-createdAt',
+            overrideAccess: true,
         });
         return docs.map((doc: any) => ({
             id: String(doc.id),
@@ -700,6 +704,7 @@ export const getAllTransactions = async (): Promise<Transaction[]> => {
             depth: 1,
             limit: 500,
             sort: '-createdAt',
+            overrideAccess: true,
         });
         return docs.map((doc: any) => ({
             id: String(doc.id),
@@ -719,9 +724,101 @@ export const getAllTransactions = async (): Promise<Transaction[]> => {
     }
 };
 
+export const getTransactionById = async (id: string | number): Promise<Transaction | null> => {
+    try {
+        const payload = await initPayload();
+
+        // Ensure ID is passed correctly, whether number or string
+        const parsedId = isNaN(Number(id)) ? id : Number(id);
+
+        const { docs } = await payload.find({
+            collection: 'transactions' as any,
+            where: {
+                id: { equals: parsedId }
+            },
+            depth: 2,
+            limit: 1,
+            overrideAccess: true,
+        });
+
+        if (!docs || docs.length === 0) return null;
+        const doc = docs[0];
+
+        return {
+            id: String(doc.id),
+            user_id: typeof doc.to_account === 'object' && doc.to_account ? doc.to_account?.user_id ?? '' : '',
+            amount: (doc.amount ?? 0) / 100,
+            type: doc.type === 'credit' || doc.type === 'disbursement' ? 'credit' :
+                doc.type === 'transfer' ? 'transfer' :
+                    doc.type === 'repayment' ? 'repayment' :
+                        doc.type === 'fee' ? 'fee' :
+                            doc.type === 'interest' ? 'interest' : 'debit',
+            category: doc.category || 'Transfer',
+            status: doc.status,
+            reference: doc.reference,
+            narration: doc.narration,
+            from_account: doc.from_account, // Retain full object due to depth: 2
+            to_account: doc.to_account, // Retain full object due to depth: 2
+            workflow_execution: doc.workflow_execution,
+            balance_after: doc.balance_after !== undefined ? doc.balance_after / 100 : undefined,
+            metadata: doc.metadata,
+            created_at: doc.createdAt,
+        } as Transaction;
+
+    } catch (e) {
+        console.error('Payload getTransactionById Error:', e);
+        return null;
+    }
+};
+
+
 export const getTransactionsByCategory = async (category: Transaction['category']): Promise<Transaction[]> => {
     const all = await getAllTransactions();
     return all.filter(t => t.category === category);
+};
+
+export const getUserTransactions = async (userId: string): Promise<Transaction[]> => {
+    try {
+        const payload = await initPayload();
+        // 1. Get all user accounts
+        const userAccounts = await getUserAccounts(userId);
+        if (!userAccounts.length) return [];
+        const accountIds = userAccounts.map(a => a.id);
+
+        // 2. Fetch transactions where user is sender or receiver
+        const { docs } = await payload.find({
+            collection: 'transactions' as any,
+            where: {
+                or: [
+                    { from_account: { in: accountIds } },
+                    { to_account: { in: accountIds } }
+                ]
+            },
+            depth: 1,
+            limit: 200,
+            sort: '-createdAt',
+            overrideAccess: true,
+        });
+
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: typeof doc.to_account === 'object' && doc.to_account ? doc.to_account?.user_id ?? '' : '',
+            amount: (doc.amount ?? 0) / 100,
+            type: doc.type === 'credit' || doc.type === 'disbursement' ? 'credit' :
+                doc.type === 'transfer' ? 'transfer' :
+                    doc.type === 'repayment' ? 'repayment' :
+                        doc.type === 'fee' ? 'fee' :
+                            doc.type === 'interest' ? 'interest' : 'debit',
+            category: doc.category || 'Transfer',
+            status: doc.status,
+            reference: doc.reference,
+            narration: doc.narration,
+            created_at: doc.createdAt,
+        })) as Transaction[];
+    } catch (e) {
+        console.error('Payload getUserTransactions Error:', e);
+        return [];
+    }
 };
 
 export const getServiceCategories = async (): Promise<ServiceCategory[]> => {

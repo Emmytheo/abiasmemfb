@@ -40,6 +40,8 @@ export const PayloadAdapter: ApiAdapter = {
 
     // Services (Transactions)
     getAllTransactions: actions.getAllTransactions,
+    getUserTransactions: actions.getUserTransactions,
+    getTransactionById: actions.getTransactionById,
     getTransactionsByCategory: actions.getTransactionsByCategory,
 
     // Service Integrations

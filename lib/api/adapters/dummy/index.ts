@@ -155,6 +155,16 @@ export const DummyAdapter: ApiAdapter = {
         return MOCK_TRANSACTIONS;
     },
 
+    getUserTransactions: async (userId) => {
+        await delay(500);
+        return MOCK_TRANSACTIONS.filter(t => t.user_id === userId);
+    },
+
+    getTransactionById: async (id) => {
+        await delay(300);
+        return MOCK_TRANSACTIONS.find(t => t.id === String(id)) || null;
+    },
+
     getTransactionsByCategory: async (category) => {
         await delay(400);
         return MOCK_TRANSACTIONS.filter(t => t.category === category);

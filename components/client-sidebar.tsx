@@ -88,7 +88,7 @@ const navGroups: NavGroup[] = [
             },
             {
                 title: "Transaction History",
-                url: "/my-services",
+                url: "/client-dashboard/transactions",
                 icon: History,
             },
             {

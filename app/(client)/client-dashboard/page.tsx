@@ -53,7 +53,7 @@ export default function ClientDashboard() {
                 const [accountsData, loansData, txsData, appsData, catsData] = await Promise.all([
                     api.getUserAccounts(currentUser.id),
                     api.getUserLoans(currentUser.id),
-                    api.getAllTransactions(), // Todo: user scoped transactions
+                    api.getUserTransactions(currentUser.id), // Fetch only user transactions
                     api.getUserApplications(currentUser.id),
                     api.getServiceCategories()
                 ]);
@@ -302,7 +302,7 @@ export default function ClientDashboard() {
                 <div className="lg:col-span-2 space-y-6">
                     <div className="flex items-center justify-between">
                         <h4 className="text-xl font-bold tracking-tight">Recent Activity</h4>
-                        <Link href="/client/my-services" className="text-xs font-bold text-primary hover:underline">
+                        <Link href="/client-dashboard/transactions" className="text-xs font-bold text-primary hover:underline">
                             View All
                         </Link>
                     </div>
@@ -315,7 +315,7 @@ export default function ClientDashboard() {
                             </div>
                         ) : (
                             transactions.map(tx => (
-                                <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors">
+                                <Link href={`/client-dashboard/transactions/${tx.id}`} key={tx.id} className="p-4 flex items-center justify-between hover:bg-accent/50 transition-colors cursor-pointer block">
                                     <div className="flex items-center gap-4">
                                         <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${tx.type === 'credit' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-muted-foreground'}`}>
                                             {tx.type === 'credit' ? <ArrowDownLeft className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}
@@ -328,7 +328,7 @@ export default function ClientDashboard() {
                                     <p className={`text-sm font-bold ${tx.type === 'credit' ? 'text-emerald-500' : ''}`}>
                                         {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </p>
-                                </div>
+                                </Link>
                             ))
                         )}
                     </div>

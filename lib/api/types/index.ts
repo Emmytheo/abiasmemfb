@@ -117,11 +117,16 @@ export interface Transaction {
     id: string;
     user_id: string;
     amount: number;
-    type: 'credit' | 'debit';
-    category: 'Bills' | 'School Fees' | 'Utilities' | 'e-Pins' | 'Transfer';
-    status: 'successful' | 'pending' | 'failed';
+    type: 'credit' | 'debit' | 'transfer' | 'disbursement' | 'repayment' | 'fee' | 'interest';
+    category?: 'Bills' | 'School Fees' | 'Utilities' | 'e-Pins' | 'Transfer';
+    status: 'successful' | 'pending' | 'failed' | 'reversed';
     reference: string;
     narration?: string;
+    from_account?: string | Account; // Properly typed for fully populated relation
+    to_account?: string | Account; // Properly typed for fully populated relation
+    workflow_execution?: string | any;
+    balance_after?: number;
+    metadata?: any;
     created_at: string;
 }
 
@@ -201,6 +206,8 @@ export interface ApiAdapter {
 
     // Services (Transactions)
     getAllTransactions: () => Promise<Transaction[]>;
+    getUserTransactions: (userId: string) => Promise<Transaction[]>;
+    getTransactionById: (id: string | number) => Promise<Transaction | null>;
     getTransactionsByCategory: (category: Transaction['category']) => Promise<Transaction[]>;
 
     // Service Integrations

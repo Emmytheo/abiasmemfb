@@ -228,27 +228,27 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                                 ) : (
                                     <div className="space-y-4">
                                         {transactions.map((tx) => (
-                                            <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl border bg-card hover:shadow-md transition-shadow">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center border shadow-sm shrink-0 ${tx.type === 'credit' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'
+                                            <div key={tx.id} className="flex items-center justify-between p-3 sm:p-4 rounded-xl border bg-card hover:shadow-md transition-shadow gap-2 sm:gap-4">
+                                                <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                                                    <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center border shadow-sm shrink-0 ${tx.type === 'credit' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'
                                                         }`}>
-                                                        {tx.type === 'credit' ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                                                        {tx.type === 'credit' ? <ArrowDownLeft className="h-4 w-4 sm:h-5 sm:w-5" /> : <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />}
                                                     </div>
-                                                    <div>
-                                                        <p className="font-medium">{tx.reference || tx.category}</p>
-                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                                            <span>{new Date(tx.created_at).toLocaleDateString()}</span>
-                                                            <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                                                            <span>{tx.narration || 'Transaction'}</span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="font-medium text-sm sm:text-base truncate">{tx.reference || tx.category}</p>
+                                                        <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+                                                            <span className="shrink-0">{new Date(tx.created_at).toLocaleDateString()}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-muted-foreground/30 shrink-0" />
+                                                            <span className="truncate">{tx.narration || 'Transaction'}</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className={`font-mono font-bold tracking-tight ${tx.type === 'credit' ? 'text-emerald-500' : ''}`}>
+                                                <div className="text-right shrink-0">
+                                                    <p className={`font-mono text-sm sm:text-base font-bold tracking-tight ${tx.type === 'credit' ? 'text-emerald-500' : ''}`}>
                                                         {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                                                     </p>
-                                                    <Badge variant="outline" className={`text-[10px] mt-1 h-5 uppercase tracking-wider ${tx.status === 'successful' ? 'border-emerald-500/30 text-emerald-500' :
-                                                            tx.status === 'failed' ? 'border-red-500/30 text-red-500' : 'border-amber-500/30 text-amber-500'
+                                                    <Badge variant="outline" className={`text-[9px] sm:text-[10px] mt-1 h-4 sm:h-5 uppercase tracking-wider px-1 sm:px-2.5 ${tx.status === 'successful' ? 'border-emerald-500/30 text-emerald-500' :
+                                                        tx.status === 'failed' ? 'border-red-500/30 text-red-500' : 'border-amber-500/30 text-amber-500'
                                                         }`}>
                                                         {tx.status}
                                                     </Badge>

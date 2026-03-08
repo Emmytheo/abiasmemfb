@@ -77,9 +77,18 @@ export default function TransactionsPage() {
                         accessorKey: "created_at",
                         cell: (item) => new Date(item.created_at).toLocaleString()
                     },
+                    {
+                        header: "",
+                        accessorKey: "actions",
+                        cell: (item) => (
+                            <Link href={`/products/transactions/${item.id}`} className="text-primary hover:underline text-sm font-medium">
+                                View
+                            </Link>
+                        )
+                    }
                 ]}
                 gridRenderItem={(item) => (
-                    <div key={item.id} className="border rounded-lg p-4 bg-background shadow-sm hover:shadow-md transition-shadow">
+                    <Link href={`/products/transactions/${item.id}`} key={item.id} className="block border rounded-lg p-4 bg-background shadow-sm hover:shadow-md hover:border-primary transition-all">
                         <div className="flex justify-between items-start mb-2">
                             <div>
                                 <p className="font-medium capitalize">{item.type}</p>
@@ -94,7 +103,7 @@ export default function TransactionsPage() {
                         </p>
                         <p className="text-sm text-muted-foreground mt-2">{item.narration || '—'}</p>
                         <p className="text-xs text-muted-foreground mt-2">{new Date(item.created_at).toLocaleString()}</p>
-                    </div>
+                    </Link>
                 )}
             />
         </div>

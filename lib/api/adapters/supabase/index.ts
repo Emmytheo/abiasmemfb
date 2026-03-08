@@ -91,6 +91,12 @@ export const SupabaseAdapter: ApiAdapter = {
     getAllTransactions: async () => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+    getUserTransactions: async (userId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getTransactionById: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
     getTransactionsByCategory: async (category) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
