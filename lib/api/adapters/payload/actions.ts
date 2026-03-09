@@ -626,7 +626,7 @@ export const getUserBeneficiaries = async (userId: string): Promise<Beneficiary[
 
         return docs.map((doc: any) => ({
             id: doc.id,
-            user_id: typeof doc.user === 'object' ? doc.user.id : doc.user,
+            user: typeof doc.user === 'object' ? doc.user.id : doc.user,
             account_name: doc.account_name,
             account_number: doc.account_number,
             bank_name: doc.bank_name,
@@ -682,7 +682,7 @@ export const saveBeneficiary = async (data: Omit<Beneficiary, 'id' | 'created_at
 
         return {
             id: doc.id,
-            user_id: doc.user,
+            user: doc.user,
             account_name: doc.account_name,
             account_number: doc.account_number,
             bank_name: doc.bank_name,
