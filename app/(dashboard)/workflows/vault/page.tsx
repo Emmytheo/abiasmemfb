@@ -3,9 +3,11 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import Link from 'next/link'
 import {
-    Shield, Plus, Key, Clock, Fingerprint, EyeOff, AlertTriangle
+    Shield, Clock, Fingerprint, EyeOff, AlertTriangle, Key
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { VaultActions } from './client-actions'
+import { VaultEditor } from './vault-editor'
 
 export default async function SecretVaultPage({
     searchParams
@@ -34,9 +36,7 @@ export default async function SecretVaultPage({
                         <Shield size={20} />
                         <h2 className="font-semibold tracking-tight text-foreground">Secret Vault</h2>
                     </div>
-                    <button className="p-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-md transition-colors">
-                        <Plus size={16} />
-                    </button>
+                    <VaultActions />
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -73,65 +73,15 @@ export default async function SecretVaultPage({
 
             {/* CENTER PANEL: Configuration Editor */}
             <main className="flex-1 flex flex-col border-r bg-background overflow-hidden relative">
-                {!selectedSecret ? (
+                {selectedId === 'new' ? (
+                    <VaultEditor />
+                ) : !selectedSecret ? (
                     <div className="m-auto text-center flex flex-col items-center">
                         <Fingerprint className="text-muted-foreground/30 mb-4" size={48} />
                         <h3 className="text-lg font-medium text-muted-foreground">Select a Secret</h3>
                     </div>
                 ) : (
-                    <>
-                        <div className="p-6 border-b flex items-center justify-between bg-card shrink-0">
-                            <div>
-                                <h1 className="text-2xl font-bold">{selectedSecret.name}</h1>
-                                <p className="text-sm text-muted-foreground mt-1 max-w-xl truncate">
-                                    {selectedSecret.description || 'No description provided'}
-                                </p>
-                            </div>
-                            <div className="flex gap-2">
-                                <button className="px-4 py-2 bg-amber-500 text-white font-medium rounded-md text-sm hover:bg-amber-600 transition-colors">
-                                    Rotate Value
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 overflow-y-auto space-y-8 pb-20">
-                            <section className="space-y-4 max-w-2xl">
-                                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex gap-3 text-red-600">
-                                    <AlertTriangle size={20} className="shrink-0 mt-0.5" />
-                                    <div className="text-sm">
-                                        <strong>Secure Value</strong><br />
-                                        The current encrypted value is safely stored using AES-256-GCM. We never transmit the unencrypted value to your browser. Use the Rotate button above if you need to update it.
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-6">
-                                    <div>
-                                        <label className="text-sm font-medium">Secret Key (Slug)</label>
-                                        <input type="text" value={selectedSecret.key} readOnly className="w-full mt-1 p-2 bg-muted/50 border rounded-md text-sm font-mono flex h-10 focus-visible:outline-none" />
-                                    </div>
-
-                                    <div>
-                                        <label className="text-sm font-medium flex items-center justify-between">
-                                            Value Preview
-                                            <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                                                <EyeOff size={12} /> Masked
-                                            </span>
-                                        </label>
-                                        <div className="w-full mt-1 p-2 bg-muted/80 border rounded-md font-mono text-sm tracking-widest text-muted-foreground flex h-10 items-center select-none">
-                                            ••••••••••••••••••••••••••••••••
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-sm font-medium">Category</label>
-                                            <input type="text" value={selectedSecret.category} readOnly className="w-full mt-1 p-2 bg-muted/50 border rounded-md text-sm font-mono flex h-10" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
-                    </>
+                    <VaultEditor secret={selectedSecret} />
                 )}
             </main>
 

@@ -16,6 +16,11 @@ export const PayloadAdapter: ApiAdapter = {
     getLoanById: actions.getLoanById,
     createLoan: actions.createLoan,
 
+    // Beneficiaries
+    getUserBeneficiaries: actions.getUserBeneficiaries,
+    saveBeneficiary: actions.saveBeneficiary,
+    deleteBeneficiary: actions.deleteBeneficiary,
+
     // Product Configuration & Dynamic Forms
     getAllProductClasses: actions.getAllProductClasses,
     createProductClass: actions.createProductClass,

@@ -18,6 +18,8 @@ import { TransformDataExecutor } from './TransformDataExecutor'
 import { CreateAccountExecutor } from './CreateAccountExecutor'
 import { DisburseLoanExecutor } from './DisburseLoanExecutor'
 import { IntraAccountTransferExecutor } from './IntraAccountTransferExecutor'
+import { InterBankTransferExecutor } from './InterBankTransferExecutor'
+import { InternationalTransferExecutor } from './InternationalTransferExecutor'
 import { FundAccountExecutor } from './FundAccountExecutor'
 
 import {
@@ -63,6 +65,8 @@ export const ExecutorRegistry: RegistryType = {
     CREATE_ACCOUNT: CreateAccountExecutor,
     DISBURSE_LOAN: DisburseLoanExecutor,
     INTRA_ACCOUNT_TRANSFER: IntraAccountTransferExecutor,
+    INTERBANK_TRANSFER: InterBankTransferExecutor,
+    INTERNATIONAL_TRANSFER: InternationalTransferExecutor,
     FUND_ACCOUNT: FundAccountExecutor,
     SUB_WORKFLOW: SubWorkflowExecutor,
     CUSTOM_BLOCK: CustomBlockExecutor,

@@ -138,6 +138,18 @@ export interface SystemConfig {
     updated_at: string;
 }
 
+export interface Beneficiary {
+    id: string;
+    user: string;
+    accountName: string;
+    accountNumber: string;
+    bankName: string;
+    isInternational: boolean;
+    iban?: string;
+    swiftCode?: string;
+    currency?: string;
+}
+
 export interface BlogPost {
     id?: string | number;
     slug: string;
@@ -181,6 +193,11 @@ export interface ApiAdapter {
     getUserLoans: (userId: string) => Promise<Loan[]>;
     getLoanById: (id: string) => Promise<Loan | null>;
     createLoan: (data: Omit<Loan, 'id' | 'created_at' | 'updated_at'>) => Promise<Loan>;
+
+    // Beneficiaries
+    getUserBeneficiaries: (userId: string) => Promise<Beneficiary[]>;
+    saveBeneficiary: (data: Omit<Beneficiary, 'id' | 'created_at' | 'updated_at'>) => Promise<Beneficiary>;
+    deleteBeneficiary: (id: string, userId: string) => Promise<boolean>;
 
     // Product Configuration & Dynamic Forms
     getAllProductClasses: () => Promise<ProductClass[]>;

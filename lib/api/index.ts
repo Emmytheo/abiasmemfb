@@ -10,5 +10,5 @@ export const usePayload = process.env.NEXT_PUBLIC_USE_PAYLOAD === 'true';
 
 export const api: ApiAdapter = usePayload ? PayloadAdapter : (useDummyData ? DummyAdapter : SupabaseAdapter);
 
-// Re-export types so consumers can cleanly import required types straight from '@/lib/api'
 export * from './types';
+export { type Beneficiary } from './types';

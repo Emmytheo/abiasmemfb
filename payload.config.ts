@@ -29,6 +29,7 @@ import { Services } from './collections/Services'
 import { Accounts } from './collections/Accounts'
 import { Loans } from './collections/Loans'
 import { Transactions } from './collections/Transactions'
+import { Beneficiaries } from './collections/Beneficiaries'
 import { s3Storage } from '@payloadcms/storage-s3'
 import { seoPlugin } from '@payloadcms/plugin-seo'
 
@@ -91,7 +92,7 @@ export default buildConfig({
         // Service Pipeline
         ServiceCategories, Services,
         // Digital Ledger
-        Accounts, Loans, Transactions,
+        Accounts, Loans, Transactions, Beneficiaries,
     ],
     globals: [SiteSettings],
     editor: lexicalEditor({}),

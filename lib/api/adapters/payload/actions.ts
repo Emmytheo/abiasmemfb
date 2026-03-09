@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-import { User, Account, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition, ServiceCategory, Service } from '../../types';
+import { User, Account, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition, ServiceCategory, Service, Beneficiary } from '../../types';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
 import { lexicalToHtml } from '@/lib/utils/lexical-to-html';
@@ -608,6 +608,119 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
         return [];
     }
 };
+
+// ==========================================
+// BENEFICIARY MANAGEMENT
+// ==========================================
+
+export const getUserBeneficiaries = async (userId: string): Promise<Beneficiary[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'beneficiaries' as any,
+            where: { user: { equals: userId } },
+            overrideAccess: true, // Securely bypassed on server since userId argument controls scope
+            sort: '-updatedAt',
+        });
+
+        return docs.map((doc: any) => ({
+            id: doc.id,
+            user: typeof doc.user === 'object' ? doc.user.id : doc.user,
+            account_name: doc.account_name,
+            account_number: doc.account_number,
+            bank_name: doc.bank_name,
+            bank_code: doc.bank_code,
+            currency: doc.currency,
+            swift_code: doc.swift_code,
+            routing_number: doc.routing_number,
+            country: doc.country,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        }));
+    } catch (e) {
+        console.error("Payload getUserBeneficiaries Error:", e);
+        return [];
+    }
+};
+
+export const saveBeneficiary = async (data: Omit<Beneficiary, 'id' | 'created_at' | 'updated_at'>): Promise<Beneficiary> => {
+    try {
+        const payload = await initPayload();
+
+        // Prevent duplicate beneficiaries based on account number & currency mapping for the same user
+        const existing = await payload.find({
+            collection: 'beneficiaries' as any,
+            where: {
+                and: [
+                    { user: { equals: data.user } },
+                    { account_number: { equals: data.account_number } },
+                    { currency: { equals: data.currency } }
+                ]
+            },
+            overrideAccess: true,
+        });
+
+        let doc;
+        if (existing.docs.length > 0) {
+            // Update the existing one (name might have changed or bank details refreshed)
+            doc = await payload.update({
+                collection: 'beneficiaries' as any,
+                id: existing.docs[0].id,
+                data: data as any,
+                overrideAccess: true,
+            });
+        } else {
+            // Create a new record
+            doc = await payload.create({
+                collection: 'beneficiaries' as any,
+                data: data as any,
+                overrideAccess: true,
+            });
+        }
+
+        return {
+            id: doc.id,
+            ...data,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        } as unknown as Beneficiary;
+    } catch (e) {
+        console.error("Payload saveBeneficiary Error:", e);
+        throw e;
+    }
+}
+
+export const deleteBeneficiary = async (id: string, userId: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+
+        // Enforcement check to ensure only the owner can delete it
+        const check = await payload.findByID({
+            collection: 'beneficiaries' as any,
+            id,
+            overrideAccess: true
+        });
+
+        if (!check || (typeof check.user === 'object' ? check.user.id : check.user) !== userId) {
+            throw new Error('Unauthorized or Beneficiary not found');
+        }
+
+        await payload.delete({
+            collection: 'beneficiaries' as any,
+            id,
+            overrideAccess: true,
+        });
+
+        return true;
+    } catch (e: any) {
+        console.error("Payload deleteBeneficiary Error:", e.message);
+        return false;
+    }
+}
+
+// ==========================================
+// END BENEFICIARY MANAGEMENT
+// ==========================================
 
 export const getAccountById = async (accountId: string): Promise<Account | null> => {
     try {

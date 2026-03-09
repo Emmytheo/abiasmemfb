@@ -490,6 +490,48 @@ export const TaskRegistry: Registry = {
         ],
     },
 
+    INTERBANK_TRANSFER: {
+        type: TaskType.INTERBANK_TRANSFER,
+        label: 'Interbank Transfer (NIP)',
+        icon: ArrowRightLeft,
+        category: TaskCategory.COMPLIANCE,
+        description: 'Transfers funds to outside banks via configured NIP Provider. Computes ledger deduct and fees.',
+        inputs: [
+            { name: 'sourceAccountId', type: TaskParamType.STRING, required: true, helperText: 'Payload ID of the Source Account' },
+            { name: 'destinationAccount', type: TaskParamType.STRING, required: true, helperText: 'NUBAN Number' },
+            { name: 'destinationBank', type: TaskParamType.STRING, required: true, helperText: 'Bank Code / Name' },
+            { name: 'destinationName', type: TaskParamType.STRING, required: false, helperText: 'Resolved Full Name' },
+            { name: 'amountNaira', type: TaskParamType.NUMBER, required: true, helperText: 'Transfer amount (₦)' },
+            { name: 'narration', type: TaskParamType.STRING, required: false },
+            { name: 'nipProviderId', type: TaskParamType.PROVIDER, required: false, helperText: 'The designated routing gateway provider' },
+        ],
+        outputs: [
+            { name: 'transferReference', type: TaskParamType.STRING },
+            { name: 'feeApplied', type: TaskParamType.NUMBER },
+        ],
+    },
+
+    INTERNATIONAL_TRANSFER: {
+        type: TaskType.INTERNATIONAL_TRANSFER,
+        label: 'International Transfer (SWIFT)',
+        icon: Globe,
+        category: TaskCategory.COMPLIANCE,
+        description: 'Transfers funds cross-border via SWIFT Gateway. Calculates live FX equivalent reductions.',
+        inputs: [
+            { name: 'sourceAccountId', type: TaskParamType.STRING, required: true, helperText: 'Payload ID of the Source Account' },
+            { name: 'iban', type: TaskParamType.STRING, required: true, helperText: 'Recipient IBAN or Account' },
+            { name: 'swift', type: TaskParamType.STRING, required: true, helperText: 'Bank SWIFT/BIC Code' },
+            { name: 'accountName', type: TaskParamType.STRING, required: true, helperText: 'Beneficiary Name' },
+            { name: 'amount', type: TaskParamType.NUMBER, required: true, helperText: 'Amount in Foreign Currency' },
+            { name: 'currency', type: TaskParamType.STRING, required: true, value: 'USD', helperText: 'e.g., USD, GBP, EUR' },
+            { name: 'narration', type: TaskParamType.STRING, required: false },
+        ],
+        outputs: [
+            { name: 'transferReference', type: TaskParamType.STRING },
+            { name: 'exchangeRateApplied', type: TaskParamType.NUMBER },
+        ],
+    },
+
     FUND_ACCOUNT: {
         type: TaskType.FUND_ACCOUNT,
         label: 'Fund Account',

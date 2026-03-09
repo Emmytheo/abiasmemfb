@@ -281,5 +281,26 @@ export const DummyAdapter: ApiAdapter = {
     getOpenPositions: async () => {
         await delay(500);
         return MOCK_JOBS;
+    },
+
+    // Beneficiaries
+    getUserBeneficiaries: async (userId) => {
+        await delay(400);
+        return [];
+    },
+
+    saveBeneficiary: async (data) => {
+        await delay(500);
+        return {
+            ...data,
+            id: `ben_${Date.now()}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        } as any;
+    },
+
+    deleteBeneficiary: async (id, userId) => {
+        await delay(400);
+        return true;
     }
 };
