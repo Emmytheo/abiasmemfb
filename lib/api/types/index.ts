@@ -141,13 +141,18 @@ export interface SystemConfig {
 export interface Beneficiary {
     id: string;
     user: string;
-    accountName: string;
-    accountNumber: string;
-    bankName: string;
-    isInternational: boolean;
+    account_name: string;
+    account_number: string;
+    bank_name: string;
+    bank_code?: string;
+    is_international?: boolean;
+    routing_number?: string;
+    country?: string;
     iban?: string;
-    swiftCode?: string;
+    swift_code?: string;
     currency?: string;
+    created_at: string;
+    updated_at?: string;
 }
 
 export interface BlogPost {

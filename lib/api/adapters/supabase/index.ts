@@ -28,6 +28,17 @@ export const SupabaseAdapter: ApiAdapter = {
         throw new Error("Supabase Adapter not fully implemented");
     },
 
+    // Beneficiaries
+    getUserBeneficiaries: async (userId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    saveBeneficiary: async (data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    deleteBeneficiary: async (id, userId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+
     // Product Configuration & Dynamic Forms
     getAllProductTypes: async () => {
         throw new Error("Supabase Adapter not fully implemented");
