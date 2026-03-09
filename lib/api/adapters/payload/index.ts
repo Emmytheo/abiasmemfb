@@ -49,6 +49,9 @@ export const PayloadAdapter: ApiAdapter = {
     getTransactionById: actions.getTransactionById,
     getTransactionsByCategory: actions.getTransactionsByCategory,
 
+    // Account Funding
+    processAccountFunding: actions.processAccountFunding,
+
     // Service Integrations
     getServiceCategories: actions.getServiceCategories,
     getServicesByCategory: actions.getServicesByCategory,

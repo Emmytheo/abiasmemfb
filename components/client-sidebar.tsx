@@ -19,7 +19,8 @@ import {
     MailIcon,
     PhoneCall,
     FileText,
-    User
+    User,
+    Users
 } from "lucide-react";
 
 import {
@@ -90,6 +91,11 @@ const navGroups: NavGroup[] = [
                 title: "Transaction History",
                 url: "/client-dashboard/transactions",
                 icon: History,
+            },
+            {
+                title: "Saved Beneficiaries",
+                url: "/client-dashboard/beneficiaries",
+                icon: Users,
             },
             {
                 title: "My Applications",

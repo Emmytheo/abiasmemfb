@@ -74,45 +74,12 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
 
         try {
             if (isLastStage || !hasWorkflow) {
-                // FINAL APPROVE — update application status + create account/loan
                 const updatedApp = await api.updateApplication(String(app.id), {
                     status: 'approved',
                     workflow_stage: hasWorkflow ? workflowStages[workflowStages.length - 1] : 'Approved',
                 });
                 setApp(updatedApp);
-
-                // Create the corresponding account or loan record
-                try {
-                    if (isLoanProduct) {
-                        const terms = product?.financial_terms?.find((t: any) => t.blockType === 'loan-terms') as any;
-                        await api.createLoan({
-                            user_id: app.user_id,
-                            product_type_id: app.product_type_id,
-                            amount: app.requested_amount || 0,
-                            interest_rate: terms?.interest_rate || 0,
-                            duration_months: terms?.max_duration || 12,
-                            outstanding_balance: app.requested_amount || 0,
-                            monthly_installment: 0,
-                            next_payment_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                            maturity_date: new Date(Date.now() + (terms?.max_duration || 12) * 30 * 24 * 60 * 60 * 1000).toISOString(),
-                            status: 'active',
-                        });
-                        toast.success("Application approved and Loan record created!");
-                    } else {
-                        // Default: create an account
-                        await api.createAccount({
-                            user_id: app.user_id,
-                            account_number: generateAccountNumber(),
-                            account_type: (product?.name?.toLowerCase().includes('current') ? 'Current' : product?.name?.toLowerCase().includes('fixed') ? 'Fixed Deposit' : 'Savings') as Account['account_type'],
-                            balance: app.requested_amount || 0,
-                            status: 'active',
-                        });
-                        toast.success("Application approved and Account created!");
-                    }
-                } catch (createErr) {
-                    console.error("Error creating account/loan record:", createErr);
-                    toast.error("Application was approved, but failed to create the account/loan record. Please create it manually.");
-                }
+                toast.success("Application approved and provisions actively triggering on backend.");
             } else {
                 // Advance to next workflow stage
                 const nextStageName = workflowStages[currentStageIndex + 1];

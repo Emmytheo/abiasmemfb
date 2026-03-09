@@ -232,6 +232,9 @@ export interface ApiAdapter {
     getTransactionById: (id: string | number) => Promise<Transaction | null>;
     getTransactionsByCategory: (category: Transaction['category']) => Promise<Transaction[]>;
 
+    // Account Funding
+    processAccountFunding: (targetAccountId: string, amountNaira: number, reference?: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+
     // Service Integrations
     getServiceCategories: () => Promise<ServiceCategory[]>;
     getServicesByCategory: (categorySlug: string) => Promise<Service[]>;

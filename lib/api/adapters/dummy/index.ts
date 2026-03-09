@@ -170,6 +170,12 @@ export const DummyAdapter: ApiAdapter = {
         return MOCK_TRANSACTIONS.filter(t => t.category === category);
     },
 
+    // Account Funding
+    processAccountFunding: async (targetAccountId, amountNaira, reference) => {
+        await delay(1000);
+        return { success: true, data: { status: 'SUCCESS', new_balance: amountNaira + 1000 } };
+    },
+
     // Service Integrations
     getServiceCategories: async () => {
         await delay(300);

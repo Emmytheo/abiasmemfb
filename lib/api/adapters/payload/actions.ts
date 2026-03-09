@@ -7,6 +7,7 @@ import { getPayload } from 'payload';
 import configPromise from '@payload-config';
 import { lexicalToHtml } from '@/lib/utils/lexical-to-html';
 import { executeWorkflow } from '@/lib/workflow/executeWorkflow';
+import { FundAccountExecutor } from '@/lib/workflow/executor/FundAccountExecutor';
 
 // Helper to initialize Payload Local API
 const initPayload = async () => {
@@ -625,7 +626,7 @@ export const getUserBeneficiaries = async (userId: string): Promise<Beneficiary[
 
         return docs.map((doc: any) => ({
             id: doc.id,
-            user: typeof doc.user === 'object' ? doc.user.id : doc.user,
+            user_id: typeof doc.user === 'object' ? doc.user.id : doc.user,
             account_name: doc.account_name,
             account_number: doc.account_number,
             bank_name: doc.bank_name,
@@ -634,6 +635,7 @@ export const getUserBeneficiaries = async (userId: string): Promise<Beneficiary[
             swift_code: doc.swift_code,
             routing_number: doc.routing_number,
             country: doc.country,
+            is_international: doc.currency && doc.currency !== 'NGN',
             created_at: doc.createdAt,
             updated_at: doc.updatedAt,
         }));
@@ -680,7 +682,16 @@ export const saveBeneficiary = async (data: Omit<Beneficiary, 'id' | 'created_at
 
         return {
             id: doc.id,
-            ...data,
+            user_id: doc.user,
+            account_name: doc.account_name,
+            account_number: doc.account_number,
+            bank_name: doc.bank_name,
+            bank_code: doc.bank_code,
+            currency: doc.currency,
+            swift_code: doc.swift_code,
+            routing_number: doc.routing_number,
+            country: doc.country,
+            is_international: doc.currency && doc.currency !== 'NGN',
             created_at: doc.createdAt,
             updated_at: doc.updatedAt,
         } as unknown as Beneficiary;
@@ -689,6 +700,34 @@ export const saveBeneficiary = async (data: Omit<Beneficiary, 'id' | 'created_at
         throw e;
     }
 }
+
+export const processAccountFunding = async (targetAccountId: string, amountNaira: number, reference?: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+    try {
+        const payload = await initPayload();
+
+        const env: any = {
+            payload,
+            executionId: `DEP-${Date.now()}`,
+            inputs: { targetAccountId, amountNaira, reference: reference || `DEP-${Date.now()}` },
+            outputs: {},
+            getInput: (key: string) => env.inputs[key],
+            setOutput: (key: string, val: any) => { env.outputs[key] = val },
+            log: { info: console.log, error: console.error, warn: console.warn, debug: console.log }
+        };
+
+        const success = await FundAccountExecutor(env);
+
+        if (!success) {
+            return { success: false, error: "Funding executor reported failure." };
+        }
+
+        return { success: true, data: env.outputs };
+
+    } catch (err: any) {
+        console.error("Payload processAccountFunding Error:", err);
+        return { success: false, error: err.message || "Server fault" };
+    }
+};
 
 export const deleteBeneficiary = async (id: string, userId: string): Promise<boolean> => {
     try {
