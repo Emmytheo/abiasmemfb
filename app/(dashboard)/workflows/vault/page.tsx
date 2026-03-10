@@ -24,7 +24,9 @@ export default async function SecretVaultPage({
 
     const secrets = secretsRes.docs as any[]
 
-    const selectedSecret = selectedId ? secrets.find(s => s.id === selectedId) : secrets[0]
+    const selectedSecret = selectedId
+        ? secrets.find(s => String(s.id) === String(selectedId))
+        : secrets[0]
 
     return (
         <div className="flex h-[calc(100vh-theme(spacing.16))] w-full overflow-hidden bg-muted/30">
@@ -74,14 +76,14 @@ export default async function SecretVaultPage({
             {/* CENTER PANEL: Configuration Editor */}
             <main className="flex-1 flex flex-col border-r bg-background overflow-hidden relative">
                 {selectedId === 'new' ? (
-                    <VaultEditor />
+                    <VaultEditor key="new" />
                 ) : !selectedSecret ? (
                     <div className="m-auto text-center flex flex-col items-center">
                         <Fingerprint className="text-muted-foreground/30 mb-4" size={48} />
                         <h3 className="text-lg font-medium text-muted-foreground">Select a Secret</h3>
                     </div>
                 ) : (
-                    <VaultEditor secret={selectedSecret} />
+                    <VaultEditor key={selectedSecret.id} secret={selectedSecret} />
                 )}
             </main>
 

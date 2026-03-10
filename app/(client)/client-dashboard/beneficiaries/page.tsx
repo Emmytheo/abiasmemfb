@@ -82,7 +82,7 @@ export default function BeneficiariesPage() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24 px-4 sm:px-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Saved Beneficiaries</h1>

@@ -25,7 +25,9 @@ export default async function ProvidersManagerPage({
     const providers = providersRes.docs as any[]
     const secrets = secretsRes.docs as any[]
 
-    const selectedProvider = selectedId ? providers.find(p => p.id === selectedId) : providers[0]
+    const selectedProvider = selectedId
+        ? providers.find(p => String(p.id) === String(selectedId))
+        : providers[0]
 
     return (
         <div className="flex h-[calc(100vh-theme(spacing.16))] w-full overflow-hidden bg-muted/30">
@@ -85,14 +87,14 @@ export default async function ProvidersManagerPage({
             {/* CENTER PANEL: Configuration Editor */}
             <main className="flex-1 flex flex-col border-r bg-background overflow-hidden relative">
                 {selectedId === 'new' ? (
-                    <ProviderEditor secrets={secrets} />
+                    <ProviderEditor key="new" secrets={secrets} />
                 ) : !selectedProvider ? (
                     <div className="m-auto text-center flex flex-col items-center">
                         <Globe className="text-muted-foreground/30 mb-4" size={48} />
                         <h3 className="text-lg font-medium text-muted-foreground">Select a Provider</h3>
                     </div>
                 ) : (
-                    <ProviderEditor provider={selectedProvider} secrets={secrets} />
+                    <ProviderEditor key={selectedProvider.id} provider={selectedProvider} secrets={secrets} />
                 )}
             </main>
 

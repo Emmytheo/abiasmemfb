@@ -47,15 +47,19 @@ export async function MapFieldsExecutor(env: ExecutionEnvironment<any>): Promise
     const mapped: Record<string, any> = {}
 
     if (Array.isArray(schema)) {
+        // Array mode: extract specified keys from inputData as-is
         for (const key of schema) {
             const val = inputData[key]
             mapped[key] = val
             env.setOutput(key, val)
         }
     } else if (typeof schema === 'object') {
-        for (const [key, value] of Object.entries(schema)) {
-            mapped[key] = value
-            env.setOutput(key, value)
+        // Object mode: { outputKey: sourceKey } — look up inputData[sourceKey]
+        for (const [key, sourcePath] of Object.entries(schema)) {
+            // Support dot-notation paths like "user.id"
+            const val = String(sourcePath).split('.').reduce((obj: any, seg: string) => obj?.[seg], inputData)
+            mapped[key] = val ?? null
+            env.setOutput(key, val ?? null)
         }
     } else {
         env.log.error('MapFields schema must be an array or object.')

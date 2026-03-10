@@ -49,10 +49,25 @@ export async function InternationalTransferExecutor(
     }
 
     try {
-        const sourceDoc = await payload.findByID({ collection: 'accounts', id: Number(sourceAccountId) }).catch(() => null)
+        // Resolve Source Account — handles both Payload integer ID and 10-digit NUBAN
+        const resolveAccount = async (identifier: string) => {
+            const isSafeInteger = !isNaN(Number(identifier)) && Number(identifier) > 0 && Number(identifier) < 2147483647
+            if (isSafeInteger) {
+                const doc = await payload.findByID({ collection: 'accounts', id: Number(identifier) }).catch(() => null)
+                if (doc) return doc
+            }
+            const query = await payload.find({
+                collection: 'accounts',
+                where: { account_number: { equals: identifier } },
+                limit: 1
+            })
+            return query.docs[0] || null
+        }
+
+        const sourceDoc = await resolveAccount(sourceAccountId)
 
         if (!sourceDoc || sourceDoc.status !== 'active') {
-            env.log.error(`INTERNATIONAL_TRANSFER: Source account invalid or inactive`)
+            env.log.error(`INTERNATIONAL_TRANSFER: Source account '${sourceAccountId}' invalid or inactive`)
             return false
         }
 
@@ -77,46 +92,50 @@ export async function InternationalTransferExecutor(
             collection: 'accounts',
             id: actualSourceId,
             data: { balance: newSourceBalance, last_transaction_at: timestamp },
+            overrideAccess: true,
         })
 
         // Debit Principal
         await payload.create({
             collection: 'transactions',
+            overrideAccess: true,
             data: {
-                user: typeof sourceDoc.user === 'object' ? sourceDoc.user.id : sourceDoc.user,
-                account: actualSourceId,
+                reference: transferRef,
                 type: 'debit',
                 amount: amountKobo,
                 currency: 'NGN',
-                status: 'completed',
-                category: 'Transfer',
-                reference: transferRef,
-                description: `SWIFT TO ${accountName} / ${iban}`,
+                from_account: actualSourceId,
+                status: 'successful',
+                narration: `SWIFT TO ${accountName} / ${iban} | ${narration}`,
+                channel: 'workflow',
+                balance_after: newSourceBalance,
+                workflow_execution: env.executionId,
                 metadata: {
                     direction: 'outbound_swift',
                     foreignCurrency: destinationCurrency,
-                    foreignAmount: foreignAmount,
+                    foreignAmount,
                     exchangeRate: rate,
                     swiftCode: swift,
-                    narration
-                }
-            } as any
+                },
+            } as any,
         })
 
         // Debit Fee
         await payload.create({
             collection: 'transactions',
+            overrideAccess: true,
             data: {
-                user: typeof sourceDoc.user === 'object' ? sourceDoc.user.id : sourceDoc.user,
-                account: actualSourceId,
-                type: 'debit',
+                reference: `${transferRef}-FEE`,
+                type: 'fee',
                 amount: feeKobo,
                 currency: 'NGN',
-                status: 'completed',
-                category: 'Fee',
-                reference: `${transferRef}-FEE`,
-                description: `SWIFT Wire Fee`,
-            } as any
+                from_account: actualSourceId,
+                status: 'successful',
+                narration: 'SWIFT Wire Fee',
+                channel: 'workflow',
+                balance_after: newSourceBalance,
+                workflow_execution: env.executionId,
+            } as any,
         })
 
         env.log.info(`INTERNATIONAL_TRANSFER: Transaction ${transferRef} completed`)

@@ -40,11 +40,25 @@ export async function InterBankTransferExecutor(
     }
 
     try {
-        // 1. Resolve Source Account
-        const sourceDoc = await payload.findByID({ collection: 'accounts', id: Number(sourceAccountId) }).catch(() => null)
+        // 1. Resolve Source Account — handles both Payload integer ID and 10-digit NUBAN
+        const resolveAccount = async (identifier: string) => {
+            const isSafeInteger = !isNaN(Number(identifier)) && Number(identifier) > 0 && Number(identifier) < 2147483647
+            if (isSafeInteger) {
+                const doc = await payload.findByID({ collection: 'accounts', id: Number(identifier) }).catch(() => null)
+                if (doc) return doc
+            }
+            const query = await payload.find({
+                collection: 'accounts',
+                where: { account_number: { equals: identifier } },
+                limit: 1
+            })
+            return query.docs[0] || null
+        }
+
+        const sourceDoc = await resolveAccount(sourceAccountId)
 
         if (!sourceDoc || sourceDoc.status !== 'active') {
-            env.log.error(`INTERBANK_TRANSFER: Source account invalid or inactive`)
+            env.log.error(`INTERBANK_TRANSFER: Source account '${sourceAccountId}' invalid or inactive`)
             return false
         }
 
@@ -73,45 +87,50 @@ export async function InterBankTransferExecutor(
             collection: 'accounts',
             id: actualSourceId,
             data: { balance: newSourceBalance, last_transaction_at: timestamp },
+            overrideAccess: true,
         })
 
-        // 4. Record the double-entry Transactions 
+        // 4. Record the double-entry Transactions
         // Debit Principal
         await payload.create({
             collection: 'transactions',
+            overrideAccess: true,
             data: {
-                user: typeof sourceDoc.user === 'object' ? sourceDoc.user.id : sourceDoc.user,
-                account: actualSourceId,
+                reference: transferRef,
                 type: 'debit',
                 amount: amountKobo,
                 currency: 'NGN',
-                status: 'completed',
-                category: 'Transfer',
-                reference: transferRef,
-                description: `TRF TO ${destinationName || destinationAccount} / ${destinationBank}`,
+                from_account: actualSourceId,
+                status: 'successful',
+                narration: `TRF TO ${destinationName || destinationAccount} / ${destinationBank} | ${narration}`,
+                channel: 'workflow',
+                balance_after: newSourceBalance,
+                workflow_execution: env.executionId,
                 metadata: {
                     direction: 'outbound_nip',
                     destinationAccount,
                     destinationBank,
-                    narration
-                }
-            } as any
+                    nipProviderId,
+                },
+            } as any,
         })
 
         // Debit Fee
         await payload.create({
             collection: 'transactions',
+            overrideAccess: true,
             data: {
-                user: typeof sourceDoc.user === 'object' ? sourceDoc.user.id : sourceDoc.user,
-                account: actualSourceId,
-                type: 'debit',
+                reference: `${transferRef}-FEE`,
+                type: 'fee',
                 amount: feeKobo,
                 currency: 'NGN',
-                status: 'completed',
-                category: 'Fee',
-                reference: `${transferRef}-FEE`,
-                description: `NIP Transfer Fee`,
-            } as any
+                from_account: actualSourceId,
+                status: 'successful',
+                narration: 'NIP Transfer Fee',
+                channel: 'workflow',
+                balance_after: newSourceBalance,
+                workflow_execution: env.executionId,
+            } as any,
         })
 
         // NOTE: In a real environment, you'd only commit the ledger IF the external API call succeeds, 
