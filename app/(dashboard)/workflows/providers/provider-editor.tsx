@@ -15,7 +15,7 @@ export function ProviderEditor({ provider, secrets }: { provider?: any, secrets:
         category: provider?.category || 'PAYMENT',
         baseUrl: provider?.baseUrl || '',
         authType: provider?.authType || 'API_KEY',
-        secret: typeof provider?.secret === 'object' ? provider.secret.id : provider?.secret || '',
+        secret: typeof provider?.secret === 'object' && provider.secret !== null ? provider.secret.id : provider?.secret || '',
         isActive: provider?.isActive ?? true,
         priority: provider?.priority || 1,
         groupTag: provider?.groupTag || ''
@@ -30,9 +30,16 @@ export function ProviderEditor({ provider, secrets }: { provider?: any, secrets:
             return
         }
 
+        const payloadData = { ...formData }
+        if (payloadData.authType === 'NONE' || !payloadData.secret) {
+            payloadData.secret = null as any
+        } else if (typeof payloadData.secret === 'string' && !isNaN(Number(payloadData.secret))) {
+            payloadData.secret = Number(payloadData.secret) as any
+        }
+
         setIsSaving(true)
         try {
-            await saveProvider(isNew ? null : provider.id, formData)
+            await saveProvider(isNew ? null : provider.id, payloadData)
             toast.success("Provider saved successfully.")
             if (isNew) {
                 router.push('/workflows/providers')

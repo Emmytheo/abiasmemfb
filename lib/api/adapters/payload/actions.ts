@@ -617,16 +617,26 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
 export const getUserBeneficiaries = async (userId: string): Promise<Beneficiary[]> => {
     try {
         const payload = await initPayload();
+
+        // 1. Resolve Payload User ID from Supabase UUID
+        const { docs: userDocs } = await payload.find({
+            collection: 'users',
+            where: { supabase_id: { equals: userId } },
+            limit: 1,
+        });
+        if (!userDocs.length) return [];
+        const payloadUserId = userDocs[0].id;
+
         const { docs } = await payload.find({
             collection: 'beneficiaries' as any,
-            where: { user: { equals: userId } },
+            where: { user: { equals: payloadUserId } },
             overrideAccess: true, // Securely bypassed on server since userId argument controls scope
             sort: '-updatedAt',
         });
 
         return docs.map((doc: any) => ({
             id: doc.id,
-            user: typeof doc.user === 'object' ? doc.user.id : doc.user,
+            user: typeof doc.user === 'object' && doc.user ? doc.user.supabase_id || doc.user.id : userId,
             account_name: doc.account_name,
             account_number: doc.account_number,
             bank_name: doc.bank_name,
@@ -649,12 +659,21 @@ export const saveBeneficiary = async (data: Omit<Beneficiary, 'id' | 'created_at
     try {
         const payload = await initPayload();
 
+        // Resolve Payload User ID from Supabase UUID
+        const { docs: userDocs } = await payload.find({
+            collection: 'users',
+            where: { supabase_id: { equals: data.user } },
+            limit: 1,
+        });
+        if (!userDocs.length) throw new Error("User not found");
+        const payloadUserId = userDocs[0].id;
+
         // Prevent duplicate beneficiaries based on account number & currency mapping for the same user
         const existing = await payload.find({
             collection: 'beneficiaries' as any,
             where: {
                 and: [
-                    { user: { equals: data.user } },
+                    { user: { equals: payloadUserId } },
                     { account_number: { equals: data.account_number } },
                     { currency: { equals: data.currency } }
                 ]
@@ -662,27 +681,29 @@ export const saveBeneficiary = async (data: Omit<Beneficiary, 'id' | 'created_at
             overrideAccess: true,
         });
 
+        const submitData = { ...data, user: payloadUserId };
+
         let doc;
         if (existing.docs.length > 0) {
             // Update the existing one (name might have changed or bank details refreshed)
             doc = await payload.update({
                 collection: 'beneficiaries' as any,
                 id: existing.docs[0].id,
-                data: data as any,
+                data: submitData as any,
                 overrideAccess: true,
             });
         } else {
             // Create a new record
             doc = await payload.create({
                 collection: 'beneficiaries' as any,
-                data: data as any,
+                data: submitData as any,
                 overrideAccess: true,
             });
         }
 
         return {
             id: doc.id,
-            user: doc.user,
+            user: typeof doc.user === 'object' && doc.user ? doc.user.supabase_id || doc.user.id : data.user,
             account_name: doc.account_name,
             account_number: doc.account_number,
             bank_name: doc.bank_name,
@@ -737,10 +758,13 @@ export const deleteBeneficiary = async (id: string, userId: string): Promise<boo
         const check = await payload.findByID({
             collection: 'beneficiaries' as any,
             id,
+            depth: 1,
             overrideAccess: true
         });
 
-        if (!check || (typeof check.user === 'object' ? check.user.id : check.user) !== userId) {
+        const ownerId = typeof check?.user === 'object' && check?.user ? check.user.supabase_id || check.user.id : check?.user;
+
+        if (!check || ownerId !== userId) {
             throw new Error('Unauthorized or Beneficiary not found');
         }
 

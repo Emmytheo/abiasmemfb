@@ -7,6 +7,11 @@ import { revalidatePath } from 'next/cache'
 export async function saveSecret(id: string | null, data: any) {
     const payload = await getPayload({ config })
 
+    // Clean up empty string values for date fields
+    if (data.expiresAt === "") {
+        data.expiresAt = null;
+    }
+
     // We do NOT handle the raw AES encryption logic here natively because Payload hooks handle that.
     // When a `value` is sent to Payload's `secrets` collection, its beforeChange hook encrypts it.
 

@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { encryptSecret } from '@/lib/workflow/secrets/encryption'
 
 export const Secrets: CollectionConfig = {
     slug: 'secrets',
@@ -13,6 +14,24 @@ export const Secrets: CollectionConfig = {
         create: ({ req }) => req.user?.role === 'admin',
         update: ({ req }) => req.user?.role === 'admin',
         delete: ({ req }) => req.user?.role === 'admin',
+    },
+    hooks: {
+        beforeChange: [
+            async ({ data, operation }) => {
+                // If a raw value is provided (on create or update), encrypt it
+                if (data.value) {
+                    const { ciphertext, iv, tag } = await encryptSecret(data.value as string)
+                    data.encryptedValue = ciphertext
+                    data.iv = iv
+                    data.tag = tag
+
+                    // We delete the plaintext value from the data payload 
+                    // so it doesn't get saved into the DB if Payload ever decides to
+                    delete data.value
+                }
+                return data
+            }
+        ]
     },
     fields: [
         { name: 'name', type: 'text', required: true },
@@ -31,6 +50,16 @@ export const Secrets: CollectionConfig = {
             required: true,
         },
         { name: 'description', type: 'textarea' },
+        // Virtual field for raw unencrypted input.
+        // It's stripped out in the beforeChange hook.
+        {
+            name: 'value',
+            type: 'text',
+            admin: { hidden: true },
+            hooks: {
+                beforeChange: [() => null], // Ensure it's never written to the DB schema
+            }
+        },
         // Encrypted fields — never exposed by GET /api/secrets/:id
         {
             name: 'encryptedValue',
