@@ -4,30 +4,35 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { GenericDataTable } from "@/components/data-table";
 import { api } from "@/lib/api";
-import { ProductApplication, ProductType } from "@/lib/api/types";
+import { ProductApplication, ProductType, Loan } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, TrendingUp, RefreshCw, AlertTriangle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type EnrichedApp = ProductApplication & { product?: ProductType };
 
 export default function AdminLoansPage() {
-    const [data, setData] = useState<EnrichedApp[]>([]);
+    const [applications, setApplications] = useState<EnrichedApp[]>([]);
+    const [activeLoans, setActiveLoans] = useState<Loan[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function loadData() {
             try {
-                const [apps, types] = await Promise.all([
+                const [apps, types, loans] = await Promise.all([
                     api.getAllApplications(),
-                    api.getAllProductTypes()
+                    api.getAllProductTypes(),
+                    api.getAllLoans(),
                 ]);
 
+                // Filter using blockType on financial_terms — reliable regardless of category naming
                 const enriched = apps
                     .map(app => ({ ...app, product: types.find(t => t.id === app.product_type_id) }))
-                    .filter(app => app.product?.category === 'loans');
+                    .filter(app => (app.product?.financial_terms?.[0] as any)?.blockType === 'loan-terms');
 
-                setData(enriched);
+                setApplications(enriched);
+                setActiveLoans(loans.filter(l => l.status === 'active' || l.status === 'defaulted' || l.status === 'under_review'));
             } finally {
                 setLoading(false);
             }
@@ -35,21 +40,59 @@ export default function AdminLoansPage() {
         loadData();
     }, []);
 
-    if (loading) return <div className="p-8">Loading applications...</div>;
+    if (loading) return <div className="p-8 text-muted-foreground animate-pulse">Loading loan data...</div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+            {/* Active Loans Summary */}
+            {activeLoans.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Card className="bg-card border shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-primary" /> Active Loans
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-2xl font-bold">{activeLoans.filter(l => l.status === 'active').length}</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-card border shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+                                <RefreshCw className="h-4 w-4 text-amber-500" /> Under Review
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-2xl font-bold">{activeLoans.filter(l => l.status === 'under_review').length}</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-card border shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 text-destructive" /> Defaulted
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-2xl font-bold text-destructive">{activeLoans.filter(l => l.status === 'defaulted').length}</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Applications Table */}
             <GenericDataTable
                 title="Customer Loan Applications"
                 description="Manage and review customer applications for loans and credit facilities."
-                data={data}
+                data={applications}
                 searchPlaceholder="Search by Reference ID..."
                 searchKey="id"
                 columns={[
                     {
                         header: "Reference",
                         accessorKey: "id",
-                        cell: (item) => <span className="font-mono text-xs">{item.id.split('_')[1]?.toUpperCase()}</span>
+                        cell: (item) => <span className="font-mono text-xs">{String(item.id).slice(0, 8).toUpperCase()}</span>
                     },
                     {
                         header: "Product",
@@ -92,7 +135,7 @@ export default function AdminLoansPage() {
                         <div className="flex justify-between items-start mb-4 gap-2">
                             <div>
                                 <h3 className="font-semibold">{item.product?.name || 'Unknown'}</h3>
-                                <p className="text-xs text-muted-foreground font-mono mt-1">Ref: {item.id.split('_')[1]?.toUpperCase()}</p>
+                                <p className="text-xs text-muted-foreground font-mono mt-1">Ref: {String(item.id).slice(0, 8).toUpperCase()}</p>
                             </div>
                             <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize shrink-0">
                                 {item.status}

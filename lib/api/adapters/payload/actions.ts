@@ -997,6 +997,88 @@ export const getUserTransactions = async (userId: string): Promise<Transaction[]
     }
 };
 
+/**
+ * Fetch all transactions linked to a specific loan (disbursement + repayments).
+ * Transactions are linked via the `loan` relation field set by DisburseLoanExecutor.
+ */
+export const getLoanTransactions = async (loanId: string): Promise<Transaction[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'transactions' as any,
+            where: { loan: { equals: loanId } },
+            depth: 1,
+            limit: 200,
+            sort: '-createdAt',
+            overrideAccess: true,
+        });
+
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: typeof doc.to_account === 'object' && doc.to_account ? doc.to_account?.user_id ?? '' : '',
+            amount: (doc.amount ?? 0) / 100,
+            type: doc.type === 'credit' || doc.type === 'disbursement' ? 'credit' :
+                doc.type === 'repayment' ? 'repayment' :
+                    doc.type === 'fee' ? 'fee' :
+                        doc.type === 'interest' ? 'interest' : 'debit',
+            category: doc.category || 'Transfer',
+            status: doc.status,
+            reference: doc.reference,
+            narration: doc.narration,
+            balance_after: doc.balance_after !== undefined ? doc.balance_after / 100 : undefined,
+            created_at: doc.createdAt,
+        })) as Transaction[];
+    } catch (e) {
+        console.error('Payload getLoanTransactions Error:', e);
+        return [];
+    }
+};
+
+/**
+ * Fetch all transactions for a specific account (either as sender or receiver).
+ * Ensures account detail pages only show transactions scoped to that account.
+ */
+export const getAccountTransactions = async (accountId: string): Promise<Transaction[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'transactions' as any,
+            where: {
+                or: [
+                    { from_account: { equals: accountId } },
+                    { to_account: { equals: accountId } },
+                ],
+            },
+            depth: 1,
+            limit: 200,
+            sort: '-createdAt',
+            overrideAccess: true,
+        });
+
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: typeof doc.to_account === 'object' && doc.to_account ? doc.to_account?.user_id ?? '' : '',
+            amount: (doc.amount ?? 0) / 100,
+            type: doc.type === 'credit' || doc.type === 'disbursement' ? 'credit' :
+                doc.type === 'transfer' ? 'transfer' :
+                    doc.type === 'repayment' ? 'repayment' :
+                        doc.type === 'fee' ? 'fee' :
+                            doc.type === 'interest' ? 'interest' : 'debit',
+            category: doc.category || 'Transfer',
+            status: doc.status,
+            reference: doc.reference,
+            narration: doc.narration,
+            from_account: doc.from_account,
+            to_account: doc.to_account,
+            balance_after: doc.balance_after !== undefined ? doc.balance_after / 100 : undefined,
+            created_at: doc.createdAt,
+        })) as Transaction[];
+    } catch (e) {
+        console.error('Payload getAccountTransactions Error:', e);
+        return [];
+    }
+};
+
 export const getServiceCategories = async (): Promise<ServiceCategory[]> => {
     try {
         const payload = await initPayload();

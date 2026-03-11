@@ -229,6 +229,8 @@ export interface ApiAdapter {
     // Services (Transactions)
     getAllTransactions: () => Promise<Transaction[]>;
     getUserTransactions: (userId: string) => Promise<Transaction[]>;
+    getLoanTransactions: (loanId: string) => Promise<Transaction[]>;
+    getAccountTransactions: (accountId: string) => Promise<Transaction[]>;
     getTransactionById: (id: string | number) => Promise<Transaction | null>;
     getTransactionsByCategory: (category: Transaction['category']) => Promise<Transaction[]>;
 

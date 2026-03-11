@@ -37,9 +37,9 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                     return;
                 }
 
-                const [accData, allTxData] = await Promise.all([
+                const [accData, accountTxData] = await Promise.all([
                     api.getAccountById(accountId),
-                    api.getAllTransactions()
+                    api.getAccountTransactions(accountId)
                 ]);
 
                 // Ensure the account exists and belongs to the user
@@ -49,11 +49,8 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                 }
 
                 setAccount(accData);
-
-                // In a real app, the API adapter would have a getTransactionsByAccount(accountId) method.
-                // For now, we simulate this by filtering if possible, or just using dummy/returned transactions.
-                // Assuming `api.getAllTransactions()` returns transactions that we might want to mock/filter
-                setTransactions(allTxData.slice(0, 5)); // Just take 5 as mock data for this account
+                // Show only transactions scoped to this specific account
+                setTransactions(accountTxData);
 
             } catch (err) {
                 console.error("Failed to load account details:", err);

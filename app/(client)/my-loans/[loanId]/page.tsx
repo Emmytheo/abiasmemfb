@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
     ArrowLeft, Loader2, ArrowUpRight, ArrowDownLeft,
     Calendar, Clock, ShieldCheck, Activity, Target,
-    AlertCircle, FileText
+    AlertCircle, FileText, Banknote, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,9 +54,9 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
                     setProductType(pType);
                 }
 
-                // Mock Fetch: Get transactions related to this loan (repayments)
-                const allTxData = await api.getAllTransactions();
-                setTransactions(allTxData.filter(tx => tx.type === 'debit').slice(0, 3));
+                // Fetch only transactions linked to this specific loan (disbursements + repayments)
+                const loanTxData = await api.getLoanTransactions(loanId);
+                setTransactions(loanTxData);
 
             } catch (err) {
                 console.error("Failed to load loan details:", err);
@@ -118,8 +118,8 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
                         {productType?.name || 'Personal Loan'}
                         <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                         Status: <span className={`font-medium capitalize ${loan.status === 'active' ? 'text-primary' :
-                                loan.status === 'repaid' ? 'text-emerald-500' :
-                                    loan.status === 'defaulted' ? 'text-destructive' : 'text-amber-500'
+                            loan.status === 'repaid' ? 'text-emerald-500' :
+                                loan.status === 'defaulted' ? 'text-destructive' : 'text-amber-500'
                             }`}>{loan.status}</span>
                     </p>
                 </div>
@@ -128,8 +128,8 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
             {/* Top Stat Cards */}
             <div className="grid gap-6 md:grid-cols-3">
                 <Card className={`md:col-span-2 border shadow-sm relative overflow-hidden group ${loan.status === 'repaid' ? 'bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20' :
-                        loan.status === 'defaulted' ? 'bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/20' :
-                            'bg-gradient-to-br from-card to-muted/20'
+                    loan.status === 'defaulted' ? 'bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/20' :
+                        'bg-gradient-to-br from-card to-muted/20'
                     }`}>
                     <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors duration-700" />
                     <CardHeader className="pb-2">
@@ -144,7 +144,7 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
                         </div>
                         <div className="flex items-baseline gap-2">
                             <CardTitle className={`text-4xl sm:text-5xl font-mono tracking-tight ${loan.status === 'repaid' ? 'text-emerald-600' :
-                                    loan.status === 'defaulted' ? 'text-destructive' : 'text-foreground'
+                                loan.status === 'defaulted' ? 'text-destructive' : 'text-foreground'
                                 }`}>
                                 {formatCurrency(outstanding)}
                             </CardTitle>
@@ -297,45 +297,63 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
                         <Card className="border shadow-sm">
                             <CardHeader>
                                 <div className="flex items-center justify-between">
-                                    <CardTitle className="text-lg">Repayment History</CardTitle>
+                                    <CardTitle className="text-lg">Loan Activity</CardTitle>
                                     <Button variant="outline" size="sm">Download Statement</Button>
                                 </div>
-                                <CardDescription>Record of payments made towards this facility.</CardDescription>
+                                <CardDescription>Disbursements and repayments for this facility.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {transactions.length === 0 ? (
                                     <div className="text-center py-12 text-muted-foreground flex flex-col items-center gap-2 border rounded-xl bg-muted/10">
                                         <Activity className="h-8 w-8 opacity-20" />
-                                        <p>No repayments have been recorded for this loan yet.</p>
+                                        <p>No transactions have been recorded for this loan yet.</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-4">
-                                        {transactions.map((tx) => (
-                                            <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl border bg-card hover:shadow-md transition-shadow">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="h-10 w-10 rounded-full flex items-center justify-center border shadow-sm shrink-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                                                        <ArrowDownLeft className="h-5 w-5" />
+                                    <div className="space-y-3">
+                                        {transactions.map((tx) => {
+                                            const isDisbursement = tx.type === 'credit' || (tx as any).type === 'disbursement';
+                                            const isRepayment = tx.type === 'repayment' || (tx.type === 'debit' && !isDisbursement);
+                                            const label = isDisbursement ? 'Loan Disbursement' : isRepayment ? 'Loan Repayment' : tx.narration || 'Loan Transaction';
+                                            const colorClass = isDisbursement
+                                                ? 'bg-primary/10 text-primary border-primary/20'
+                                                : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+                                            const amountClass = isDisbursement ? 'text-primary' : 'text-emerald-500';
+                                            const amountSign = isDisbursement ? '+' : '-';
+                                            const Icon = isDisbursement ? Banknote : isRepayment ? RefreshCw : ArrowDownLeft;
+                                            return (
+                                                <div key={tx.id} className="flex items-start sm:items-center gap-3 p-3 sm:p-4 rounded-xl border bg-card hover:shadow-md transition-shadow">
+                                                    {/* Icon */}
+                                                    <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center border shadow-sm shrink-0 ${colorClass}`}>
+                                                        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                                                     </div>
-                                                    <div>
-                                                        <p className="font-medium">Loan Repayment</p>
-                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                                            <span>{new Date(tx.created_at).toLocaleDateString()}</span>
-                                                            <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                                                            <span>Ref: {tx.reference}</span>
+                                                    {/* Label + date + ref */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-medium text-sm sm:text-base leading-tight">{label}</p>
+                                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                                                            <span className="shrink-0">{new Date(tx.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                                            {tx.reference && (
+                                                                <>
+                                                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/30 hidden sm:block shrink-0" />
+                                                                    <span className="font-mono truncate max-w-[160px] sm:max-w-xs">Ref: {tx.reference}</span>
+                                                                </>
+                                                            )}
                                                         </div>
+                                                        {tx.narration && (
+                                                            <p className="text-[11px] text-muted-foreground/70 mt-0.5 truncate">{tx.narration}</p>
+                                                        )}
+                                                    </div>
+                                                    {/* Amount + status */}
+                                                    <div className="text-right shrink-0">
+                                                        <p className={`font-mono font-bold text-sm sm:text-base tracking-tight ${amountClass}`}>
+                                                            {amountSign}{formatCurrency(tx.amount)}
+                                                        </p>
+                                                        <Badge variant="outline" className={`text-[9px] sm:text-[10px] mt-1 h-4 sm:h-5 uppercase tracking-wider px-1.5 ${tx.status === 'successful' ? 'border-emerald-500/30 text-emerald-500' : tx.status === 'failed' ? 'border-destructive/30 text-destructive' : 'border-amber-500/30 text-amber-500'}`}>
+                                                            {tx.status}
+                                                        </Badge>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="font-mono font-bold tracking-tight text-emerald-500">
-                                                        {formatCurrency(tx.amount)}
-                                                    </p>
-                                                    <Badge variant="outline" className={`text-[10px] mt-1 h-5 uppercase tracking-wider ${tx.status === 'successful' ? 'border-emerald-500/30 text-emerald-500' : 'border-amber-500/30 text-amber-500'
-                                                        }`}>
-                                                        {tx.status}
-                                                    </Badge>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </CardContent>

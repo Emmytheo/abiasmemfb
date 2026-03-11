@@ -160,6 +160,25 @@ export const DummyAdapter: ApiAdapter = {
         return MOCK_TRANSACTIONS.filter(t => t.user_id === userId);
     },
 
+    getLoanTransactions: async (loanId) => {
+        await delay(400);
+        // In mock mode, filter by metadata.loan_id if present, otherwise return empty
+        return MOCK_TRANSACTIONS.filter(t =>
+            (t.metadata as any)?.loan_id === loanId ||
+            (t.metadata as any)?.loan === loanId
+        );
+    },
+
+    getAccountTransactions: async (accountId) => {
+        await delay(400);
+        // Filter by to_account or from_account
+        return MOCK_TRANSACTIONS.filter(t => {
+            const toAcc = typeof t.to_account === 'object' && t.to_account ? (t.to_account as any).id : t.to_account;
+            const fromAcc = typeof t.from_account === 'object' && t.from_account ? (t.from_account as any).id : t.from_account;
+            return toAcc === accountId || fromAcc === accountId;
+        });
+    },
+
     getTransactionById: async (id) => {
         await delay(300);
         return MOCK_TRANSACTIONS.find(t => t.id === String(id)) || null;
