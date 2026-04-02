@@ -40,6 +40,7 @@ export const Secrets: CollectionConfig = {
             type: 'select',
             options: [
                 { label: 'API Key', value: 'API_KEY' },
+                { label: 'Qore API Token', value: 'QORE_API_TOKEN' },
                 { label: 'SMTP / Email', value: 'SMTP' },
                 { label: 'OAuth Token', value: 'OAUTH_TOKEN' },
                 { label: 'Database URI', value: 'DATABASE_URI' },
