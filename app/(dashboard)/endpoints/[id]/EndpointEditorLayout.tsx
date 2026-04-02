@@ -219,7 +219,16 @@ function TestConsoleTab({ formData, dynamicOptions }: any) {
     const [running, setRunning] = useState(false)
     const [response, setResponse] = useState<any>(null)
 
-    const fullUrl = `${providerObj?.baseUrl || 'https://sandbox.qore.inc'}${formData.path}`
+    // formData.provider may be a populated object (from Payload depth > 0) or just an ID string
+    const providerId = typeof formData.provider === 'object' ? formData.provider?.id : formData.provider
+    const providerBaseUrl = 
+        (typeof formData.provider === 'object' && formData.provider?.baseUrl) // populated relationship
+        ?? providerObj?.baseUrl                                                 // matched from dynamicOptions
+        ?? ''
+
+    const fullUrl = providerBaseUrl
+        ? `${String(providerBaseUrl).replace(/\/$/, '')}${formData.path}`
+        : `(no provider)${formData.path}`
 
     const runTest = async () => {
         setRunning(true)

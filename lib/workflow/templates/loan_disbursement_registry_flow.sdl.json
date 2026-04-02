@@ -1,0 +1,51 @@
+{
+  "name": "Advanced Loan Disbursement (Registry & Sync)",
+  "description": "Demonstrates Phase 4 Registry Syncing combined with Risk Checks and symbolic endpoint resolution.",
+  "trigger": "MANUAL",
+  "steps": [
+    {
+      "id": "verify_eligibility",
+      "type": "API_EXECUTION",
+      "next": "sync_disbursement_product",
+      "inputs": {
+        "// note": "Using Name instead of ID for portability across environments",
+        "endpointId": "Credit Risk Assessment",
+        "dynamicPayload": {
+          "bvn": "{{TRIGGER_PAYLOAD.bvn}}",
+          "amount": "{{TRIGGER_PAYLOAD.amount}}"
+        }
+      }
+    },
+    {
+      "id": "sync_disbursement_product",
+      "type": "REGISTRY_SYNC",
+      "next": "approval_gate",
+      "inputs": {
+        "// note": "Syncing the Registry (Phase 4) periodically during execution ensures we use the latest Product Codes from Qore.",
+        "mappingId": "Standard Personal Loan Mapping"
+      }
+    },
+    {
+      "id": "approval_gate",
+      "type": "APPROVAL_GATE",
+      "next": "finalize_payout",
+      "inputs": {
+        "approverRole": "LOAN_OFFICER"
+      }
+    },
+    {
+      "id": "finalize_payout",
+      "type": "API_EXECUTION",
+      "inputs": {
+        "endpointId": "Disburse Loan Funds",
+        "dynamicPayload": {
+          "customerId": "{{TRIGGER_PAYLOAD.customerId}}",
+          "amount": "{{TRIGGER_PAYLOAD.amount}}",
+          "// note": "Extracting the External Code synced in step 2 from the Provider RegistryMapping",
+          "productCode": "{{sync_disbursement_product.outputs.externalCode}}",
+          "reason": "Loan Approved via Automation Engine"
+        }
+      }
+    }
+  ]
+}

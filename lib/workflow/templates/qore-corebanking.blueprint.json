@@ -1,0 +1,828 @@
+{
+    "apiVersion": "v1",
+    "name": "Qore / BankOne Core Banking",
+    "description": "Full API surface for Abia MFB's BankOne integration via Qore. Covers Corebanking (/BankOneWebAPI) and Channels (/thirdpartyapiservice) services.",
+
+    "provider": {
+        "name": "Qore BankOne (Corebanking)",
+        "slug": "qore-digital-banking",
+        "description": "BankOne Corebanking API — handles Accounts, Customers, Loans and Fixed Deposits. Auth via ?authToken= query param.",
+        "category": "PAYMENT",
+        "baseUrl": "https://staging.mybankone.com",
+        "authType": "API_KEY",
+        "secretName": "QORE_API_TOKEN",
+        "priority": 1,
+        "groupTag": "qore",
+        "metadata": {
+            "institutionCode": "0017",
+            "authMode": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "bankOneVersion": "2",
+            "responseWrapper": "BankOne-Standard",
+            "successPath": "IsSuccessful",
+            "dataPath": "Payload"
+        }
+    },
+
+    "endpoints": [
+        {
+            "name": "Create Account Quick",
+            "description": "Creates a new bank account with minimal KYC. Returns AccountNumber and CustomerID.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Account/CreateAccountQuick/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "TransactionTrackingRef": { "type": "string", "description": "Unique reference to prevent duplicate submissions" },
+                    "AccountOpeningTrackingRef": { "type": "string", "description": "Unique reference for this account opening request" },
+                    "ProductCode": { "type": "string", "description": "Qore product code (e.g. '101' for Savings). Resolved via REGISTRY_SYNC." },
+                    "LastName": { "type": "string" },
+                    "OtherNames": { "type": "string" },
+                    "PhoneNo": { "type": "string", "description": "11-digit Nigerian phone number" },
+                    "Gender": { "type": "number", "enum": ["0", "1"], "description": "0=Male, 1=Female" },
+                    "PlaceOfBirth": { "type": "string" },
+                    "DateOfBirth": { "type": "string", "description": "ISO 8601 format: 1990-01-01T00:00:00Z" },
+                    "Address": { "type": "string" },
+                    "NationalIdentificationNumber": { "type": "string", "description": "11-digit NIN" },
+                    "Email": { "type": "string" },
+                    "BVN": { "type": "string", "description": "11-digit BVN" }
+                },
+                "required": ["TransactionTrackingRef", "AccountOpeningTrackingRef", "ProductCode", "LastName", "OtherNames", "PhoneNo", "BVN"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "successValue": true,
+                "dataPath": "Payload",
+                "outputs": {
+                    "accountNumber": "Payload.AccountNumber",
+                    "customerId": "Payload.CustomerID",
+                    "fullName": "Payload.FullName"
+                }
+            }
+        },
+        {
+            "name": "Create Customer and Account",
+            "description": "Creates a customer profile and full account with extended KYC.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Account/CreateCustomerAndAccount/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "TransactionTrackingRef": { "type": "string" },
+                    "AccountOpeningTrackingRef": { "type": "string" },
+                    "ProductCode": { "type": "string" },
+                    "LastName": { "type": "string" },
+                    "OtherNames": { "type": "string" },
+                    "PhoneNo": { "type": "string" },
+                    "Gender": { "type": "number" },
+                    "DateOfBirth": { "type": "string" },
+                    "Address": { "type": "string" },
+                    "Email": { "type": "string" },
+                    "BVN": { "type": "string" },
+                    "HomeAddress": { "type": "string" },
+                    "City": { "type": "string" },
+                    "LGA": { "type": "string" },
+                    "State": { "type": "string" }
+                },
+                "required": ["TransactionTrackingRef", "AccountOpeningTrackingRef", "ProductCode", "LastName", "OtherNames", "PhoneNo", "BVN"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "accountNumber": "Payload.AccountNumber",
+                    "customerId": "Payload.CustomerID"
+                }
+            }
+        },
+        {
+            "name": "Balance Enquiry",
+            "description": "Retrieves the available and withdrawable balance for an account by account number.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/Account/GetAccountByAccountNumber/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "accountNumber": { "type": "string", "description": "The NUBAN account number to query" }
+                },
+                "required": ["accountNumber"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "accountBalance": "Payload.AccountBalance",
+                    "withdrawableBalance": "Payload.WithdrawableBalance",
+                    "fullName": "Payload.FullName",
+                    "accountNumber": "Payload.AccountNumber"
+                }
+            }
+        },
+        {
+            "name": "Account Enquiry",
+            "description": "Returns account status, name, and balance. Uses AuthenticationCode in body (Channels API).",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/AccountEnquiry",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string", "description": "NUBAN account number" }
+                },
+                "required": ["AccountNo"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": {
+                    "fullName": "FullName",
+                    "availableBalance": "AvailableBalance",
+                    "status": "Status"
+                }
+            }
+        },
+        {
+            "name": "Account Summary",
+            "description": "Full account summary including branch and product info.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/Account/GetAccountSummary/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "accountNumber": { "type": "string" },
+                    "institutionCode": { "type": "string" }
+                },
+                "required": ["accountNumber", "institutionCode"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "accountBalance": "Payload.AccountBalance",
+                    "branchName": "Payload.BranchName",
+                    "fullName": "Payload.FullName"
+                }
+            }
+        },
+        {
+            "name": "Get Transactions",
+            "description": "Retrieves transaction history for an account within a date range.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/Account/GetTransactions/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "accountNumber": { "type": "string" },
+                    "fromDate": { "type": "string", "description": "Format: dd-mm-yyyy" },
+                    "toDate": { "type": "string", "description": "Format: dd-mm-yyyy" },
+                    "numberOfItems": { "type": "number", "description": "Max transactions to return" }
+                },
+                "required": ["accountNumber", "fromDate", "toDate"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "transactions": "Payload"
+                }
+            }
+        },
+        {
+            "name": "Generate Account Statement",
+            "description": "Returns a Base64-encoded PDF statement for a date range.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/Account/GenerateAccountStatement2/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "accountNumber": { "type": "string" },
+                    "fromDate": { "type": "string" },
+                    "toDate": { "type": "string" }
+                },
+                "required": ["accountNumber", "fromDate", "toDate"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "statementBase64": "Payload.StatementBase64",
+                    "fileName": "Payload.FileName"
+                }
+            }
+        },
+        {
+            "name": "Update Account Tier",
+            "description": "Upgrades an account to Tier 2 or Tier 3, enabling higher transaction limits.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Account/UpdateAccountTier2/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNumber": { "type": "string" },
+                    "AccountTier": { "type": "string", "enum": ["2", "3"] }
+                },
+                "required": ["AccountNumber", "AccountTier"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Upload Supporting Document",
+            "description": "Attaches a Base64-encoded KYC document to an account.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Account/UploadSupportingDocument/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNumber": { "type": "string" },
+                    "DocumentType": { "type": "number", "enum": ["1", "2", "3", "4"], "description": "1=Passport, 2=ID, 3=Signature, 4=Utility Bill" },
+                    "Image": { "type": "string", "description": "Base64-encoded image data" }
+                },
+                "required": ["AccountNumber", "DocumentType", "Image"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Close Account",
+            "description": "Permanently closes a bank account. Irreversible.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Account/CloseAccount/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "accountNumber": { "type": "string" },
+                    "narration": { "type": "string", "description": "Reason for account closure" }
+                },
+                "required": ["accountNumber", "narration"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Get Accounts By Customer",
+            "description": "Returns all accounts linked to a customer ID.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/Account/GetAccountsByCustomerId/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "customerId": { "type": "number" }
+                },
+                "required": ["customerId"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": { "accounts": "Payload" }
+            }
+        },
+        {
+            "name": "Freeze Account",
+            "description": "Freezes an account, prohibiting all debit operations.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/FreezeAccount",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" },
+                    "ReferenceID": { "type": "string" },
+                    "Reason": { "type": "string" }
+                },
+                "required": ["AccountNo", "ReferenceID"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Unfreeze Account",
+            "description": "Reverses a freeze, restoring debit capabilities.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/UnfreezeAccount",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" },
+                    "ReferenceID": { "type": "string" },
+                    "Reason": { "type": "string" }
+                },
+                "required": ["AccountNo", "ReferenceID"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Check Freeze Status",
+            "description": "Queries whether an account is currently frozen.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/CheckFreezeStatus",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" }
+                },
+                "required": ["AccountNo"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": {
+                    "isFrozen": "IsFrozen",
+                    "fullName": "FullName"
+                }
+            }
+        },
+        {
+            "name": "Place Lien",
+            "description": "Places a lien (hold) on a specific amount in an account.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/PlaceLien",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" },
+                    "Amount": { "type": "string", "description": "Amount as string (Naira value — not kobo here)" },
+                    "ReferenceID": { "type": "string" }
+                },
+                "required": ["AccountNo", "Amount", "ReferenceID"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Remove Lien",
+            "description": "Removes an active lien from an account.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/UnPlaceLien",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" },
+                    "Amount": { "type": "string" },
+                    "ReferenceID": { "type": "string" }
+                },
+                "required": ["AccountNo", "Amount", "ReferenceID"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Check Lien Status",
+            "description": "Returns whether a lien is active and the locked amount.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/CheckLienStatus",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" }
+                },
+                "required": ["AccountNo"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": {
+                    "isLocked": "IsLocked",
+                    "fullName": "FullName"
+                }
+            }
+        },
+        {
+            "name": "Activate PND",
+            "description": "Activates Post-No-Debit — blocks all outgoing debits from the account.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/ActivatePND",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" }
+                },
+                "required": ["AccountNo"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Deactivate PND",
+            "description": "Removes Post-No-Debit, allowing debits to resume.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/DeactivatePND",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" }
+                },
+                "required": ["AccountNo"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Check PND Status",
+            "description": "Returns whether Post-No-Debit is currently active on an account.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/CheckPNDStatus",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNo": { "type": "string" }
+                },
+                "required": ["AccountNo"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": {
+                    "isLocked": "IsLocked",
+                    "fullName": "FullName"
+                }
+            }
+        },
+        {
+            "name": "Retrieve BVN Details",
+            "description": "Looks up name and details from NIN/BVN registry for identity verification.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Account/BVN/GetBVNDetails",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "Token",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "BVN": { "type": "string", "description": "11-digit Bank Verification Number" }
+                },
+                "required": ["BVN"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": {
+                    "firstName": "FirstName",
+                    "lastName": "LastName",
+                    "bvn": "BVN",
+                    "responseMessage": "ResponseMessage"
+                }
+            }
+        },
+        {
+            "name": "Create Customer",
+            "description": "Creates a standalone customer record without opening an account.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Customer/CreateCustomer/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "LastName": { "type": "string" },
+                    "OtherNames": { "type": "string" },
+                    "BVN": { "type": "string" },
+                    "DOB": { "type": "string", "description": "Format: yyyy-MM-dd" },
+                    "PhoneNo": { "type": "string" },
+                    "Email": { "type": "string" },
+                    "Address": { "type": "string" }
+                },
+                "required": ["LastName", "OtherNames", "BVN", "PhoneNo"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "customerId": "Payload.CustomerID",
+                    "fullName": "Payload.FullName"
+                }
+            }
+        },
+        {
+            "name": "Get Customer By BVN",
+            "description": "Looks up an existing customer profile using their BVN.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/Customer/GetByBVN/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "BVN": { "type": "string", "description": "11-digit BVN" }
+                },
+                "required": ["BVN"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "customerId": "Payload.CustomerID",
+                    "fullName": "Payload.FullName",
+                    "phoneNo": "Payload.PhoneNo",
+                    "email": "Payload.Email"
+                }
+            }
+        },
+        {
+            "name": "Intra-Bank Transfer",
+            "description": "Transfers funds between two accounts within Abia MFB. Amount in kobo (Naira × 100).",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/CoreTransactions/IntraBankTransfer/2",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "amountsInKobo": true,
+                "properties": {
+                    "FromAccountNumber": { "type": "string" },
+                    "ToAccountNumber": { "type": "string" },
+                    "Amount": { "type": "string", "description": "Amount in KOBO (Naira × 100). Must be a string." },
+                    "Narration": { "type": "string" },
+                    "RetrievalReference": { "type": "string", "description": "Exactly 12 characters. Used for idempotency." }
+                },
+                "required": ["FromAccountNumber", "ToAccountNumber", "Amount", "Narration", "RetrievalReference"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "transactionReference": "Payload.TransactionReference",
+                    "transactionDate": "Payload.TransactionDate",
+                    "status": "Payload.Status"
+                }
+            }
+        },
+        {
+            "name": "Transaction Status Query",
+            "description": "Checks the status of a previously submitted transaction by retrieval reference.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/CoreTransactions/TransactionStatusQuery/2",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "RetrievalReference": { "type": "string", "description": "12-character reference from the original transaction" }
+                },
+                "required": ["RetrievalReference"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "transactionStatus": "Status" }
+            }
+        },
+        {
+            "name": "Apply for Loan",
+            "description": "Submits a loan application for a customer.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Loan/Apply/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "amount": { "type": "number", "description": "Loan amount in Naira" },
+                    "interestRate": { "type": "number" },
+                    "tenure": { "type": "number", "description": "Loan tenure in months" },
+                    "userId": { "type": "string" }
+                },
+                "required": ["amount", "interestRate", "tenure", "userId"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "loanId": "Payload.LoanID" }
+            }
+        },
+        {
+            "name": "Create Fixed Deposit",
+            "description": "Opens a fixed-term deposit account and moves principal from a source account.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/FixedDeposit/Create/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "userId": { "type": "string" },
+                    "accountId": { "type": "string", "description": "Source account to debit the principal from" },
+                    "amount": { "type": "number", "description": "Amount in Naira" },
+                    "duration": { "type": "number", "description": "Tenure in months" }
+                },
+                "required": ["userId", "accountId", "amount", "duration"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": {
+                    "depositId": "depositId",
+                    "maturityDate": "maturityDate"
+                }
+            }
+        },
+        {
+            "name": "Liquidate Fixed Deposit",
+            "description": "Prematurely or punctually liquidates a fixed deposit, crediting the destination account.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/FixedDeposit/Liquidate/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "depositId": { "type": "string" },
+                    "destinationAccountId": { "type": "string" }
+                },
+                "required": ["depositId", "destinationAccountId"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Validate Bill",
+            "description": "Pre-validates a customer identifier with a biller before payment.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Bills/ValidateBill",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "billerCode": { "type": "string", "description": "e.g. EKEDC_PREPAID, DSTV" },
+                    "customerId": { "type": "string", "description": "Meter number, phone number, etc." }
+                },
+                "required": ["billerCode", "customerId"]
+            },
+            "responseSchema": {
+                "successPath": "isValid",
+                "outputs": {
+                    "isValid": "isValid",
+                    "customerName": "customerName",
+                    "details": "details"
+                }
+            }
+        },
+        {
+            "name": "Pay Bill",
+            "description": "Executes a bill payment against a biller, debiting the specified account.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/Bills/PayBill",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "billerCode": { "type": "string" },
+                    "amount": { "type": "number", "description": "Amount in Naira" },
+                    "accountId": { "type": "string" },
+                    "customerId": { "type": "string" }
+                },
+                "required": ["billerCode", "amount", "accountId", "customerId"]
+            },
+            "responseSchema": {
+                "successPath": "success",
+                "outputs": {
+                    "success": "success",
+                    "transactionReference": "transactionReference"
+                }
+            }
+        },
+        {
+            "name": "Get Products",
+            "description": "Returns all product configurations available on the BankOne platform. Used by REGISTRY_SYNC to resolve ProductCodes.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/Product/GetProducts/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authtoken",
+            "status": "active",
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "products": "Payload"
+                }
+            }
+        }
+    ],
+
+    "mappings": [
+        {
+            "internalName": "Savings Account",
+            "syncEndpoint": "Get Products",
+            "syncKeyPath": "Payload",
+            "matchOn": "ProductName",
+            "externalCode": "",
+            "schemaMapping": {
+                "TransactionTrackingRef": "TransactionTrackingRef",
+                "AccountOpeningTrackingRef": "AccountOpeningTrackingRef",
+                "ProductCode": "externalCode",
+                "LastName": "customer.lastName",
+                "OtherNames": "customer.firstName",
+                "PhoneNo": "customer.phone",
+                "BVN": "customer.bvn",
+                "Email": "customer.email",
+                "DateOfBirth": "customer.dateOfBirth",
+                "Gender": "customer.gender",
+                "Address": "customer.address"
+            }
+        },
+        {
+            "internalName": "Current Account",
+            "syncEndpoint": "Get Products",
+            "syncKeyPath": "Payload",
+            "matchOn": "ProductName",
+            "externalCode": "",
+            "schemaMapping": {
+                "ProductCode": "externalCode"
+            }
+        },
+        {
+            "internalName": "Personal Loan",
+            "syncEndpoint": "Get Products",
+            "syncKeyPath": "Payload",
+            "matchOn": "ProductName",
+            "externalCode": "",
+            "schemaMapping": {
+                "ProductCode": "externalCode",
+                "amount": "loan.principalAmount",
+                "tenure": "loan.tenureMonths"
+            }
+        }
+    ]
+}

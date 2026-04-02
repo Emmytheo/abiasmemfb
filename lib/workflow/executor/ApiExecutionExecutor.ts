@@ -1,6 +1,4 @@
 import type { ExecutionEnvironment } from '../types/executor'
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import { resolveSecret } from '../secrets/secretResolver'
 
 export async function ApiExecutionExecutor(env: ExecutionEnvironment<any>): Promise<boolean> {
@@ -9,16 +7,29 @@ export async function ApiExecutionExecutor(env: ExecutionEnvironment<any>): Prom
     const dynamicPayload = env.getInput('dynamicPayload') || {}
 
     if (!endpointId) {
-        env.log('error', `API_EXECUTION missing endpointId`)
+        env.log.error(`API_EXECUTION missing endpointId`)
         return false
     }
 
     try {
-        const payload = await getPayload({ config })
-        const endpointRes = await payload.findByID({ collection: 'endpoints', id: endpointId })
+        const payload = env.payload
+        let endpointRes: any = null;
+
+        // 1. Precise ID Lookup
+        try {
+            endpointRes = await payload.findByID({ collection: 'endpoints', id: endpointId })
+        } catch (e) {
+            // 2. Symbolic Name Lookup (Fallback for SDL/Visual portability)
+            const results = await payload.find({
+                collection: 'endpoints',
+                where: { name: { equals: endpointId } },
+                limit: 1
+            })
+            if (results.docs.length > 0) endpointRes = results.docs[0]
+        }
         
         if (!endpointRes) {
-            env.log('error', `Endpoint ${endpointId} not found in database.`)
+            env.log.error(`Endpoint "${endpointId}" not found (ID or Name lookup failed).`)
             return false
         }
 
@@ -108,11 +119,11 @@ export async function ApiExecutionExecutor(env: ExecutionEnvironment<any>): Prom
         env.setOutput('response', responseData)
         env.setOutput('success', res.ok)
 
-        env.log('info', `API_EXECUTION ${endpointRes.name} returned ${res.status} in ${end - start}ms`)
+        env.log.info(`API_EXECUTION ${endpointRes.name} returned ${res.status} in ${end - start}ms`)
 
         return res.ok
     } catch (e: any) {
-        env.log('error', `API_EXECUTION failed: ${e.message}`)
+        env.log.error(`API_EXECUTION failed: ${e.message}`)
         return false
     }
 }

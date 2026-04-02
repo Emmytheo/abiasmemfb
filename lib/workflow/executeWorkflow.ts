@@ -138,14 +138,15 @@ export async function executeWorkflow(options: ExecuteOptions): Promise<string> 
     // Next.js (especially Vercel) terminates un-awaited background promises.
     // By awaiting this, the API request stays open until the workflow finishes.
     // This is safe for short workflows and guarantees execution runs to completion.
-    await runExecutionLoop(execution.id as string, payload, executionPlan, inputData ?? {}).catch(err => {
+    await runExecutionLoop(execution.id as string, payload, executionPlan, inputData ?? {}, { workflowId, trigger }).catch(err => {
         console.error(`[Workflow Engine] Fatal loop error:`, err)
     })
 
     return execution.id as string
 }
 
-async function runExecutionLoop(executionId: string, payload: any, plan: any[], startInput: any) {
+async function runExecutionLoop(executionId: string, payload: any, plan: any[], startInput: any, metadata: { workflowId: string; trigger: string }) {
+    const { workflowId, trigger } = metadata
     let mainStatus: WorkflowExecutionStatus = WorkflowExecutionStatus.RUNNING
 
     await payload.update({
@@ -157,7 +158,14 @@ async function runExecutionLoop(executionId: string, payload: any, plan: any[], 
     // Environment persists output variables across phases
     const environment: Record<string, any> = {
         // Inject initial trigger payload so TRIGGER node can map it out
-        TRIGGER_PAYLOAD: startInput
+        TRIGGER_PAYLOAD: startInput,
+        SYSTEM: {
+            now: new Date().toISOString(),
+            date: new Date().toISOString().split('T')[0],
+            executionId: executionId,
+            workflowId: workflowId,
+            trigger: trigger
+        }
     }
 
     for (const phaseMap of plan) {

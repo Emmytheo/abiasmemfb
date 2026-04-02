@@ -22,6 +22,7 @@ import { IntraAccountTransferExecutor } from './IntraAccountTransferExecutor'
 import { InterBankTransferExecutor } from './InterBankTransferExecutor'
 import { InternationalTransferExecutor } from './InternationalTransferExecutor'
 import { FundAccountExecutor } from './FundAccountExecutor'
+import { RegistrySyncExecutor } from './RegistrySyncExecutor'
 
 import {
     LoopExecutor,
@@ -145,4 +146,5 @@ export const ExecutorRegistry: RegistryType = {
     QORE_TRANSACTION_STATUS_QUERY: QoreTransactionStatusQueryExecutor,
     QORE_INTRA_BANK_TRANSFER: QoreIntraBankTransferExecutor,
     QORE_INTER_BANK_TRANSFER: QoreInterBankTransferExecutor,
+    REGISTRY_SYNC: RegistrySyncExecutor,
 }

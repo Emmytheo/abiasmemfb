@@ -100,6 +100,7 @@ export enum TaskType {
     // Sub-flows & Custom
     SUB_WORKFLOW = 'SUB_WORKFLOW',
     CUSTOM_BLOCK = 'CUSTOM_BLOCK',
+    REGISTRY_SYNC = 'REGISTRY_SYNC',
 }
 
 // ─── Param Types ─────────────────────────────────────────────────────────────

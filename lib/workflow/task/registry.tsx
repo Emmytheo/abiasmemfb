@@ -141,6 +141,29 @@ export const TaskRegistry: Registry = {
             { name: 'statusCode', type: TaskParamType.NUMBER },
         ],
     },
+    
+    API_EXECUTION: {
+        type: TaskType.API_EXECUTION,
+        label: 'Dynamic API Execute',
+        icon: Globe,
+        category: TaskCategory.API_INTEGRATION,
+        description: 'Execute a pre-defined dynamic endpoint with variable hydration.',
+        inputs: [
+            {
+                name: 'endpointId', type: TaskParamType.STRING, required: true,
+                helperText: 'Select an Endpoint specification by ID or Name'
+            },
+            {
+                name: 'dynamicPayload', type: TaskParamType.JSON, required: false,
+                helperText: 'Variables to hydrate the request body and path'
+            },
+        ],
+        outputs: [
+            { name: 'response', type: TaskParamType.JSON },
+            { name: 'statusCode', type: TaskParamType.NUMBER },
+            { name: 'success', type: TaskParamType.BOOLEAN },
+        ],
+    },
 
     API_SWITCH: {
         type: TaskType.API_SWITCH,
@@ -1450,6 +1473,23 @@ export const TaskRegistry: Registry = {
             { name: 'isSuccessful', type: TaskParamType.BOOLEAN },
             { name: 'transactionReference', type: TaskParamType.STRING },
             { name: 'details', type: TaskParamType.JSON },
+        ],
+    },
+    REGISTRY_SYNC: {
+        type: TaskType.REGISTRY_SYNC,
+        label: 'Registry Sync',
+        icon: RefreshCw,
+        category: TaskCategory.DATA,
+        description: 'Synchronize a Provider Mapping with external platform metadata.',
+        inputs: [
+            {
+                name: 'mappingId', type: TaskParamType.STRING, required: true,
+                helperText: 'Select a Provider Mapping by ID or Name'
+            },
+        ],
+        outputs: [
+            { name: 'externalCode', type: TaskParamType.STRING },
+            { name: 'success', type: TaskParamType.BOOLEAN },
         ],
     },
 }

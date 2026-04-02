@@ -40,6 +40,7 @@ const initialNodes: AppNode[] = [
 
 const nodeTypes: NodeTypes = {
     abiaNode: NodeComponent,
+    custom: NodeComponent, // Add alias to support SDL-generated nodes from previous versions
 }
 
 import { Menu, Loader2 } from 'lucide-react'

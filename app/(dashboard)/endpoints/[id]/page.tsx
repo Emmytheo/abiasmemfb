@@ -27,6 +27,7 @@ export default async function EndpointEditorPage({ params }: { params: Promise<{
             endpoint = await payload.findByID({
                 collection: 'endpoints',
                 id,
+                depth: 1, // populate provider so baseUrl is available in the client
             }).catch(() => null)
 
             if (!endpoint) {

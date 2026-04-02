@@ -33,7 +33,7 @@ export function compileSDLToFlow(sdl: WorkflowSDL) {
     const triggerId = 'trigger-1';
     nodes.push({
         id: triggerId,
-        type: 'custom',
+        type: 'abiaNode',
         data: {
             type: TaskType.TRIGGER,
             inputs: { triggerType: sdl.trigger.toUpperCase() }
@@ -52,7 +52,7 @@ export function compileSDLToFlow(sdl: WorkflowSDL) {
     for (const step of sdl.steps) {
         nodes.push({
             id: step.id,
-            type: 'custom', // Matches the React Flow node type used in abia-mfb
+            type: 'abiaNode', // Matches the nodeTypes key in FlowEditor.tsx
             data: {
                 type: step.type,
                 inputs: step.inputs || {}
