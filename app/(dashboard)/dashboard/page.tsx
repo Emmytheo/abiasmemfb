@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Suspense } from "react";
 import { VolumeChart } from "@/components/dashboard/volume-chart";
 
@@ -117,6 +118,42 @@ async function DashboardOverviewContent() {
                         <span className="text-muted-foreground/60 text-[10px] uppercase font-bold tracking-wider">NPF Ratio</span>
                     </div>
                 </Card>
+            </div>
+
+            {/* Automation Hub Quick Access */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Link href="/endpoints" className="block group">
+                    <Card className="bg-primary/5 border-primary/20 p-6 rounded-2xl flex items-center justify-between hover:bg-primary/10 transition-all cursor-pointer shadow-none">
+                         <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-primary text-primary-foreground group-hover:scale-110 transition-transform">
+                                <TrendingUp className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-foreground">API Endpoints</h3>
+                                <p className="text-sm text-muted-foreground">Manage dynamic integrations and vendor specifications.</p>
+                            </div>
+                         </div>
+                         <Button variant="ghost" size="icon" className="group-hover:translate-x-1 transition-transform">
+                            <TrendingUp className="h-5 w-5" />
+                         </Button>
+                    </Card>
+                </Link>
+                <Link href="/workflows" className="block group">
+                    <Card className="bg-secondary/5 border-secondary/20 p-6 rounded-2xl flex items-center justify-between hover:bg-secondary/10 transition-all cursor-pointer shadow-none">
+                         <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-secondary text-secondary-foreground group-hover:scale-110 transition-transform">
+                                <FileText className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-foreground">Automation Workflows</h3>
+                                <p className="text-sm text-muted-foreground">Orchestrate banking logic with declarative SDL.</p>
+                            </div>
+                         </div>
+                         <Button variant="ghost" size="icon" className="group-hover:translate-x-1 transition-transform">
+                            <TrendingUp className="h-5 w-5" />
+                         </Button>
+                    </Card>
+                </Link>
             </div>
 
             {/* Main Grid Layout */}

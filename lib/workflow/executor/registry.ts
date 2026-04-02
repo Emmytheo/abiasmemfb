@@ -8,6 +8,7 @@ import { ConditionalExecutor } from './ConditionalExecutor'
 import { DelayExecutor } from './DelayExecutor'
 import { GroupExecutor } from './GroupExecutor'
 import { ApiCallExecutor } from './ApiCallExecutor'
+import { ApiExecutionExecutor } from './ApiExecutionExecutor'
 import { ApiSwitchExecutor } from './ApiSwitchExecutor'
 import { ApprovalGateExecutor } from './ApprovalGateExecutor'
 import { SendEmailExecutor } from './SendEmailExecutor'
@@ -86,6 +87,7 @@ export const ExecutorRegistry: RegistryType = {
     DELAY: DelayExecutor,
     GROUP: GroupExecutor,
     API_CALL: ApiCallExecutor,
+    API_EXECUTION: ApiExecutionExecutor,
     API_SWITCH: ApiSwitchExecutor,
     WEBHOOK_DELIVER: WebhookDeliverExecutor,
     APPROVAL_GATE: ApprovalGateExecutor,

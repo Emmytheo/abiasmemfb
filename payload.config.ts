@@ -18,6 +18,8 @@ import { ProductApplications } from './collections/ProductApplications'
 import { Workflows } from './collections/Workflows'
 import { WorkflowExecutions } from './collections/WorkflowExecutions'
 import { ServiceProviders } from './collections/ServiceProviders'
+import { Endpoints } from './collections/Endpoints'
+import { ProviderMappings } from './collections/ProviderMappings'
 import { Secrets } from './collections/Secrets'
 import { ProviderHealthLogs } from './collections/ProviderHealthLogs'
 import { ScheduledJobs } from './collections/ScheduledJobs'
@@ -87,7 +89,7 @@ export default buildConfig({
         // Products
         ProductClasses, ProductCategories, ProductTypes, ProductApplications,
         // Workflow Engine
-        Workflows, WorkflowExecutions, ServiceProviders, Secrets,
+        Workflows, WorkflowExecutions, ServiceProviders, Endpoints, ProviderMappings, Secrets,
         ProviderHealthLogs, ScheduledJobs, CustomBlocks, IdempotencyRecords,
         // Service Pipeline
         ServiceCategories, Services,

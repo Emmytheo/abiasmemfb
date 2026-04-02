@@ -107,6 +107,27 @@ export const ProductTypes: CollectionConfig = {
                 { name: 'placeholder', type: 'text' },
                 { name: 'description', type: 'text' },
                 { name: 'options', type: 'json' },
+                {
+                    name: 'validations',
+                    type: 'array',
+                    admin: { description: 'Client & Server side validations for this field.' },
+                    fields: [
+                        { name: 'type', type: 'select', options: ['regex', 'min', 'max', 'api_lookup'], required: true },
+                        { name: 'value', type: 'text', admin: { description: 'Regex pattern, numeric limit, or Endpoint ID depending on type.' } },
+                        { name: 'errorMessage', type: 'text' }
+                    ]
+                },
+                {
+                    name: 'events',
+                    type: 'array',
+                    admin: { description: 'Dynamic actions triggered when interacting with this field.' },
+                    fields: [
+                        { name: 'trigger', type: 'select', options: ['onChange', 'onBlur', 'onLoad'], required: true },
+                        { name: 'action', type: 'select', options: ['EXECUTE_ENDPOINT', 'SET_VALUE'], required: true },
+                        { name: 'endpointId', type: 'relationship', relationTo: 'endpoints', admin: { condition: (_, siblingData) => siblingData?.action === 'EXECUTE_ENDPOINT' } },
+                        { name: 'mappingConfig', type: 'json', admin: { description: 'JSON describing how API response or static data maps back to form fields.' } }
+                    ]
+                }
             ],
         },
         {

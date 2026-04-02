@@ -23,6 +23,7 @@ export enum TaskType {
     GROUP = 'GROUP',
     // API Integration
     API_CALL = 'API_CALL',
+    API_EXECUTION = 'API_EXECUTION',
     API_SWITCH = 'API_SWITCH',
     WEBHOOK_DELIVER = 'WEBHOOK_DELIVER',
     // Approval

@@ -1,0 +1,47 @@
+{
+  "name": "Quick Customer Onboarding (SDL Template)",
+  "description": "Auto-verifies BVN, creates a customer record, and opens a tier-1 savings account.",
+  "trigger": "MANUAL",
+  "steps": [
+    {
+      "id": "bvn_verification",
+      "type": "API_EXECUTION",
+      "next": "create_customer",
+      "inputs": {
+        "endpointId": "YOUR_BVN_LOOKUP_ENDPOINT_ID",
+        "dynamicPayload": {
+          "bvn": "{{TRIGGER_PAYLOAD.bvnNumber}}"
+        }
+      }
+    },
+    {
+      "id": "create_customer",
+      "type": "API_EXECUTION",
+      "next": "approve_gate",
+      "inputs": {
+        "endpointId": "YOUR_CREATE_CUSTOMER_ENDPOINT_ID",
+        "dynamicPayload": {
+          "firstName": "{{bvn_verification.response.firstName}}",
+          "lastName": "{{bvn_verification.response.lastName}}",
+          "phoneNumber": "{{TRIGGER_PAYLOAD.phone}}"
+        }
+      }
+    },
+    {
+      "id": "approve_gate",
+      "type": "APPROVAL_GATE",
+      "next": "open_account"
+    },
+    {
+      "id": "open_account",
+      "type": "API_EXECUTION",
+      "inputs": {
+        "endpointId": "YOUR_OPEN_ACCOUNT_ENDPOINT_ID",
+        "dynamicPayload": {
+          "customerId": "{{create_customer.response.id}}",
+          "productCode": "SAV001"
+        }
+      }
+    }
+  ]
+}

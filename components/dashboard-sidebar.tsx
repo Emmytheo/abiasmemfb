@@ -124,9 +124,19 @@ const navGroups = [
                 icon: LayoutDashboard,
             },
             {
-                title: "Providers",
-                url: "/workflows/providers",
+                title: "API Endpoints",
+                url: "/endpoints",
                 icon: Wifi,
+            },
+            {
+                title: "Provider Mappings",
+                url: "/admin/collections/provider-mappings",
+                icon: Building, // Ensure Building is imported from lucide-react, wait, let's use Database or just Tag
+            },
+            {
+                title: "Service Vault",
+                url: "/workflows/providers",
+                icon: Settings,
             },
             {
                 title: "Secrets",
