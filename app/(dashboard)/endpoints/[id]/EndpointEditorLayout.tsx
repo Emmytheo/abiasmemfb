@@ -60,51 +60,68 @@ export function EndpointEditorLayout({ endpointId, initialData, dynamicOptions }
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)]">
             {/* Header */}
-            <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sm:px-6 justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/endpoints" className="text-muted-foreground hover:text-foreground">
-                        <ArrowLeft size={20} />
-                    </Link>
-                    <div className="flex flex-col">
-                        <input 
+            <header className="shrink-0 border-b bg-background">
+                {/* Row 1: Back + Name + Save */}
+                <div className="flex items-center gap-2 px-4 h-14 justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <Link href="/endpoints" className="text-muted-foreground hover:text-foreground shrink-0">
+                            <ArrowLeft size={20} />
+                        </Link>
+                        <input
                             value={formData.name}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
                             placeholder="Endpoint Name"
-                            className="bg-transparent border-0 focus:ring-0 text-sm font-semibold p-0 w-[200px]"
+                            className="bg-transparent border-0 focus:ring-0 text-sm font-semibold p-0 min-w-0 w-full outline-none truncate"
                         />
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Tabs inline on md+ */}
+                        <div className="hidden sm:flex items-center bg-muted/50 p-1 rounded-md">
+                            <button
+                                onClick={() => setActiveTab('definition')}
+                                className={`text-xs px-3 py-1.5 rounded-sm font-medium transition-colors ${activeTab === 'definition' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Definition
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('test')}
+                                className={`text-xs px-3 py-1.5 rounded-sm font-medium transition-colors ${activeTab === 'test' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Test Console
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 shrink-0"
+                        >
+                            {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                            <span className="hidden sm:inline">Save</span>
+                        </button>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex items-center bg-muted/50 p-1 rounded-md">
-                    <button 
+                {/* Row 2: Tabs — mobile only */}
+                <div className="flex sm:hidden border-t">
+                    <button
                         onClick={() => setActiveTab('definition')}
-                        className={`text-xs px-3 py-1.5 rounded-sm font-medium transition-colors ${activeTab === 'definition' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`flex-1 text-xs py-2.5 font-medium transition-colors border-b-2 ${activeTab === 'definition' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}
                     >
                         Definition
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('test')}
-                        className={`text-xs px-3 py-1.5 rounded-sm font-medium transition-colors ${activeTab === 'test' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`flex-1 text-xs py-2.5 font-medium transition-colors border-b-2 ${activeTab === 'test' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}
                     >
                         Test Console
-                    </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={handleSave} 
-                        disabled={isSaving}
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
-                    >
-                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                        Save
                     </button>
                 </div>
             </header>
 
             {/* Layout Body */}
-            <div className="flex-1 overflow-auto bg-muted/10 p-4 sm:p-8">
+            <div className="flex-1 overflow-auto bg-muted/10 p-3 sm:p-6 lg:p-8">
                 <div className="max-w-5xl mx-auto border bg-background rounded-lg shadow-sm">
                     {activeTab === 'definition' ? (
                         <DefinitionTab formData={formData} setFormData={setFormData} dynamicOptions={dynamicOptions} />
