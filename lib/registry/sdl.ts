@@ -24,7 +24,7 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
                 limit: 1
             });
 
-            let productTypeId: string;
+            let productTypeId: string | number;
             if (existing.docs.length > 0) {
                 const target = existing.docs[0];
                 await payload.update({
@@ -191,7 +191,7 @@ async function findOrCreateProductClass(payload: any, slug: string) {
     return await payload.create({ collection: 'product-classes', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), status: 'active' } });
 }
 
-async function findOrCreateProductCategory(payload: any, slug: string, classId: string) {
+async function findOrCreateProductCategory(payload: any, slug: string, classId: string | number) {
     const existing = await payload.find({ collection: 'product-categories', where: { name: { equals: slug.charAt(0).toUpperCase() + slug.slice(1) } }, limit: 1 });
     if (existing.docs.length > 0) return existing.docs[0];
     return await payload.create({ collection: 'product-categories', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), class_id: classId, status: 'active' } });
@@ -208,7 +208,7 @@ async function findWorkflowBySlug(payload: any, slug: string) {
     return res.docs[0] || null;
 }
 
-async function ensureProviderMapping(payload: any, provider: string, externalCode: string, internalId: string, relationTo: string, label: string) {
+async function ensureProviderMapping(payload: any, provider: string, externalCode: string, internalId: string | number, relationTo: string, label: string) {
     const mapping = await payload.find({ collection: 'provider-mappings', where: { and: [{ externalCode: { equals: externalCode } }, { provider: { equals: provider } }] }, limit: 1 });
     if (mapping.docs.length === 0) {
         await payload.create({ 
