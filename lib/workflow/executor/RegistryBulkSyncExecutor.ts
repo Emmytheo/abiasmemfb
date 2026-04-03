@@ -181,7 +181,7 @@ export async function RegistryBulkSyncExecutor() {
                 if (existingProduct.docs.length > 0 || mapping.docs.length > 0) {
                     
                     // Update/Consolidate
-                    const targetProduct = existingProduct.docs[0] || (mapping.docs[0].internalId as any);
+                    const targetProduct = existingProduct.docs[0] || (mapping.docs[0].relatedEntity?.value as any);
                     if (!targetProduct) throw new Error("Mapping found but internal product missing.");
 
                     await payload.update({

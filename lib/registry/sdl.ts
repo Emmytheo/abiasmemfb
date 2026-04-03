@@ -61,7 +61,7 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
 
             // 3. Optional Mapping
             if (prod.externalCode) {
-                await ensureProviderMapping(payload, 'qore', prod.externalCode, productTypeId, 'product');
+                await ensureProviderMapping(payload, 'qore', prod.externalCode, productTypeId, 'product-types', prod.name);
             }
 
             stats.products++;
@@ -135,7 +135,9 @@ export async function exportRegistryBundle(version: string = "1.0.0"): Promise<R
         // Find external mapping
         const mapping = await payload.find({ 
             collection: 'provider-mappings', 
-            where: { and: [{ internalId: { equals: p.id } }, { mappingType: { equals: 'product' } }] },
+            where: { 
+                'relatedEntity.value': { equals: p.id }
+            },
             limit: 1
         });
 
@@ -206,9 +208,21 @@ async function findWorkflowBySlug(payload: any, slug: string) {
     return res.docs[0] || null;
 }
 
-async function ensureProviderMapping(payload: any, provider: string, externalCode: string, internalId: string, type: string) {
+async function ensureProviderMapping(payload: any, provider: string, externalCode: string, internalId: string, relationTo: string, label: string) {
     const mapping = await payload.find({ collection: 'provider-mappings', where: { and: [{ externalCode: { equals: externalCode } }, { provider: { equals: provider } }] }, limit: 1 });
     if (mapping.docs.length === 0) {
-        await payload.create({ collection: 'provider-mappings', data: { provider, externalCode, internalId, mappingType: type, status: 'active' } });
+        await payload.create({ 
+            collection: 'provider-mappings', 
+            data: { 
+                internalName: `${label} Mapping`,
+                provider, 
+                externalCode, 
+                relatedEntity: {
+                    relationTo,
+                    value: internalId
+                },
+                status: 'active' 
+            } 
+        });
     }
 }
