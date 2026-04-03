@@ -233,6 +233,7 @@ export const getAllProductTypes = async (): Promise<ProductType[]> => {
         const { docs } = await payload.find({
             collection: 'product-types' as any,
             depth: 1, // Ensure the category relationship is expanded
+            limit: 0, // Fetch ALL records for the registry list
         });
         return docs.map((doc: any) => ({
             id: doc.id,
@@ -294,8 +295,11 @@ export const saveProductType = async (data: ProductType): Promise<ProductType> =
             status: data.status,
             financial_terms: data.financial_terms,
             form_schema: data.form_schema,
-            workflow_stages: data.workflow_stages || ['Submitted'],
-            image_url: data.image_url, // Now safe to stringly submit
+            // Map string array to CMS object array [{stage: string}]
+            workflow_stages: Array.isArray(data.workflow_stages) 
+                ? data.workflow_stages.map(s => typeof s === 'string' ? { stage: s } : s)
+                : [{ stage: 'Submitted' }],
+            image_url: data.image_url,
         };
 
         let doc;

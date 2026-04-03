@@ -52,13 +52,17 @@ export function GenericDataTable<T extends { id: string | number }>({
     const [searchQuery, setSearchQuery] = React.useState("");
     const isMobile = useIsMobile();
     const [viewMode, setViewMode] = React.useState<string>("list");
-
+    
+    // Pagination state
+    const [pageSize, setPageSize] = React.useState(10);
+    const [currentPage, setCurrentPage] = React.useState(1);
+ 
     React.useEffect(() => {
         if (gridRenderItem) {
             setViewMode(isMobile ? "grid" : "list");
         }
     }, [isMobile, gridRenderItem]);
-
+ 
     const filteredData = React.useMemo(() => {
         if (!searchQuery || !searchKey) return data;
         return data.filter((item) => {
@@ -69,6 +73,17 @@ export function GenericDataTable<T extends { id: string | number }>({
             return false;
         });
     }, [data, searchQuery, searchKey]);
+
+    // Reset to page 1 when search query changes
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
+
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    const paginatedData = React.useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredData.slice(start, start + pageSize);
+    }, [filteredData, currentPage, pageSize]);
 
     return (
         <Card className="w-full bg-background/50 backdrop-blur border-border/50 shadow-transparent border-0">
@@ -98,7 +113,7 @@ export function GenericDataTable<T extends { id: string | number }>({
                 <Tabs value={viewMode} onValueChange={setViewMode} className="w-full">
                     <div className="flex items-center justify-between mb-4">
                         <div className="text-sm text-muted-foreground">
-                            Showing {filteredData.length} records
+                            Showing {Math.min(filteredData.length, (currentPage - 1) * pageSize + 1)} to {Math.min(filteredData.length, currentPage * pageSize)} of {filteredData.length} records
                         </div>
                         {gridRenderItem && (
                             <TabsList className="grid w-[120px] grid-cols-2">
@@ -111,7 +126,7 @@ export function GenericDataTable<T extends { id: string | number }>({
                             </TabsList>
                         )}
                     </div>
-
+ 
                     <TabsContent value="list" className="m-0 border rounded-md overflow-hidden bg-background">
                         <Table>
                             <TableHeader className="bg-muted/50">
@@ -122,14 +137,14 @@ export function GenericDataTable<T extends { id: string | number }>({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredData.length === 0 ? (
+                                {paginatedData.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={columns.length} className="h-24 text-center">
                                             No results.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredData.map((item) => (
+                                    paginatedData.map((item) => (
                                         <TableRow key={item.id}>
                                             {columns.map((col, index) => (
                                                 <TableCell key={index}>
@@ -147,19 +162,65 @@ export function GenericDataTable<T extends { id: string | number }>({
                             </TableBody>
                         </Table>
                     </TabsContent>
-
+ 
                     {gridRenderItem && (
                         <TabsContent value="grid" className="m-0">
-                            {filteredData.length === 0 ? (
+                            {paginatedData.length === 0 ? (
                                 <div className="h-48 border rounded-md flex items-center justify-center text-muted-foreground bg-background">
                                     No results.
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {filteredData.map(gridRenderItem)}
+                                    {paginatedData.map(gridRenderItem)}
                                 </div>
                             )}
                         </TabsContent>
+                    )}
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-end space-x-2 py-4 mt-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                Previous
+                            </Button>
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    // Logic to show a window of pages
+                                    let pageNum = i + 1;
+                                    if (totalPages > 5 && currentPage > 3) {
+                                        pageNum = currentPage - 2 + i;
+                                        if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                                    }
+                                    
+                                    if (pageNum <= 0 || pageNum > totalPages) return null;
+
+                                    return (
+                                        <Button
+                                            key={pageNum}
+                                            variant={currentPage === pageNum ? "default" : "outline"}
+                                            size="sm"
+                                            className="w-9 h-9"
+                                            onClick={() => setCurrentPage(pageNum)}
+                                        >
+                                            {pageNum}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                            >
+                                Next
+                            </Button>
+                        </div>
                     )}
                 </Tabs>
             </CardContent>

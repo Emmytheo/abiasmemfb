@@ -13,8 +13,14 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { DualRangeSlider } from "@/components/ui/dual-range-slider";
-import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { 
+    ProductType, 
+    ProductCategory, 
+    FormField, 
+    ProductFinancialTerms 
+} from "@/lib/api/types";
 import { FormFieldBuilder } from "@/components/forms/builder/FormFieldBuilder";
 function RichTextEditor({ value, onChange }: { value: string, onChange: (v: string) => void }) {
     const editorRef = React.useRef<HTMLDivElement>(null);
@@ -190,23 +196,10 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
 
     const handleDragStart = (e: React.DragEvent, index: number) => {
         setDraggedIndex(index);
-        e.dataTransfer.effectAllowed = 'move';
-        // Need to set data to allow drag on Firefox
-        e.dataTransfer.setData('text/plain', index.toString());
     };
 
     const handleDragOver = (e: React.DragEvent, index: number) => {
-        e.preventDefault(); // Necessary to allow dropping
-        e.dataTransfer.dropEffect = 'move';
-        if (draggedIndex === null || draggedIndex === index) return;
-
-        const newSchema = [...product.form_schema];
-        const draggedItem = newSchema[draggedIndex];
-        newSchema.splice(draggedIndex, 1);
-        newSchema.splice(index, 0, draggedItem);
-
-        updateProduct({ form_schema: newSchema });
-        setDraggedIndex(index);
+        e.preventDefault();
     };
 
     const handleDragEnd = () => {
@@ -521,97 +514,12 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                             </div>
 
                             <div className="space-y-4 w-full">
-                                {product.form_schema.map((field, index) => (
-                                    <div
-                                        key={field.id}
-                                        draggable
-                                        onDragStart={(e) => handleDragStart(e, index)}
-                                        onDragOver={(e) => handleDragOver(e, index)}
-                                        onDragEnd={handleDragEnd}
-                                        className={`relative bg-card border rounded-xl p-4 flex gap-4 transition-colors ${draggedIndex === index ? 'opacity-40 border-primary border-dashed shadow-inner' : 'hover:border-primary/50 group'}`}
-                                    >
-                                        <div className="cursor-grab active:cursor-grabbing text-muted-foreground mt-2 touch-none flex flex-col justify-center pb-8" title="Drag to reorder">
-                                            <GripVertical className="h-5 w-5 pointer-events-none" />
-                                        </div>
-                                        <div className="flex-1 space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-1">
-                                                    <label className="text-xs font-medium text-muted-foreground">Field Label</label>
-                                                    <input
-                                                        type="text"
-                                                        value={field.label || ''}
-                                                        onChange={(e) => updateFormField(index, { label: e.target.value })}
-                                                        className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs font-medium text-muted-foreground">Input Type</label>
-                                                    <select
-                                                        value={field.type || 'text'}
-                                                        onChange={(e) => updateFormField(index, { type: e.target.value as any })}
-                                                        className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
-                                                    >
-                                                        <option value="text">Short Text</option>
-                                                        <option value="number">Number</option>
-                                                        <option value="email">Email</option>
-                                                        <option value="select">Dropdown Select</option>
-                                                        <option value="file">File Upload</option>
-                                                        <option value="destination_bank_lookup">Bank Lookup</option>
-                                                    </select>
-                                                </div>
-                                                {field.type === 'select' && (
-                                                    <div className="space-y-1 md:col-span-2">
-                                                        <label className="text-xs font-medium text-muted-foreground">Options (comma separated)</label>
-                                                        <input
-                                                            type="text"
-                                                            value={field.options?.join(', ') || ''}
-                                                            onChange={(e) => updateFormField(index, { options: e.target.value.split(',').map(s => s.trim()) })}
-                                                            placeholder="Option A, Option B, Option C"
-                                                            className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="border-t pt-4">
-                                                <Accordion type="single" collapsible className="w-full">
-                                                    <AccordionItem value="advanced-settings" className="border-none">
-                                                        <AccordionTrigger className="py-0 hover:no-underline">
-                                                            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-                                                                <Settings2 className="h-3 w-3" /> Advanced Validation & Logic
-                                                            </div>
-                                                        </AccordionTrigger>
-                                                        <AccordionContent className="pt-4 pb-0">
-                                                            <FieldAdvancedSettings
-                                                                field={field}
-                                                                endpoints={endpoints}
-                                                                onUpdate={(updates) => updateFormField(index, updates)}
-                                                            />
-                                                        </AccordionContent>
-                                                    </AccordionItem>
-                                                </Accordion>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-center justify-between border-l pl-4 ml-2">
-                                            <button type="button" onClick={() => removeFormField(index)} className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors m-1">
-                                                <Trash className="h-4 w-4" />
-                                            </button>
-                                            <div className="flex flex-col items-center gap-1 mt-auto pb-1">
-                                                <label className="text-[10px] font-bold uppercase">Required</label>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!field.required}
-                                                    onChange={(e) => updateFormField(index, { required: e.target.checked })}
-                                                    className="w-4 h-4 accent-primary"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                <Button type="button" variant="outline" onClick={addFormField} className="w-full border-dashed py-8 bg-accent/20 hover:bg-accent/40 text-muted-foreground hover:text-foreground">
-                                    <Plus className="mr-2 h-4 w-4" /> Add Field
-                                </Button>
+                                <FormFieldBuilder 
+                                    fields={product.form_schema}
+                                    endpoints={endpoints}
+                                    onChange={(newSchema) => updateProduct({ form_schema: newSchema })}
+                                    idKey="id"
+                                />
                             </div>
 
                             <div className="mt-8 pt-6 border-t">

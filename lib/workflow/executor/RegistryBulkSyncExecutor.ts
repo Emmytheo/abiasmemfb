@@ -61,8 +61,6 @@ export async function RegistryBulkSyncExecutor() {
             query: { mfbCode: institutionCode }
         });
 
-        console.log(`[DYNAMIC SYNC] Executing ${resolved.method} ${resolved.url}`);
-
         const fetchRes = await fetch(resolved.url, {
             method: resolved.method,
             headers: resolved.headers,
@@ -76,8 +74,6 @@ export async function RegistryBulkSyncExecutor() {
 
         const resData = await fetchRes.json();
         
-        console.log(`[DYNAMIC SYNC] Response Structure:`, JSON.stringify(resData).substring(0, 500));
-        
         // Determine product array location based on endpoint config or standard paths
         let allProducts: QoreProduct[] = [];
         if (resData.Payload && Array.isArray(resData.Payload)) {
@@ -90,10 +86,8 @@ export async function RegistryBulkSyncExecutor() {
             allProducts = resData.products;
         }
 
-        console.log(`[DYNAMIC SYNC] Detected ${allProducts.length} products to process.`);
-
         if (allProducts.length === 0) {
-            results.details.push(`[INFO] No products returned from upstream API. Response Keys: ${Object.keys(resData).join(',')}`);
+            results.details.push(`[INFO] No products returned from upstream API.`);
         }
 
         for (const qoreProd of allProducts) {
@@ -185,10 +179,6 @@ export async function RegistryBulkSyncExecutor() {
                 let productTypeId: string | number;
                 
                 if (existingProduct.docs.length > 0 || mapping.docs.length > 0) {
-                    console.log(`[SYNC] Match found for ${qoreProd.ProductName}:`, { 
-                        existing: existingProduct.docs.length, 
-                        mapping: mapping.docs.length 
-                    });
                     
                     // Update/Consolidate
                     const targetProduct = existingProduct.docs[0] || (mapping.docs[0].internalId as any);
@@ -266,7 +256,6 @@ export async function RegistryBulkSyncExecutor() {
 
             } catch (err: any) {
                 results.errors++;
-                console.error(`[SYNC ITEM ERROR] ${qoreProd.ProductName}:`, err);
                 results.details.push(`[ERROR] Failed to sync ${qoreProd.ProductName}: ${err.message}`);
             }
         }
