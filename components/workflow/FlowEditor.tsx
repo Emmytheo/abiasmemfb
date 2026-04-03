@@ -17,7 +17,7 @@ import '@xyflow/react/dist/style.css'
 import { TaskRegistry } from '@/lib/workflow/task/registry'
 import { NodeComponent } from './nodes/NodeComponent'
 import { TaskMenu } from './TaskMenu'
-import { Save, Hand, MousePointer2, Maximize2, X, PlusCircle, Settings2, GripVertical, Beaker } from 'lucide-react'
+import { Save, Hand, MousePointer2, Maximize2, X, PlusCircle, Plus, Settings2, GripVertical, Beaker } from 'lucide-react'
 import { toast } from 'sonner'
 import { saveWorkflowDefinition, createWorkflowAndSave } from '@/app/(dashboard)/workflows/[id]/edit/actions'
 import { Input } from '@/components/ui/input'
@@ -427,6 +427,17 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions, onReady, run
 
             {/* ReactFlow canvas — takes all remaining space */}
             <div className="flex-1 relative h-full" ref={reactFlowWrapper}>
+                {/* Mobile Add Node FAB */}
+                {!isMenuOpen && (
+                    <button
+                        onClick={() => setIsMenuOpen(true)}
+                        className="md:hidden absolute bottom-6 right-6 w-12 h-12 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 z-[10]"
+                        title="Add Node"
+                    >
+                        <Plus size={24} />
+                    </button>
+                )}
+
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}

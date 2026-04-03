@@ -90,39 +90,37 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-muted/40 animate-in fade-in duration-200">
-            <header className="min-h-[3.5rem] py-2 bg-background border-b flex flex-wrap items-center justify-between gap-4 px-4 shrink-0">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
-                    <Link href="/workflows" className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground">
-                        <ArrowLeft size={18} />
+            <header className="h-14 bg-background border-b flex items-center justify-between px-2 sm:px-4 gap-2 shrink-0 overflow-hidden">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <Link href="/workflows" className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground shrink-0">
+                        <ArrowLeft size={16} />
                     </Link>
-                    <div className="h-4 w-px bg-border my-auto" />
-                    <div className="flex items-center gap-2">
+                    <div className="h-4 w-px bg-border my-auto shrink-0" />
+                    <div className="flex items-center gap-2 min-w-0">
                         {isEditingName ? (
-                            <div className="flex items-center gap-1.5">
-                                <input
-                                    ref={nameInputRef}
-                                    value={wfName}
-                                    onChange={(e) => setWfName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleNameSave()
-                                        if (e.key === 'Escape') { setWfName(workflow?.name || 'Untitled Workflow'); setIsEditingName(false) }
-                                    }}
-                                    onBlur={handleNameSave}
-                                    autoFocus
-                                    className="font-semibold text-sm bg-transparent border border-primary/50 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary max-w-[220px]"
-                                />
-                            </div>
+                            <input
+                                ref={nameInputRef}
+                                value={wfName}
+                                onChange={(e) => setWfName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleNameSave()
+                                    if (e.key === 'Escape') { setWfName(workflow?.name || 'Untitled Workflow'); setIsEditingName(false) }
+                                }}
+                                onBlur={handleNameSave}
+                                autoFocus
+                                className="font-semibold text-sm bg-transparent border border-primary/50 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary w-full max-w-[140px] sm:max-w-[220px] min-w-0"
+                            />
                         ) : (
                             <div
-                                className="font-semibold text-sm flex items-center gap-1.5 cursor-pointer group/name"
+                                className="font-semibold text-sm flex items-center gap-1.5 cursor-pointer group/name min-w-0"
                                 onClick={() => setIsEditingName(true)}
                                 title="Click to rename"
                             >
-                                {wfName}
-                                <Pencil size={12} className="text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                                <span className="truncate">{wfName}</span>
+                                <Pencil size={12} className="text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity shrink-0" />
                             </div>
                         )}
-                        <div className={`px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider ${currentStatus === 'PUBLISHED'
+                        <div className={`px-1.5 sm:px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-medium uppercase tracking-wider shrink-0 ${currentStatus === 'PUBLISHED'
                             ? 'bg-green-500/10 text-green-600'
                             : 'bg-amber-500/10 text-amber-600'
                             }`}>
@@ -131,31 +129,31 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <ThemeCustomizer />
                     <button
                         onClick={handleTestRun}
                         disabled={isRunning || !!isSaving || workflowId === 'new'}
-                        className="h-8 px-3 text-xs bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-md font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                        className="h-8 px-2.5 sm:px-3 text-xs bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-md font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
                     >
                         {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                        {isRunning ? 'Starting...' : 'Test Run'}
+                        <span className="hidden sm:inline">{isRunning ? 'Starting...' : 'Test Run'}</span>
                     </button>
                     <button
                         onClick={() => handleSave('draft')}
                         disabled={!!isSaving}
-                        className="h-8 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 rounded-md font-medium transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+                        className="h-8 px-2.5 sm:px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 rounded-md font-medium transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
                     >
                         {isSaving === 'draft' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                        Save Draft
+                        <span className="hidden sm:inline">Save Draft</span>
                     </button>
                     <button
                         onClick={() => handleSave('published')}
                         disabled={!!isSaving}
-                        className="h-8 px-3 text-xs bg-green-600 text-white hover:bg-green-700 rounded-md font-medium transition-colors shadow-sm ml-2 disabled:opacity-50 flex items-center gap-2"
+                        className="h-8 px-2.5 sm:px-3 text-xs bg-green-600 text-white hover:bg-green-700 rounded-md font-medium transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
                     >
-                        {isSaving === 'published' && <Loader2 size={14} className="animate-spin" />}
-                        Publish
+                        {isSaving === 'published' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} className="sm:hidden" />}
+                        <span className="hidden sm:inline">Publish</span>
                     </button>
                 </div>
             </header>

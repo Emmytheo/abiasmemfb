@@ -9,22 +9,22 @@ export const QoreAdapter: ApiAdapter = {
     ...PayloadAdapter,
 
     // Banking operations intercepted by Qore
-    createAccount: actions.createAccount,
-    getAccountById: actions.getAccountById,
-    getAllAccounts: actions.getAllAccounts,
-    getUserAccounts: actions.getUserAccounts,
+    createAccount: (...args) => actions.createAccount(...args),
+    getAccountById: (...args) => actions.getAccountById(...args),
+    getAllAccounts: (...args) => actions.getAllAccounts(...args),
+    getUserAccounts: (...args) => actions.getUserAccounts(...args),
 
-    createLoan: actions.createLoan,
-    getLoanById: actions.getLoanById,
-    getAllLoans: actions.getAllLoans,
-    getUserLoans: actions.getUserLoans,
+    createLoan: (...args) => actions.createLoan(...args),
+    getLoanById: (...args) => actions.getLoanById(...args),
+    getAllLoans: (...args) => actions.getAllLoans(...args),
+    getUserLoans: (...args) => actions.getUserLoans(...args),
 
-    processAccountFunding: actions.processAccountFunding,
+    processAccountFunding: (...args) => actions.processAccountFunding(...args),
 
-    getAllTransactions: actions.getAllTransactions,
-    getUserTransactions: actions.getUserTransactions,
-    getLoanTransactions: actions.getLoanTransactions,
-    getAccountTransactions: actions.getAccountTransactions,
-    getTransactionById: actions.getTransactionById,
-    getTransactionsByCategory: actions.getTransactionsByCategory,
+    getAllTransactions: (...args) => actions.getAllTransactions(...args),
+    getUserTransactions: (...args) => actions.getUserTransactions(...args),
+    getLoanTransactions: (...args) => actions.getLoanTransactions(...args),
+    getAccountTransactions: (...args) => actions.getAccountTransactions(...args),
+    getTransactionById: (...args) => actions.getTransactionById(...args),
+    getTransactionsByCategory: (...args) => actions.getTransactionsByCategory(...args),
 };

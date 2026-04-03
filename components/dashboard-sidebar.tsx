@@ -24,6 +24,7 @@ import {
     Receipt,
     Clock,
     FileText,
+    Play,
 } from "lucide-react";
 
 import {
@@ -87,6 +88,11 @@ const navGroups = [
                 title: "Service Settings",
                 url: "/settings/service",
                 icon: Tag,
+            },
+            {
+                title: "Service Simulator",
+                url: "/settings/service/simulator",
+                icon: Play,
             },
         ],
     },
@@ -157,6 +163,11 @@ const navGroups = [
                 title: "Product Settings",
                 url: "/settings/product",
                 icon: Package,
+            },
+            {
+                title: "Product Simulator",
+                url: "/settings/product/simulator",
+                icon: Play,
             },
         ],
     },

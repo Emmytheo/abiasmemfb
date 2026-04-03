@@ -7,14 +7,15 @@ import { useParams, useRouter } from "next/navigation";
 import {
     ArrowLeft, Save, Loader2, Trash, Info, CreditCard,
     FileText, Smartphone, UploadCloud, Bold, Italic, Underline,
-    List, Link as LinkIcon, ChevronDown, CheckSquare, Plus, X, GripVertical, Image as ImageIcon
+    List, Link as LinkIcon, ChevronDown, CheckSquare, Plus, X, GripVertical, Image as ImageIcon,
+    Settings2, ShieldAlert, Zap, AlertCircle
 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { DualRangeSlider } from "@/components/ui/dual-range-slider";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { ProductType, FormField, ProductCategory } from "@/lib/api/types";
-
+import { FormFieldBuilder } from "@/components/forms/builder/FormFieldBuilder";
 function RichTextEditor({ value, onChange }: { value: string, onChange: (v: string) => void }) {
     const editorRef = React.useRef<HTMLDivElement>(null);
     const hasInit = React.useRef(false);
@@ -64,6 +65,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [categories, setCategories] = useState<ProductCategory[]>([]);
+    const [endpoints, setEndpoints] = useState<any[]>([]);
 
     const [product, setProduct] = useState<ProductType>({
         id: typeId,
@@ -99,10 +101,14 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
 
         async function fetchInitialData() {
             try {
-                const cats = await api.getAllProductCategories();
+                const [cats, eps] = await Promise.all([
+                    api.getAllProductCategories(),
+                    (api as any).getAllEndpoints?.() || Promise.resolve([])
+                ]);
                 setCategories(cats);
+                setEndpoints(eps.docs || eps || []);
             } catch (error) {
-                console.error("Failed to load categories", error);
+                console.error("Failed to load initial data", error);
             }
         }
 
@@ -527,42 +533,64 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                         <div className="cursor-grab active:cursor-grabbing text-muted-foreground mt-2 touch-none flex flex-col justify-center pb-8" title="Drag to reorder">
                                             <GripVertical className="h-5 w-5 pointer-events-none" />
                                         </div>
-                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-medium text-muted-foreground">Field Label</label>
-                                                <input
-                                                    type="text"
-                                                    value={field.label || ''}
-                                                    onChange={(e) => updateFormField(index, { label: e.target.value })}
-                                                    className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-medium text-muted-foreground">Input Type</label>
-                                                <select
-                                                    value={field.type || 'text'}
-                                                    onChange={(e) => updateFormField(index, { type: e.target.value as any })}
-                                                    className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
-                                                >
-                                                    <option value="text">Short Text</option>
-                                                    <option value="number">Number</option>
-                                                    <option value="email">Email</option>
-                                                    <option value="select">Dropdown Select</option>
-                                                    <option value="file">File Upload</option>
-                                                </select>
-                                            </div>
-                                            {field.type === 'select' && (
-                                                <div className="space-y-1 md:col-span-2">
-                                                    <label className="text-xs font-medium text-muted-foreground">Options (comma separated)</label>
+                                        <div className="flex-1 space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-medium text-muted-foreground">Field Label</label>
                                                     <input
                                                         type="text"
-                                                        value={field.options?.join(', ') || ''}
-                                                        onChange={(e) => updateFormField(index, { options: e.target.value.split(',').map(s => s.trim()) })}
-                                                        placeholder="Option A, Option B, Option C"
+                                                        value={field.label || ''}
+                                                        onChange={(e) => updateFormField(index, { label: e.target.value })}
                                                         className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
                                                     />
                                                 </div>
-                                            )}
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-medium text-muted-foreground">Input Type</label>
+                                                    <select
+                                                        value={field.type || 'text'}
+                                                        onChange={(e) => updateFormField(index, { type: e.target.value as any })}
+                                                        className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
+                                                    >
+                                                        <option value="text">Short Text</option>
+                                                        <option value="number">Number</option>
+                                                        <option value="email">Email</option>
+                                                        <option value="select">Dropdown Select</option>
+                                                        <option value="file">File Upload</option>
+                                                        <option value="destination_bank_lookup">Bank Lookup</option>
+                                                    </select>
+                                                </div>
+                                                {field.type === 'select' && (
+                                                    <div className="space-y-1 md:col-span-2">
+                                                        <label className="text-xs font-medium text-muted-foreground">Options (comma separated)</label>
+                                                        <input
+                                                            type="text"
+                                                            value={field.options?.join(', ') || ''}
+                                                            onChange={(e) => updateFormField(index, { options: e.target.value.split(',').map(s => s.trim()) })}
+                                                            placeholder="Option A, Option B, Option C"
+                                                            className="w-full bg-background border rounded text-sm h-9 px-3 outline-none focus:border-primary"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="border-t pt-4">
+                                                <Accordion type="single" collapsible className="w-full">
+                                                    <AccordionItem value="advanced-settings" className="border-none">
+                                                        <AccordionTrigger className="py-0 hover:no-underline">
+                                                            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                                                                <Settings2 className="h-3 w-3" /> Advanced Validation & Logic
+                                                            </div>
+                                                        </AccordionTrigger>
+                                                        <AccordionContent className="pt-4 pb-0">
+                                                            <FieldAdvancedSettings
+                                                                field={field}
+                                                                endpoints={endpoints}
+                                                                onUpdate={(updates) => updateFormField(index, updates)}
+                                                            />
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                </Accordion>
+                                            </div>
                                         </div>
                                         <div className="flex flex-col items-center justify-between border-l pl-4 ml-2">
                                             <button type="button" onClick={() => removeFormField(index)} className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors m-1">

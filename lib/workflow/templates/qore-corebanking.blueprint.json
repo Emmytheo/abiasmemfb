@@ -765,12 +765,23 @@
         },
         {
             "name": "Get Products",
-            "description": "Returns all product configurations available on the BankOne platform. Used by REGISTRY_SYNC to resolve ProductCodes.",
+            "description": "Returns all product configurations available on the BankOne platform. Used by REGISTRY_SYNC to resolve ProductCodes. Requires mfbCode (institution code) injected from provider metadata.",
             "method": "GET",
-            "path": "/BankOneWebAPI/api/Product/GetProducts/2",
+            "path": "/BankOneWebAPI/api/Product/Get/2",
             "authOverride": "QUERY_PARAM",
-            "authQueryParamKey": "authtoken",
+            "authQueryParamKey": "authToken",
             "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "mfbCode": {
+                        "type": "string",
+                        "description": "Institution/MFB code assigned by Qore. Auto-injected from provider.metadata.institutionCode.",
+                        "source": "provider.metadata.institutionCode"
+                    }
+                },
+                "required": ["mfbCode"]
+            },
             "responseSchema": {
                 "successPath": "IsSuccessful",
                 "dataPath": "Payload",

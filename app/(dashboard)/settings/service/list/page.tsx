@@ -21,8 +21,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Plus, Eye, Trash, Code } from "lucide-react";
+import { MoreHorizontal, Plus, Eye, Trash, Code, Settings2, ShieldAlert, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { FormFieldBuilder } from "@/components/forms/builder/FormFieldBuilder";
 
 import { api } from "@/lib/api";
 import { Service, ServiceCategory } from "@/lib/api/types";
@@ -33,6 +34,9 @@ export default function ServicesPage() {
     const [workflows, setWorkflows] = React.useState<{ id: string, name: string }[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
+    const [endpoints, setEndpoints] = React.useState<any[]>([]);
+
+    const [newServiceSchema, setNewServiceSchema] = React.useState<any[]>([]);
 
     const [selectedItem, setSelectedItem] = React.useState<Service | null>(null);
     const [isViewOpen, setIsViewOpen] = React.useState(false);
@@ -40,14 +44,16 @@ export default function ServicesPage() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [servicesReq, categoriesReq, workflowsReq] = await Promise.all([
+            const [servicesReq, categoriesReq, workflowsReq, endpointsReq] = await Promise.all([
                 api.getAllServices(),
                 api.getServiceCategories(),
-                api.getWorkflows()
+                api.getWorkflows(),
+                (api as any).getAllEndpoints?.() || Promise.resolve([])
             ]);
             setData(servicesReq);
             setCategories(categoriesReq);
             setWorkflows(workflowsReq.docs || []);
+            setEndpoints(endpointsReq.docs || endpointsReq || []);
         } catch (error) {
             console.error("Failed to load services:", error);
         } finally {
@@ -91,7 +97,7 @@ export default function ServicesPage() {
                 execution_workflow: executionWf || undefined,
                 fee_type: formData.get("fee_type") as any,
                 fee_value: Number(formData.get("fee_value")) || 0,
-                form_schema: parsedSchema,
+                form_schema: newServiceSchema,
                 status: "active",
             });
 
@@ -138,7 +144,7 @@ export default function ServicesPage() {
                 execution_workflow: executionWf || undefined,
                 fee_type: formData.get("fee_type") as any,
                 fee_value: Number(formData.get("fee_value")) || 0,
-                form_schema: parsedSchema,
+                form_schema: selectedItem.form_schema,
                 status: formData.get("status") as 'active' | 'inactive',
             });
             toast.success("Service updated successfully.");
@@ -294,18 +300,18 @@ export default function ServicesPage() {
                                     <Input id="provider_service_code" name="provider_service_code" placeholder="e.g. NGP-ELEC-01" />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="form_schema" className="flex items-center gap-2">
-                                        <Code className="h-4 w-4" /> Form Schema (JSON Array)
-                                    </Label>
-                                    <textarea
-                                        id="form_schema"
-                                        name="form_schema"
-                                        className="flex min-h-[220px] w-full rounded-md border border-input bg-muted/50 font-mono text-xs px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                        placeholder={`[\n  {\n    "name": "account_number",\n    "label": "Smartcard Number",\n    "type": "text",\n    "required": true\n  }\n]`}
-                                        defaultValue="[]"
+                                <div className="space-y-4 pt-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Code className="h-4 w-4 text-primary" />
+                                        <Label className="text-xs font-bold uppercase tracking-widest">Service Form Schema</Label>
+                                    </div>
+                                    <FormFieldBuilder 
+                                        idKey="name"
+                                        fields={newServiceSchema}
+                                        endpoints={endpoints}
+                                        onChange={setNewServiceSchema}
                                     />
-                                    <p className="text-[10px] text-muted-foreground">Define the textboxes and dropdowns that the user must fill to execute this service.</p>
+                                    <p className="text-[10px] text-muted-foreground italic">Fields defined here will be collected from the user to execute this service.</p>
                                 </div>
                                 <div className="pt-4 flex justify-end gap-2">
                                     <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
@@ -452,15 +458,16 @@ export default function ServicesPage() {
                                 <Input id="edit-provider_service_code" name="provider_service_code" defaultValue={selectedItem.provider_service_code} />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-form_schema" className="flex items-center gap-2">
-                                    <Code className="h-4 w-4" /> Form Schema (JSON Array)
-                                </Label>
-                                <textarea
-                                    id="edit-form_schema"
-                                    name="form_schema"
-                                    className="flex min-h-[200px] w-full rounded-md border border-input bg-muted/50 font-mono text-xs px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    defaultValue={JSON.stringify(selectedItem.form_schema, null, 2)}
+                            <div className="space-y-4 pt-4 border-t">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Code className="h-4 w-4 text-primary" />
+                                    <Label className="text-xs font-bold uppercase tracking-widest">Edit Form Schema</Label>
+                                </div>
+                                <FormFieldBuilder 
+                                    idKey="name"
+                                    fields={selectedItem.form_schema}
+                                    endpoints={endpoints}
+                                    onChange={(updated) => setSelectedItem({...selectedItem, form_schema: updated})}
                                 />
                             </div>
 

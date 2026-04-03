@@ -34,14 +34,29 @@ export interface Loan {
     created_at: string;
 }
 
+export interface FieldValidation {
+    type: 'regex' | 'min' | 'max' | 'api_lookup';
+    value: string;
+    errorMessage?: string;
+}
+
+export interface FieldEvent {
+    trigger: 'onChange' | 'onBlur' | 'onLoad';
+    action: 'EXECUTE_ENDPOINT' | 'SET_VALUE';
+    endpointId?: string;
+    mappingConfig?: Record<string, any>;
+}
+
 export interface FormField {
     id: string;
     label: string;
-    type: 'text' | 'number' | 'email' | 'select' | 'file';
+    type: 'text' | 'number' | 'email' | 'select' | 'file' | 'destination_bank_lookup';
     required: boolean;
     options?: string[]; // For select fields
     placeholder?: string;
     description?: string;
+    validations?: FieldValidation[];
+    events?: FieldEvent[];
 }
 
 export interface ProductClass {
@@ -291,6 +306,8 @@ export interface ServiceFormSchema {
     placeholder?: string;
     options?: string; // Comma-separated options for 'select'
     triggers_validation: boolean;
+    validations?: FieldValidation[];
+    events?: FieldEvent[];
 }
 
 export interface Service {

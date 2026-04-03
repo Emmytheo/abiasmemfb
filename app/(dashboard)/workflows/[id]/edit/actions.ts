@@ -128,4 +128,39 @@ export async function runWorkflow(workflowId: string, inputData?: Record<string,
         }
     }
 }
+export async function executeEndpointAction(endpointId: string, inputData: Record<string, any>) {
+    // We reuse the existing test-runner logic but wrapped as a server action
+    const { getPayload } = await import('payload')
+    const config = (await import('@payload-config')).default
+    const payload = await getPayload({ config })
 
+    try {
+        const endpoint = await payload.findByID({
+            collection: 'endpoints',
+            id: endpointId,
+        })
+
+        if (!endpoint) throw new Error('Endpoint not found')
+
+        // Forward to the internal API resolver
+        const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver')
+        const { url, method, headers, body } = await resolveEndpoint(endpoint as any, inputData)
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                ...headers,
+                'Content-Type': 'application/json',
+            },
+            body: method !== 'GET' ? JSON.stringify(body) : undefined,
+        })
+
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.message || 'API Execution failed')
+
+        return { success: true, data: result }
+    } catch (e: any) {
+        console.error(`[Form Event] Failed to execute endpoint ${endpointId}:`, e)
+        return { success: false, error: e.message }
+    }
+}

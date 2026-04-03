@@ -1,5 +1,6 @@
 import type { ExecutionEnvironment } from '../types/executor'
 import { resolveSecret } from '../secrets/secretResolver'
+import { resolveQueryParams, applyAuthOverride } from '../utils/apiResolver'
 
 export async function RegistrySyncExecutor(env: ExecutionEnvironment<any>): Promise<boolean> {
     const mappingId = env.getInput('mappingId')
@@ -77,17 +78,42 @@ export async function RegistrySyncExecutor(env: ExecutionEnvironment<any>): Prom
         const sep = endpointRes.path.startsWith('/') ? '' : '/'
         let url = `${basePath}${sep}${endpointRes.path}`
         
-        const headers: Record<string, string> = { 'Accept': 'application/json' }
-        if (secretValue) {
-            if (provider.authType === 'BEARER') headers['Authorization'] = `Bearer ${secretValue}`
-            else if (provider.authType === 'API_KEY') {
-                url += `${url.includes('?') ? '&' : '?'}authtoken=${secretValue}`
-            }
+        let headers: Record<string, string> = { 'Accept': 'application/json' }
+        
+        // 1. Resolve Provider Metadata 
+        const resolvedQuery = resolveQueryParams(
+            endpointRes.queryParamsSchema,
+            {}, // No caller query for automated backend syncs, fully relies on schema default + metadata
+            provider
+        )
+
+        if (Object.keys(resolvedQuery).length > 0) {
+            const searchParams = new URLSearchParams()
+            Object.entries(resolvedQuery).forEach(([k, v]) => searchParams.append(k, String(v)))
+            url += `${url.includes('?') ? '&' : '?'}${searchParams.toString()}`
         }
+
+        // 2. Resolve Authentication Overrides
+        const authData = applyAuthOverride(
+            url,
+            headers,
+            {},
+            secretValue,
+            provider,
+            endpointRes
+        )
+
+        url = authData.url
+        headers = authData.headers
+        const finalBody = authData.body
 
         env.log.info(`REGISTRY_SYNC hitting external endpoint: ${url}`)
         
-        const res = await fetch(url, { method: endpointRes.method, headers })
+        const res = await fetch(url, { 
+            method: endpointRes.method, 
+            headers,
+            body: ['GET', 'HEAD'].includes(endpointRes.method) ? undefined : JSON.stringify(finalBody)
+        })
         
         if (!res.ok) {
             env.log.error(`External sync fetch failed for mapping ${mappingId}`)

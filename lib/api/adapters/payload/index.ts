@@ -3,88 +3,88 @@ import * as actions from './actions';
 
 export const PayloadAdapter: ApiAdapter = {
     // Users
-    getCurrentUser: actions.getCurrentUser,
-    getAllUsers: actions.getAllUsers,
+    getCurrentUser: (...args) => actions.getCurrentUser(...args),
+    getAllUsers: (...args) => actions.getAllUsers(...args),
 
     // Products (Accounts, Loans)
-    getAllAccounts: actions.getAllAccounts,
-    getUserAccounts: actions.getUserAccounts,
-    getAccountById: actions.getAccountById,
-    createAccount: actions.createAccount,
-    getAllLoans: actions.getAllLoans,
-    getUserLoans: actions.getUserLoans,
-    getLoanById: actions.getLoanById,
-    createLoan: actions.createLoan,
+    getAllAccounts: (...args) => actions.getAllAccounts(...args),
+    getUserAccounts: (...args) => actions.getUserAccounts(...args),
+    getAccountById: (...args) => actions.getAccountById(...args),
+    createAccount: (...args) => actions.createAccount(...args),
+    getAllLoans: (...args) => actions.getAllLoans(...args),
+    getUserLoans: (...args) => actions.getUserLoans(...args),
+    getLoanById: (...args) => actions.getLoanById(...args),
+    createLoan: (...args) => actions.createLoan(...args),
 
     // Beneficiaries
-    getUserBeneficiaries: actions.getUserBeneficiaries,
-    saveBeneficiary: actions.saveBeneficiary,
-    deleteBeneficiary: actions.deleteBeneficiary,
+    getUserBeneficiaries: (...args) => actions.getUserBeneficiaries(...args),
+    saveBeneficiary: (...args) => actions.saveBeneficiary(...args),
+    deleteBeneficiary: (...args) => actions.deleteBeneficiary(...args),
 
     // Product Configuration & Dynamic Forms
-    getAllProductClasses: actions.getAllProductClasses,
-    createProductClass: actions.createProductClass,
-    updateProductClass: actions.updateProductClass,
-    deleteProductClass: actions.deleteProductClass,
+    getAllProductClasses: (...args) => actions.getAllProductClasses(...args),
+    createProductClass: (...args) => actions.createProductClass(...args),
+    updateProductClass: (...args) => actions.updateProductClass(...args),
+    deleteProductClass: (...args) => actions.deleteProductClass(...args),
 
-    getAllProductCategories: actions.getAllProductCategories,
-    createProductCategory: actions.createProductCategory,
-    updateProductCategory: actions.updateProductCategory,
-    deleteProductCategory: actions.deleteProductCategory,
+    getAllProductCategories: (...args) => actions.getAllProductCategories(...args),
+    createProductCategory: (...args) => actions.createProductCategory(...args),
+    updateProductCategory: (...args) => actions.updateProductCategory(...args),
+    deleteProductCategory: (...args) => actions.deleteProductCategory(...args),
 
-    getAllProductTypes: actions.getAllProductTypes,
-    getProductTypeById: actions.getProductTypeById,
-    saveProductType: actions.saveProductType,
-    deleteProductType: actions.deleteProductType,
+    getAllProductTypes: (...args) => actions.getAllProductTypes(...args),
+    getProductTypeById: (...args) => actions.getProductTypeById(...args),
+    saveProductType: (...args) => actions.saveProductType(...args),
+    deleteProductType: (...args) => actions.deleteProductType(...args),
 
     // Product Applications
-    createProductApplication: actions.createProductApplication,
-    updateApplication: actions.updateApplication,
-    getUserApplications: actions.getUserApplications,
-    getAllApplications: actions.getAllApplications,
+    createProductApplication: (...args) => actions.createProductApplication(...args),
+    updateApplication: (...args) => actions.updateApplication(...args),
+    getUserApplications: (...args) => actions.getUserApplications(...args),
+    getAllApplications: (...args) => actions.getAllApplications(...args),
 
     // Services (Transactions)
-    getAllTransactions: actions.getAllTransactions,
-    getUserTransactions: actions.getUserTransactions,
-    getLoanTransactions: actions.getLoanTransactions,
-    getAccountTransactions: actions.getAccountTransactions,
-    getTransactionById: actions.getTransactionById,
-    getTransactionsByCategory: actions.getTransactionsByCategory,
+    getAllTransactions: (...args) => actions.getAllTransactions(...args),
+    getUserTransactions: (...args) => actions.getUserTransactions(...args),
+    getLoanTransactions: (...args) => actions.getLoanTransactions(...args),
+    getAccountTransactions: (...args) => actions.getAccountTransactions(...args),
+    getTransactionById: (...args) => actions.getTransactionById(...args),
+    getTransactionsByCategory: (...args) => actions.getTransactionsByCategory(...args),
 
     // Account Funding
-    processAccountFunding: actions.processAccountFunding,
+    processAccountFunding: (...args) => actions.processAccountFunding(...args),
 
     // Service Integrations
-    getServiceCategories: actions.getServiceCategories,
-    getServicesByCategory: actions.getServicesByCategory,
-    getAllServices: actions.getAllServices,
-    createServiceCategory: actions.createServiceCategory,
-    updateServiceCategory: actions.updateServiceCategory,
-    deleteServiceCategory: actions.deleteServiceCategory,
-    createService: actions.createService,
-    updateService: actions.updateService,
-    deleteService: actions.deleteService,
-    executeServiceWorkflow: actions.executeServiceWorkflow,
-    validateServiceWorkflow: actions.validateServiceWorkflow,
-    getWorkflowExecutionById: actions.getWorkflowExecutionById,
+    getServiceCategories: (...args) => actions.getServiceCategories(...args),
+    getServicesByCategory: (...args) => actions.getServicesByCategory(...args),
+    getAllServices: (...args) => actions.getAllServices(...args),
+    createServiceCategory: (...args) => actions.createServiceCategory(...args),
+    updateServiceCategory: (...args) => actions.updateServiceCategory(...args),
+    deleteServiceCategory: (...args) => actions.deleteServiceCategory(...args),
+    createService: (...args) => actions.createService(...args),
+    updateService: (...args) => actions.updateService(...args),
+    deleteService: (...args) => actions.deleteService(...args),
+    executeServiceWorkflow: (...args) => actions.executeServiceWorkflow(...args),
+    validateServiceWorkflow: (...args) => actions.validateServiceWorkflow(...args),
+    getWorkflowExecutionById: (...args) => actions.getWorkflowExecutionById(...args),
 
     // Workflows
-    getWorkflows: actions.getWorkflows,
+    getWorkflows: (...args) => actions.getWorkflows(...args),
 
     // Settings (Config)
-    getConfigsByCategory: actions.getConfigsByCategory,
+    getConfigsByCategory: (...args) => actions.getConfigsByCategory(...args),
 
     // Global CMS
-    getPageBySlug: actions.getPageBySlug,
+    getPageBySlug: (...args) => actions.getPageBySlug(...args),
 
     // Blog
-    getBlogPosts: actions.getBlogPosts,
-    getBlogPostBySlug: actions.getBlogPostBySlug,
-    getFeaturedPosts: actions.getFeaturedPosts,
-    getPostsByCategory: actions.getPostsByCategory,
-    getPopularPosts: actions.getPopularPosts,
-    getAllTags: actions.getAllTags,
+    getBlogPosts: (...args) => actions.getBlogPosts(...args),
+    getBlogPostBySlug: (...args) => actions.getBlogPostBySlug(...args),
+    getFeaturedPosts: (...args) => actions.getFeaturedPosts(...args),
+    getPostsByCategory: (...args) => actions.getPostsByCategory(...args),
+    getPopularPosts: (...args) => actions.getPopularPosts(...args),
+    getAllTags: (...args) => actions.getAllTags(...args),
 
     // Careers
-    getOpenPositions: actions.getOpenPositions,
+    getOpenPositions: (...args) => actions.getOpenPositions(...args),
 };

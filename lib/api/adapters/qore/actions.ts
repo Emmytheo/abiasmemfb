@@ -60,9 +60,9 @@ const qoreRequest = async (
     if (type === 'core') {
         if (endpoint.includes('?')) {
             const [path, query] = endpoint.split('?');
-            url = `${CORE_BASE_URL}/${path}?authtoken=${token}&${query}`;
+            url = `${CORE_BASE_URL}/${path}?authToken=${token}&${query}`;
         } else {
-            url = `${CORE_BASE_URL}/${endpoint}?authtoken=${token}`;
+            url = `${CORE_BASE_URL}/${endpoint}?authToken=${token}`;
         }
     } else {
         url = `${CHANNELS_BASE_URL}/${endpoint}`;
@@ -102,13 +102,14 @@ const qoreRequest = async (
 
     
 
-    const res = await fetch(url, fetchOptions);
-
+    console.log(`[QORE REQUEST] ${options.method || 'GET'} ${url}`);
     
+    const res = await fetch(url, fetchOptions);
 
     if (!res.ok) {
         const errbody = await res.text().catch(() => '');
-        throw new Error(`Qore API Error: ${res.status} ${res.statusText} - ${errbody}`);
+        console.error(`[QORE API ERROR] ${res.status} ${res.statusText} on ${url}`, errbody);
+        throw new Error(`Qore API Error: ${res.status} ${res.statusText} - ${errbody || 'No error body'}`);
     }
 
     return await res.json();
@@ -413,6 +414,31 @@ export const getBalanceEnquiry = async (accountNumber: string, overrides?: QoreO
         method: 'GET',
         overrides
     });
+};
+
+export const getQoreProducts = async (overrides?: QoreOverrides) => {
+    const institutionCode = overrides?.institutionCode || process.env.QORE_INSTITUTION_CODE;
+    
+    if (!institutionCode) {
+        throw new Error('QORE_INSTITUTION_CODE is missing from environment variables.');
+    }
+
+    // Try primary endpoint from blueprint first
+    try {
+        return await qoreRequest('core', `Product/Get/2?mfbCode=${institutionCode}`, {
+            method: 'GET',
+            overrides
+        });
+    } catch (e: any) {
+        if (e.message.includes('404')) {
+            console.warn("[QORE] Product/Get/2 not found, falling back to legacy Product/Get...");
+            return await qoreRequest('core', `Product/Get?mfbCode=${institutionCode}`, {
+                method: 'GET',
+                overrides
+            });
+        }
+        throw e;
+    }
 };
 
 export const getQoreAccountTransactions = async (

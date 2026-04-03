@@ -11,8 +11,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Plus, Eye, Edit, Trash } from "lucide-react";
+import { MoreHorizontal, Plus, Eye, Edit, Trash, RefreshCw, Layers, Download } from "lucide-react";
 import { toast } from "sonner";
+import { syncRegistryProductsAction, exportRegistryProductsAction } from "./actions";
 
 import { api } from "@/lib/api";
 import { ProductType } from "@/lib/api/types";
@@ -20,6 +21,7 @@ import { ProductType } from "@/lib/api/types";
 export default function ProductTypesPage() {
     const [data, setData] = React.useState<ProductType[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [isSyncing, setIsSyncing] = React.useState(false);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -36,6 +38,44 @@ export default function ProductTypesPage() {
     React.useEffect(() => {
         fetchData();
     }, []);
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await syncRegistryProductsAction();
+            if (res.success && res.data) {
+                const { created, updated, errors } = res.data;
+                const msg = `Sync Complete: ${created} created, ${updated} updated.`;
+                if (errors > 0) {
+                    toast.warning(`${msg} (${errors} errors logged to console)`);
+                } else {
+                    toast.success(msg);
+                }
+                fetchData();
+            } else {
+                toast.error(`Sync Failed: ${res.error}`);
+            }
+        } catch (err) {
+            toast.error("An unexpected error occurred during sync.");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handleExport = async () => {
+        const res = await exportRegistryProductsAction();
+        if (res.success) {
+            const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `abia-registry-sdl-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            toast.success("Registry SDL exported successfully.");
+        } else {
+            toast.error(`Export Failed: ${res.error}`);
+        }
+    };
 
     const handleDelete = (id: string) => {
         toast("Are you sure you want to delete this product type?", {
@@ -98,11 +138,36 @@ export default function ProductTypesPage() {
                 searchPlaceholder="Search product types..."
                 searchKey="name"
                 actionButton={
-                    <Button asChild className="shrink-0">
-                        <Link href="/settings/product/types/create">
-                            <Plus className="mr-2 h-4 w-4" /> Add Product Type
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2 justify-end">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSync}
+                            disabled={isSyncing}
+                            className="h-9 w-full sm:w-auto"
+                        >
+                            {isSyncing ? (
+                                <RefreshCw className="mr-2 h-4 w-4 animate-spin text-primary" />
+                            ) : (
+                                <Layers className="mr-2 h-4 w-4 text-primary" />
+                            )}
+                            Sync with Core
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExport}
+                            className="h-9 w-full sm:w-auto"
+                        >
+                            <Download className="mr-2 h-4 w-4 text-primary" />
+                            Export SDL
+                        </Button>
+                        <Button asChild className="shrink-0 h-9 w-full sm:w-auto">
+                            <Link href="/settings/product/types/create">
+                                <Plus className="mr-2 h-4 w-4" /> Add Type
+                            </Link>
+                        </Button>
+                    </div>
                 }
                 columns={[
                     { header: "Product Type", accessorKey: "name", cell: (item) => <span className="font-semibold">{item.name}</span> },

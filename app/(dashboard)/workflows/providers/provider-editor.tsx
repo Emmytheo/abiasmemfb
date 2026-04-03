@@ -1,11 +1,31 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Globe, Lock, Key } from 'lucide-react'
+import { Globe, Lock, Key, Database, Plus, Trash2, Loader2, Save } from 'lucide-react'
 import { saveProvider, deleteProvider } from './actions'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
+
+const KNOWN_META_FIELDS: Record<string, string> = {
+    institutionCode: 'Institution/MFB code (e.g. 0017). Auto-injected as ?mfbCode= in API calls.',
+    authMode: 'Auth injection mode: QUERY_PARAM or BODY_FIELD',
+    authQueryParamKey: 'Query param key for auth token (e.g. authToken)',
+    authBodyFieldKey: 'Body field name for auth token (e.g. AuthenticationCode)',
+    bankOneVersion: 'BankOne API version suffix (e.g. 2)',
+    responseWrapper: 'Response envelope type (e.g. BankOne-Standard)',
+    successPath: 'JSON path to success flag in response (e.g. IsSuccessful)',
+    dataPath: 'JSON path to payload data (e.g. Payload)',
+}
+
+type MetaEntry = { key: string; value: string }
+
+function metaToEntries(obj: Record<string, any>): MetaEntry[] {
+    return Object.entries(obj ?? {}).map(([key, value]) => ({ key, value: String(value) }))
+}
+function entriesToMeta(entries: MetaEntry[]): Record<string, string> {
+    return Object.fromEntries(entries.filter(e => e.key.trim()).map(e => [e.key.trim(), e.value]))
+}
 
 export function ProviderEditor({ provider, secrets }: { provider?: any, secrets: any[] }) {
     const isNew = provider?.id === 'new' || !provider
@@ -21,6 +41,19 @@ export function ProviderEditor({ provider, secrets }: { provider?: any, secrets:
         groupTag: provider?.groupTag || ''
     })
 
+    const [metaEntries, setMetaEntries] = useState<MetaEntry[]>(
+        metaToEntries(provider?.metadata ?? {})
+    )
+
+    const addMeta = () => setMetaEntries(prev => [...prev, { key: '', value: '' }])
+    const updateMeta = (i: number, field: 'key' | 'value', v: string) =>
+        setMetaEntries(prev => { const e = [...prev]; e[i] = { ...e[i], [field]: v }; return e })
+    const removeMeta = (i: number) => setMetaEntries(prev => prev.filter((_, idx) => idx !== i))
+    const addKnownMeta = (key: string) => {
+        if (metaEntries.some(e => e.key === key)) return
+        setMetaEntries(prev => [...prev, { key, value: '' }])
+    }
+
     const [isSaving, setIsSaving] = useState(false)
     const router = useRouter()
 
@@ -30,11 +63,11 @@ export function ProviderEditor({ provider, secrets }: { provider?: any, secrets:
             return
         }
 
-        const payloadData = { ...formData }
+        const payloadData: any = { ...formData, metadata: entriesToMeta(metaEntries) }
         if (payloadData.authType === 'NONE' || !payloadData.secret) {
-            payloadData.secret = null as any
+            payloadData.secret = null
         } else if (typeof payloadData.secret === 'string' && !isNaN(Number(payloadData.secret))) {
-            payloadData.secret = Number(payloadData.secret) as any
+            payloadData.secret = Number(payloadData.secret)
         }
 
         setIsSaving(true)
@@ -67,29 +100,42 @@ export function ProviderEditor({ provider, secrets }: { provider?: any, secrets:
 
     return (
         <>
-            <div className="p-6 border-b flex items-center justify-between bg-card shrink-0">
-                <div>
-                    {isNew ? (
-                        <h1 className="text-2xl font-bold">New Provider</h1>
-                    ) : (
-                        <>
-                            <h1 className="text-2xl font-bold">{provider?.name}</h1>
-                            <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                                <Badge variant="outline">{provider?.category}</Badge>
+            <div className="shrink-0 border-b bg-background px-4 h-14 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                    <Globe size={15} className="text-primary shrink-0" />
+                    <div className="min-w-0">
+                        <h1 className="text-sm font-semibold truncate leading-tight">
+                            {isNew ? 'New Provider' : provider?.name}
+                        </h1>
+                        {!isNew && (
+                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate leading-tight mt-0.5 hidden sm:flex">
+                                <span className="font-mono">{provider?.category}</span>
                                 <span>&bull;</span>
-                                <span className="font-mono">{provider?.slug}</span>
+                                <span className="font-mono truncate">{provider?.slug}</span>
                             </div>
-                        </>
-                    )}
+                        )}
+                    </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     {!isNew && (
-                        <button onClick={handleDelete} disabled={isSaving} className="px-4 py-2 border text-red-500 border-red-200 hover:bg-red-50 font-medium rounded-md text-sm">
-                            Delete
+                        <button
+                            onClick={handleDelete}
+                            disabled={isSaving}
+                            className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-red-200 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50"
+                        >
+                            <Trash2 size={13} />
+                            <span className="hidden sm:inline">Delete</span>
                         </button>
                     )}
-                    <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md text-sm hover:bg-primary/90">
-                        {isSaving ? "Saving..." : "Save Changes"}
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                        {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                        <span className="hidden sm:inline">
+                            {isSaving ? 'Saving…' : 'Save Changes'}
+                        </span>
                     </button>
                 </div>
             </div>
@@ -177,6 +223,93 @@ export function ProviderEditor({ provider, secrets }: { provider?: any, secrets:
                             </div>
                         )}
                     </div>
+                </section>
+
+                {/* ── Metadata ─────────────────────────────────── */}
+                <section className="space-y-4">
+                    <h3 className="text-base font-semibold flex items-center gap-2 border-b pb-2">
+                        <Database size={18} /> Provider Metadata
+                    </h3>
+                    <p className="text-xs text-muted-foreground -mt-2">
+                        Key-value config injected into API calls at runtime.
+                        E.g. <code className="bg-muted px-1 rounded">institutionCode</code> → auto-appended as <code className="bg-muted px-1 rounded">?mfbCode=</code> on matching endpoints.
+                    </p>
+
+                    {/* Quick-add known fields */}
+                    {(() => {
+                        const unused = Object.keys(KNOWN_META_FIELDS).filter(k => !metaEntries.some(e => e.key === k))
+                        return unused.length > 0 ? (
+                            <div className="flex flex-wrap gap-2 pb-1">
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider self-center">Quick add:</span>
+                                {unused.map(key => (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        onClick={() => addKnownMeta(key)}
+                                        className="text-[11px] font-mono px-2 py-0.5 rounded-full border border-dashed hover:border-primary hover:text-primary transition-colors text-muted-foreground"
+                                    >
+                                        + {key}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : null
+                    })()}
+
+                    <div className="space-y-2 max-w-2xl">
+                        {metaEntries.map((entry, i) => (
+                            <div key={i} className="space-y-0.5">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 sm:p-0 bg-muted/20 sm:bg-transparent border sm:border-transparent rounded-lg">
+                                    <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-[0_0_38%]">
+                                        <input
+                                            list="known-meta-keys"
+                                            className="flex h-9 rounded-md border border-input bg-background sm:bg-transparent px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-full"
+                                            value={entry.key}
+                                            onChange={e => updateMeta(i, 'key', e.target.value)}
+                                            placeholder="key"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeMeta(i)}
+                                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors shrink-0 sm:hidden"
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-1">
+                                        <input
+                                            className="flex h-9 rounded-md border border-input bg-background sm:bg-transparent px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-full"
+                                            value={entry.value}
+                                            onChange={e => updateMeta(i, 'value', e.target.value)}
+                                            placeholder="value"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeMeta(i)}
+                                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-muted rounded-md transition-colors shrink-0 hidden sm:flex"
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </div>
+                                </div>
+                                {KNOWN_META_FIELDS[entry.key] && (
+                                    <p className="text-[10px] text-muted-foreground px-2 sm:px-1">
+                                        {KNOWN_META_FIELDS[entry.key]}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                        <datalist id="known-meta-keys">
+                            {Object.keys(KNOWN_META_FIELDS).map(k => <option key={k} value={k} />)}
+                        </datalist>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={addMeta}
+                        className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors mt-1"
+                    >
+                        <Plus size={13} /> Add Field
+                    </button>
                 </section>
             </div>
         </>
