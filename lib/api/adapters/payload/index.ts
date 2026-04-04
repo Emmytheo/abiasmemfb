@@ -6,6 +6,11 @@ export const PayloadAdapter: ApiAdapter = {
     getCurrentUser: (...args) => actions.getCurrentUser(...args),
     getAllUsers: (...args) => actions.getAllUsers(...args),
 
+    // Customers
+    getAllCustomers: (...args) => actions.getAllCustomers(...args),
+    getCustomerById: (...args) => actions.getCustomerById(...args),
+    updateCustomer: (...args) => actions.updateCustomer(...args),
+
     // Products (Accounts, Loans)
     getAllAccounts: (...args) => actions.getAllAccounts(...args),
     getUserAccounts: (...args) => actions.getUserAccounts(...args),

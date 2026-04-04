@@ -4,6 +4,7 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { Users } from './collections/Users'
+import { Customers } from './collections/Customers'
 import { Media } from './collections/Media'
 import { Pages } from './collections/Pages'
 import { Categories } from './collections/Categories'
@@ -85,7 +86,7 @@ export default buildConfig({
     },
     collections: [
         // Content & Auth
-        Users, Media, Pages, Categories, Tags, Posts,
+        Users, Customers, Media, Pages, Categories, Tags, Posts,
         // Products
         ProductClasses, ProductCategories, ProductTypes, ProductApplications,
         // Workflow Engine

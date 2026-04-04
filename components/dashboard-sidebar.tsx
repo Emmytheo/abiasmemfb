@@ -25,6 +25,7 @@ import {
     Clock,
     FileText,
     Play,
+    Users,
 } from "lucide-react";
 
 import {
@@ -78,6 +79,11 @@ const navGroups = [
                 title: "Transactions",
                 url: "/products/transactions",
                 icon: Receipt,
+            },
+            {
+                title: "Customers",
+                url: "/customers",
+                icon: Users,
             },
         ],
     },

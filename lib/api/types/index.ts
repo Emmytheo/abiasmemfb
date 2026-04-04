@@ -17,6 +17,30 @@ export interface Account {
     balance: number;
     status: 'active' | 'dormant' | 'frozen';
     created_at: string;
+    // Extended fields for BankOne
+    is_frozen?: boolean;
+    pnd_enabled?: boolean;
+    lien_amount?: number;
+    customer?: string | Customer;
+}
+
+export interface Customer {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone_number?: string;
+    bvn?: string;
+    qore_customer_id?: string;
+    supabase_id?: string;
+    kyc_status: 'pending' | 'active' | 'inactive' | 'rejected';
+    risk_tier: 'low' | 'medium' | 'high';
+    is_associated: boolean;
+    is_test_account: boolean;
+    address?: string;
+    metadata?: any;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface Loan {
@@ -203,6 +227,11 @@ export interface ApiAdapter {
     // Users
     getCurrentUser: () => Promise<User | null>;
     getAllUsers: () => Promise<User[]>;
+
+    // Customers
+    getAllCustomers: () => Promise<Customer[]>;
+    getCustomerById: (id: string) => Promise<Customer | null>;
+    updateCustomer: (id: string, data: Partial<Customer>) => Promise<Customer>;
 
     // Products (Accounts, Loans)
     getAllAccounts: () => Promise<Account[]>;

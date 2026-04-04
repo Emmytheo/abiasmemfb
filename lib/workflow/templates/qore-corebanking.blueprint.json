@@ -593,6 +593,56 @@
             }
         },
         {
+            "name": "Update Customer",
+            "description": "Updates an existing customer profile. Requires CustomerID.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Customer/UpdateCustomer/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "CustomerID": { "type": "string" },
+                    "LastName": { "type": "string" },
+                    "OtherNames": { "type": "string" },
+                    "PhoneNo": { "type": "string" },
+                    "Email": { "type": "string" },
+                    "Address": { "type": "string" }
+                },
+                "required": ["CustomerID"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Get Customer By Account Number",
+            "description": "Looks up a customer profile using their bank account number.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/Customer/GetByAccountNumber/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "accountNumber": { "type": "string" }
+                },
+                "required": ["accountNumber"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "Payload",
+                "outputs": {
+                    "customerId": "Payload.CustomerID",
+                    "fullName": "Payload.FullName",
+                    "phoneNo": "Payload.PhoneNo"
+                }
+            }
+        },
+        {
             "name": "Intra-Bank Transfer",
             "description": "Transfers funds between two accounts within Abia MFB. Amount in kobo (Naira × 100).",
             "method": "POST",
@@ -761,6 +811,47 @@
                     "success": "success",
                     "transactionReference": "transactionReference"
                 }
+            }
+        },
+        {
+            "name": "Card Request",
+            "description": "Requests a new debit card for an account.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Cards/CardRequest/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNumber": { "type": "string" },
+                    "CardType": { "type": "string" }
+                },
+                "required": ["AccountNumber", "CardType"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
+            }
+        },
+        {
+            "name": "Activate Card",
+            "description": "Activates a card that has been issued.",
+            "method": "POST",
+            "path": "/BankOneWebAPI/api/Cards/ActivateCard/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "CardNumber": { "type": "string" }
+                },
+                "required": ["CardNumber"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": { "success": "IsSuccessful" }
             }
         },
         {

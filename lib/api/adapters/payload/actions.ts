@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-import { User, Account, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition, ServiceCategory, Service, Beneficiary } from '../../types';
+import { User, Account, Customer, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition, ServiceCategory, Service, Beneficiary } from '../../types';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
 import { lexicalToHtml } from '@/lib/utils/lexical-to-html';
@@ -591,10 +591,31 @@ export const createLoan = async (data: Omit<Loan, 'id' | 'created_at' | 'updated
 export const getUserAccounts = async (userId: string): Promise<Account[]> => {
     try {
         const payload = await initPayload();
+        
+        // 1. First resolve any customer associated with this userId/email
+        const { docs: customers } = await payload.find({
+            collection: 'customers',
+            where: {
+                or: [
+                    { supabase_id: { equals: userId } },
+                    { email: { equals: userId } }
+                ]
+            },
+            limit: 1,
+        });
+
+        const customerId = customers.length > 0 ? customers[0].id : null;
+
+        // 2. Perform bilateral lookup: search by raw user_id OR formal customer relationship
         const { docs } = await payload.find({
             collection: 'accounts' as any,
-            where: { user_id: { equals: userId } },
-            depth: 1,
+            where: {
+                or: [
+                    { user_id: { equals: userId } },
+                    ...(customerId ? [{ customer: { equals: customerId } }] : [])
+                ]
+            },
+            depth: 2, // Expand customer relationship
             limit: 100,
             sort: '-createdAt',
             overrideAccess: true,
@@ -606,10 +627,67 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
             account_type: doc.account_type,
             balance: (doc.balance ?? 0) / 100, // kobo → Naira
             status: doc.status,
+            customer: doc.customer,
+            is_frozen: doc.is_frozen,
+            pnd_enabled: doc.pnd_enabled,
+            lien_amount: (doc.lien_amount ?? 0) / 100,
             created_at: doc.createdAt,
         })) as Account[];
     } catch (e) {
         console.error('Payload getUserAccounts Error:', e);
+        return [];
+    }
+};
+
+export const getUserLoans = async (userId: string): Promise<Loan[]> => {
+    try {
+        const payload = await initPayload();
+
+        // 1. Resolve customer
+        const { docs: customers } = await payload.find({
+            collection: 'customers',
+            where: {
+                or: [
+                    { supabase_id: { equals: userId } },
+                    { email: { equals: userId } }
+                ]
+            },
+            limit: 1,
+        });
+
+        const customerId = customers.length > 0 ? customers[0].id : null;
+
+        // 2. Bilateral lookup for loans
+        const { docs } = await payload.find({
+            collection: 'loans' as any,
+            where: {
+                or: [
+                    { user_id: { equals: userId } },
+                    ...(customerId ? [{ customer: { equals: customerId } }] : [])
+                ]
+            },
+            depth: 2,
+            limit: 100,
+            sort: '-createdAt',
+            overrideAccess: true,
+        });
+
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: doc.user_id,
+            product_type_id: typeof doc.product_type === 'object' ? doc.product_type?.id : doc.product_type,
+            amount: (doc.principal ?? 0) / 100,
+            interest_rate: doc.interest_rate ?? 0,
+            duration_months: doc.duration_months ?? 0,
+            outstanding_balance: (doc.outstanding_balance ?? 0) / 100,
+            monthly_installment: (doc.monthly_installment ?? 0) / 100,
+            next_payment_date: doc.next_payment_date,
+            maturity_date: doc.maturity_date,
+            status: doc.status || 'pending',
+            created_at: doc.createdAt,
+        })) as Loan[];
+    } catch (e) {
+        console.error('Payload getUserLoans Error:', e);
         return [];
     }
 };
@@ -807,6 +885,10 @@ export const getAccountById = async (accountId: string): Promise<Account | null>
             account_type: doc.account_type,
             balance: (doc.balance ?? 0) / 100, // kobo → Naira
             status: doc.status,
+            customer: doc.customer,
+            is_frozen: doc.is_frozen,
+            pnd_enabled: doc.pnd_enabled,
+            lien_amount: (doc.lien_amount ?? 0) / 100,
             created_at: doc.createdAt,
         } as Account;
     } catch (e) {
@@ -815,36 +897,6 @@ export const getAccountById = async (accountId: string): Promise<Account | null>
     }
 };
 
-export const getUserLoans = async (userId: string): Promise<Loan[]> => {
-    try {
-        const payload = await initPayload();
-        const { docs } = await payload.find({
-            collection: 'loans' as any,
-            where: { user_id: { equals: userId } },
-            depth: 1,
-            limit: 100,
-            sort: '-createdAt',
-            overrideAccess: true,
-        });
-        return docs.map((doc: any) => ({
-            id: String(doc.id),
-            user_id: doc.user_id,
-            product_type_id: typeof doc.product_type === 'object' ? doc.product_type?.id : doc.product_type,
-            amount: (doc.principal ?? 0) / 100,          // kobo → Naira
-            interest_rate: doc.interest_rate ?? 0,
-            duration_months: doc.duration_months ?? 0,
-            outstanding_balance: (doc.outstanding_balance ?? 0) / 100,
-            monthly_installment: (doc.monthly_installment ?? 0) / 100,
-            next_payment_date: doc.next_payment_date,
-            maturity_date: doc.maturity_date,
-            status: doc.status || 'pending',
-            created_at: doc.createdAt,
-        })) as Loan[];
-    } catch (e) {
-        console.error('Payload getUserLoans Error:', e);
-        return [];
-    }
-};
 
 export const getLoanById = async (loanId: string): Promise<Loan | null> => {
     try {
@@ -1548,3 +1600,106 @@ export const getAllTags = async (): Promise<string[]> => {
 };
 
 export const getOpenPositions = async (): Promise<JobPosition[]> => [];
+
+// ==========================================
+// CUSTOMER MANAGEMENT
+// ==========================================
+
+export const getAllCustomers = async (): Promise<Customer[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'customers' as any,
+            limit: 1000,
+            sort: '-createdAt',
+            overrideAccess: true,
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            firstName: doc.firstName,
+            lastName: doc.lastName,
+            email: doc.email,
+            phone_number: doc.phone_number,
+            bvn: doc.bvn,
+            qore_customer_id: doc.qore_customer_id,
+            supabase_id: doc.supabase_id,
+            kyc_status: doc.kyc_status,
+            risk_tier: doc.risk_tier,
+            is_associated: doc.is_associated,
+            is_test_account: doc.is_test_account,
+            address: doc.address,
+            metadata: doc.metadata,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        })) as Customer[];
+    } catch (e) {
+        console.error('Payload getAllCustomers Error:', e);
+        return [];
+    }
+};
+
+export const getCustomerById = async (id: string): Promise<Customer | null> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.findByID({
+            collection: 'customers' as any,
+            id,
+            overrideAccess: true,
+        });
+        if (!doc) return null;
+        return {
+            id: String(doc.id),
+            firstName: doc.firstName,
+            lastName: doc.lastName,
+            email: doc.email,
+            phone_number: doc.phone_number,
+            bvn: doc.bvn,
+            qore_customer_id: doc.qore_customer_id,
+            supabase_id: doc.supabase_id,
+            kyc_status: doc.kyc_status,
+            risk_tier: doc.risk_tier,
+            is_associated: doc.is_associated,
+            is_test_account: doc.is_test_account,
+            address: doc.address,
+            metadata: doc.metadata,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        } as Customer;
+    } catch (e) {
+        console.error('Payload getCustomerById Error:', e);
+        return null;
+    }
+};
+
+export const updateCustomer = async (id: string, data: Partial<Customer>): Promise<Customer> => {
+    try {
+        const payload = await initPayload();
+        const doc = await payload.update({
+            collection: 'customers' as any,
+            id,
+            data: data as any,
+            overrideAccess: true,
+        });
+        return {
+            id: String(doc.id),
+            firstName: (doc as any).firstName,
+            lastName: (doc as any).lastName,
+            email: (doc as any).email,
+            phone_number: (doc as any).phone_number,
+            bvn: (doc as any).bvn,
+            qore_customer_id: (doc as any).qore_customer_id,
+            supabase_id: (doc as any).supabase_id,
+            kyc_status: (doc as any).kyc_status,
+            risk_tier: (doc as any).risk_tier,
+            is_associated: (doc as any).is_associated,
+            is_test_account: (doc as any).is_test_account,
+            address: (doc as any).address,
+            metadata: (doc as any).metadata,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        } as Customer;
+    } catch (e) {
+        console.error('Payload updateCustomer Error:', e);
+        throw e;
+    }
+};

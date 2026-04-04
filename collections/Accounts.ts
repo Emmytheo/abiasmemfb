@@ -16,6 +16,12 @@ export const Accounts: CollectionConfig = {
     },
     fields: [
         {
+            name: 'customer',
+            type: 'relationship',
+            relationTo: 'customers',
+            admin: { description: 'The linked banking customer profile.' },
+        },
+        {
             name: 'user_id',
             type: 'text',
             required: true,
@@ -64,6 +70,29 @@ export const Accounts: CollectionConfig = {
                 { label: 'Frozen', value: 'frozen' },
                 { label: 'Closed', value: 'closed' },
             ],
+        },
+        {
+            type: 'row',
+            fields: [
+                {
+                    name: 'is_frozen',
+                    type: 'boolean',
+                    defaultValue: false,
+                    admin: { width: '33%' }
+                },
+                {
+                    name: 'pnd_enabled',
+                    type: 'boolean',
+                    defaultValue: false,
+                    admin: { width: '33%', description: 'Post-No-Debit' }
+                },
+                {
+                    name: 'lien_amount',
+                    type: 'number',
+                    defaultValue: 0,
+                    admin: { width: '34%', description: 'Amount held in lien (kobo)' }
+                },
+            ]
         },
         {
             name: 'product_type',

@@ -12,13 +12,17 @@ import {
     Receipt,
     PiggyBank,
     ArrowDownLeft,
-    Zap,
     ShoppingBag,
-    FileText
+    FileText,
+    RefreshCw,
+    Lock,
+    UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, Account, Loan, Transaction, User, ProductApplication, ServiceCategory } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export default function ClientDashboard() {
     const [user, setUser] = useState<User | null>(null);
@@ -215,6 +219,60 @@ export default function ClientDashboard() {
                     </div>
                     <p className="text-sm text-muted-foreground font-medium">Available Credit</p>
                     <p className="text-2xl font-bold mt-1 tracking-tight">₦{availableCredit.toLocaleString()}</p>
+                </div>
+            </div>
+
+            {/* Banking Profile Sync Status */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-1 bg-gradient-to-br from-primary/10 to-transparent p-6 rounded-2xl border border-primary/20 flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center gap-2 mb-4">
+                            <UserCheck className="h-5 w-5 text-primary" />
+                            <h4 className="font-bold">Banking Identity</h4>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">KYC Status</span>
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 uppercase text-[10px]">Active</Badge>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">BVN Verified</span>
+                                <span className="font-bold text-emerald-600">Yes ✅</span>
+                            </div>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="mt-6 w-full text-xs font-bold bg-background/50 hover:bg-background" onClick={() => toast.info("Syncing with core banking...")}>
+                        <RefreshCw className="h-3 w-3 mr-2" /> Sync Profile
+                    </Button>
+                </div>
+
+                <div className="lg:col-span-3 bg-card p-1 rounded-2xl border shadow-sm flex overflow-x-auto gap-4 p-4 scrollbar-hide">
+                    {accounts.map(acc => (
+                        <div key={acc.id} className="min-w-[280px] bg-gradient-to-tr from-muted/50 to-background p-5 rounded-xl border border-border/50 relative overflow-hidden group">
+                           <div className="absolute top-0 right-0 p-2">
+                                {acc.is_frozen || acc.pnd_enabled ? (
+                                    <Badge variant="destructive" className="text-[10px] uppercase tracking-tighter">Restricted</Badge>
+                                ) : (
+                                    <Badge variant="outline" className="text-[10px] uppercase tracking-tighter bg-emerald-50 text-emerald-600">Active</Badge>
+                                )}
+                           </div>
+                           <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{acc.account_type} Account</p>
+                           <p className="text-lg font-black mb-4">₦{acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                           <div className="flex items-center justify-between text-xs">
+                                <span className="font-mono text-muted-foreground">{acc.account_number}</span>
+                                {acc.is_frozen && (
+                                    <span title="Account Frozen">
+                                        <Lock className="h-3 w-3 text-destructive" />
+                                    </span>
+                                )}
+                           </div>
+                        </div>
+                    ))}
+                    {accounts.length === 0 && (
+                        <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm italic py-8">
+                            No active banking accounts found.
+                        </div>
+                    )}
                 </div>
             </div>
 

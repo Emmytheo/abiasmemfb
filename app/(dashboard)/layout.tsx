@@ -90,8 +90,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
                                     </div>
                                 </header>
 
-                                <main className="flex-1 overflow-auto p-2 px-0 sm:p-4 sm:px-0 md:p-8 md:px-0">
-                                    <div className="mx-auto max-w-7xl w-full animate-in fade-in duration-500">
+                                <main className="flex-1 overflow-auto p-2 px-0 sm:p-4 sm:px-0 md:p-2 md:px-0">
+                                    <div className="mx-auto w-full animate-in fade-in duration-500">
                                         {children}
                                     </div>
                                 </main>

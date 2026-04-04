@@ -43,11 +43,11 @@ export default function AdminLoansPage() {
     if (loading) return <div className="p-8 text-muted-foreground animate-pulse">Loading loan data...</div>;
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 ">
 
             {/* Active Loans Summary */}
             {activeLoans.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-8 pb-2">
                     <Card className="bg-card border shadow-sm">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm text-muted-foreground font-medium flex items-center gap-2">
