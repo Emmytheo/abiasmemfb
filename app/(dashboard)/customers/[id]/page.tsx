@@ -96,7 +96,7 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     if (!customer) return <div className="p-8">Customer not found.</div>;
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-8">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
             {/* Header - Stacked on Mobile */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
@@ -189,7 +189,7 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                 {/* Accounts & Activity (Right) */}
                 <div className="lg:col-span-2 space-y-8">
                     <Tabs defaultValue="accounts" className="w-full">
-                        <TabsList className="bg-muted/50 p-1 rounded-xl mb-6 flex-wrap h-auto">
+                        <TabsList className="bg-muted/50 !h-full p-2 rounded-xl mb-6 flex-wrap h-auto">
                             <TabsTrigger value="accounts" className="flex items-center gap-2 rounded-lg py-2 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <CreditCard className="h-4 w-4" /> Banking Accounts
                             </TabsTrigger>
