@@ -168,19 +168,72 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                             <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Risk & Compliance</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            {/* KYC Status — driven by real customer.kyc_status */}
                             <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2">
-                                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                                    <span>AML Screening</span>
+                                    {customer.kyc_status === 'active' ? (
+                                        <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                                    ) : (
+                                        <ShieldAlert className="h-4 w-4 text-yellow-500" />
+                                    )}
+                                    <span>KYC Status</span>
                                 </div>
-                                <span className="text-xs font-bold text-emerald-500">PASSED</span>
+                                <span className={`text-xs font-bold uppercase ${
+                                    customer.kyc_status === 'active' ? 'text-emerald-500' :
+                                    customer.kyc_status === 'pending' ? 'text-yellow-500' :
+                                    'text-destructive'
+                                }`}>
+                                    {customer.kyc_status}
+                                </span>
                             </div>
+
+                            {/* BVN Verification — present = verified, absent = unverified */}
                             <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2">
-                                    <ShieldAlert className="h-4 w-4 text-yellow-500" />
-                                    <span>Identity Verification</span>
+                                    {customer.bvn ? (
+                                        <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                                    ) : (
+                                        <ShieldAlert className="h-4 w-4 text-yellow-500" />
+                                    )}
+                                    <span>BVN Verification</span>
                                 </div>
-                                <span className="text-xs font-bold text-yellow-500">MANUAL REVIEW</span>
+                                <span className={`text-xs font-bold ${customer.bvn ? 'text-emerald-500' : 'text-yellow-500'}`}>
+                                    {customer.bvn ? 'VERIFIED' : 'PENDING'}
+                                </span>
+                            </div>
+
+                            {/* Supabase Digital Link */}
+                            <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                    {customer.supabase_id ? (
+                                        <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                                    ) : (
+                                        <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                    <span>Digital Identity</span>
+                                </div>
+                                <span className={`text-xs font-bold ${customer.supabase_id ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                                    {customer.supabase_id ? 'LINKED' : 'NOT LINKED'}
+                                </span>
+                            </div>
+
+                            {/* Risk Tier */}
+                            <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                    <ShieldAlert className={`h-4 w-4 ${
+                                        customer.risk_tier === 'low' ? 'text-emerald-500' :
+                                        customer.risk_tier === 'medium' ? 'text-yellow-500' :
+                                        'text-destructive'
+                                    }`} />
+                                    <span>Risk Tier</span>
+                                </div>
+                                <span className={`text-xs font-bold uppercase ${
+                                    customer.risk_tier === 'low' ? 'text-emerald-500' :
+                                    customer.risk_tier === 'medium' ? 'text-yellow-500' :
+                                    'text-destructive'
+                                }`}>
+                                    {customer.risk_tier}
+                                </span>
                             </div>
                         </CardContent>
                     </Card>
