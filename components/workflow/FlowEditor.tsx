@@ -458,9 +458,11 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions, onReady, run
                 >
                     <Background color="hsl(var(--muted-foreground))" gap={16} />
                     <Controls
-                        className="!bg-card !border-border fill-foreground shadow-sm [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground hover:[&>button]:!bg-muted"
+                        position="bottom-right"
+                        className="!bg-card !border-border fill-foreground shadow-sm [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground hover:[&>button]:!bg-muted !bottom-24 md:!bottom-4 !right-4 md:!right-4"
                     />
                     <MiniMap zoomable pannable
+                        position="top-right"
                         nodeColor={(n: AppNode) => {
                             if (n.data?.type === TaskType.TRIGGER) return 'hsl(var(--primary))'
                             if (n.data?.type === TaskType.APPROVAL_GATE) return '#f59e0b' // Amber colors stand out better than var(--border)
@@ -468,7 +470,7 @@ function FlowEditorInner({ workflowId, initialData, dynamicOptions, onReady, run
                         }}
                         maskColor="hsl(var(--background) / 0.8)"
                         style={{ backgroundColor: 'hsl(var(--card))' }}
-                        className="hidden md:block !bg-card border border-border shadow-sm rounded-lg overflow-hidden"
+                        className="hidden md:block !bg-card border border-border shadow-sm rounded-lg overflow-hidden !top-20 !right-4"
                     />
 
                     <Panel position="top-left" className="flex gap-2 p-2">
