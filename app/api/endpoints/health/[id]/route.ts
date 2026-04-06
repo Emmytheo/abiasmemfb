@@ -1,13 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@payload-config';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
-    req: Request,
-    { params }: { params: { id: string } }
+    req: NextRequest,
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id: endpointId } = await context.params;
         const payload = await getPayload({ config });
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -16,7 +17,6 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const endpointId = params.id;
         const endpoint = await payload.findByID({
             collection: 'endpoints',
             id: endpointId,

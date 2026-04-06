@@ -76,13 +76,13 @@ export const Accounts: CollectionConfig = {
             fields: [
                 {
                     name: 'is_frozen',
-                    type: 'boolean',
+                    type: 'checkbox',
                     defaultValue: false,
                     admin: { width: '33%' }
                 },
                 {
                     name: 'pnd_enabled',
-                    type: 'boolean',
+                    type: 'checkbox',
                     defaultValue: false,
                     admin: { width: '33%', description: 'Post-No-Debit' }
                 },

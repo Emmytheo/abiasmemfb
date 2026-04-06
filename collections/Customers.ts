@@ -103,7 +103,7 @@ export const Customers: CollectionConfig = {
         },
         {
             name: 'is_associated',
-            type: 'boolean',
+            type: 'checkbox',
             defaultValue: false,
             admin: {
                 position: 'sidebar',
@@ -112,7 +112,7 @@ export const Customers: CollectionConfig = {
         },
         {
             name: 'is_test_account',
-            type: 'boolean',
+            type: 'checkbox',
             defaultValue: false,
             admin: {
                 position: 'sidebar',
