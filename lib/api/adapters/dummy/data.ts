@@ -40,8 +40,42 @@ export const MOCK_USERS: User[] = [
 ];
 
 export const MOCK_ACCOUNTS: Account[] = [
-    { id: 'acc_1', user_id: 'usr_1', account_number: '0123456789', account_type: 'Savings', balance: 154000.50, status: 'active', created_at: new Date().toISOString() },
-    { id: 'acc_2', user_id: 'usr_1', account_number: '0987654321', account_type: 'Current', balance: 50000.00, status: 'active', created_at: new Date().toISOString() },
+    { 
+        id: 'acc_1', 
+        user_id: 'usr_1', 
+        account_number: '0123456789', 
+        account_type: 'Savings', 
+        balance: 154000.50, 
+        status: 'active', 
+        source: 'qore',
+        is_primary: true,
+        is_archived: false,
+        created_at: new Date().toISOString() 
+    },
+    { 
+        id: 'acc_2', 
+        user_id: 'usr_1', 
+        account_number: '0987654321', 
+        account_type: 'Current', 
+        balance: 50000.00, 
+        status: 'active', 
+        source: 'qore',
+        is_primary: false,
+        is_archived: false,
+        created_at: new Date().toISOString() 
+    },
+    { 
+        id: 'acc_3', 
+        user_id: 'usr_1', 
+        account_number: 'LOCAL-777', 
+        account_type: 'Savings', 
+        balance: 12000.00, 
+        status: 'active', 
+        source: 'local',
+        is_primary: false,
+        is_archived: false,
+        created_at: new Date().toISOString() 
+    },
 ];
 
 export const MOCK_LOANS: Loan[] = [

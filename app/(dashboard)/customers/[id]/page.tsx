@@ -19,7 +19,13 @@ import {
     Ban, 
     DollarSign,
     RefreshCw,
-    Loader2
+    Loader2,
+    Database,
+    Star,
+    Archive,
+    ArchiveRestore,
+    Shield,
+    Globe
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -72,6 +78,7 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     const [editData, setEditData] = useState<Partial<Customer>>({});
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
     const [isLienOpen, setIsLienOpen] = useState(false);
+    const [showArchived, setShowArchived] = useState(false);
 
     async function loadData() {
         setLoading(true);
@@ -196,15 +203,45 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
         }
     };
 
-    const handleUpdateLien = async (amount: number, reason: string) => {
+    const handleUpdateLien = async (amount: number) => {
         if (!selectedAccount) return;
+        setActionLoading(`lien-${selectedAccount.id}`);
         try {
             await api.updateAccount(selectedAccount.id, { lien_amount: amount });
-            toast.success("Lien amount updated in ledger.");
+            toast.success("Lien amount updated successfully");
             loadData();
-        } catch (error) {
-            toast.error("Lien update failed.");
-            throw error;
+        } catch (e) {
+            toast.error("Failed to update lien");
+        } finally {
+            setActionLoading(null);
+            setIsLienOpen(false);
+        }
+    };
+
+    const handleSetPrimary = async (accId: string) => {
+        setActionLoading(`primary-${accId}`);
+        try {
+            await api.updateAccount(accId, { is_primary: true });
+            toast.success("Primary account updated");
+            loadData();
+        } catch (e) {
+            toast.error("Failed to set primary account");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleToggleArchive = async (acc: Account) => {
+        const action = acc.is_archived ? 'restore' : 'archive';
+        setActionLoading(`${action}-${acc.id}`);
+        try {
+            await api.updateAccount(acc.id, { is_archived: !acc.is_archived });
+            toast.success(`Account ${action}d successfully`);
+            loadData();
+        } catch (e) {
+            toast.error(`Failed to ${action} account`);
+        } finally {
+            setActionLoading(null);
         }
     };
 
@@ -495,17 +532,39 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                         </TabsList>
 
                         <TabsContent value="accounts" className="space-y-4">
-                            {accounts.length === 0 ? (
-                                <div className="text-center py-12 border-2 border-dashed rounded-2xl text-muted-foreground">
-                                    No linked banking accounts found for this profile.
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs text-muted-foreground font-medium">Viewing {showArchived ? 'Archived' : 'Active'} Ledger Accounts</p>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => setShowArchived(!showArchived)}
+                                    className="text-[10px] uppercase tracking-widest font-black text-primary hover:bg-primary/5"
+                                >
+                                    {showArchived ? 'Show Active' : 'View Archived'}
+                                </Button>
+                            </div>
+                            {accounts.filter(acc => !!acc.is_archived === showArchived).length === 0 ? (
+                                <div className="text-center py-12 border-2 border-dashed rounded-2xl text-muted-foreground italic text-sm">
+                                    No {showArchived ? 'archived' : 'active'} accounts found.
                                 </div>
                             ) : (
-                                accounts.map((acc) => (
-                                    <Card key={acc.id} className="rounded-2xl border-primary/5 hover:border-primary/20 transition-all overflow-hidden group">
+                                accounts.filter(acc => !!acc.is_archived === showArchived).map((acc) => (
+                                    <Card key={acc.id} className={`rounded-2xl border-primary/5 hover:border-primary/20 transition-all overflow-hidden group ${acc.is_archived ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                                         <div className="p-6">
                                             <div className="flex justify-between items-start mb-6">
-                                                <div>
-                                                    <h3 className="text-xl font-bold uppercase tracking-tight">{acc.account_type} Account</h3>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="text-xl font-bold uppercase tracking-tight">{acc.account_type} Account</h3>
+                                                        {acc.is_primary && (
+                                                            <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-none gap-1 px-2">
+                                                                <Star className="h-3 w-3 fill-current" /> Primary
+                                                            </Badge>
+                                                        )}
+                                                        <Badge variant="outline" className={`gap-1 px-2 ${acc.source === 'qore' ? 'border-primary/20 text-primary' : 'border-purple-500/20 text-purple-600'}`}>
+                                                            {acc.source === 'qore' ? <Globe className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                                                            {acc.source === 'qore' ? 'Qore' : 'Local'}
+                                                        </Badge>
+                                                    </div>
                                                     <p className="text-sm font-mono text-primary mt-1 tracking-[0.2em] font-bold">{acc.account_number}</p>
                                                 </div>
                                                 <div className="text-right">
@@ -529,43 +588,60 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                                                     <p className="text-[10px] uppercase text-muted-foreground font-bold">Lien Amount</p>
                                                     <span className="text-sm font-bold">₦{(acc.lien_amount || 0).toLocaleString()}</span>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Currency</p>
-                                                    <span className="text-sm font-bold">NGN (Naira)</span>
+                                                <div className="space-y-1 text-right md:text-left">
+                                                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Source Sync</p>
+                                                    <span className="text-[10px] font-black uppercase text-muted-foreground flex items-center justify-end md:justify-start gap-1">
+                                                        <Database className="h-3 w-3" />
+                                                        {acc.source === 'qore' ? 'Synchronized' : 'Standalone'}
+                                                    </span>
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center gap-2 pt-2 flex-wrap">
-                                                <Button 
-                                                    size="sm" 
-                                                    variant={acc.is_frozen ? "outline" : "destructive"} 
-                                                    className="gap-2 text-xs h-9"
-                                                    onClick={() => handleToggleFreeze(acc)}
-                                                    disabled={!!actionLoading}
-                                                >
-                                                    {actionLoading === `freeze-${acc.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : acc.is_frozen ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                                                    {acc.is_frozen ? 'Unfreeze' : 'Freeze'}
-                                                </Button>
+                                                {!acc.is_archived && (
+                                                    <>
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant={acc.is_frozen ? "outline" : "destructive"} 
+                                                            className="gap-2 text-xs h-9"
+                                                            onClick={() => handleToggleFreeze(acc)}
+                                                            disabled={!!actionLoading}
+                                                        >
+                                                            {actionLoading === `freeze-${acc.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : acc.is_frozen ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                                                            {acc.is_frozen ? 'Unfreeze' : 'Freeze'}
+                                                        </Button>
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="outline" 
+                                                            className="gap-2 text-xs h-9"
+                                                            onClick={() => handleTogglePND(acc)}
+                                                            disabled={!!actionLoading}
+                                                        >
+                                                            <Ban className={`h-3.5 w-3.5 ${actionLoading === `pnd-${acc.id}` ? 'animate-spin' : ''}`} /> PND
+                                                        </Button>
+                                                        {!acc.is_primary && (
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant="outline" 
+                                                                className="gap-2 text-xs h-9 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                                                onClick={() => handleSetPrimary(acc.id)}
+                                                                disabled={!!actionLoading}
+                                                            >
+                                                                <Star className="h-3.5 w-3.5" /> Make Primary
+                                                            </Button>
+                                                        )}
+                                                    </>
+                                                )}
+                                                
                                                 <Button 
                                                     size="sm" 
                                                     variant="outline" 
-                                                    className="gap-2 text-xs h-9"
-                                                    onClick={() => handleTogglePND(acc)}
+                                                    className="gap-2 text-xs h-9 ml-auto"
+                                                    onClick={() => handleToggleArchive(acc)}
                                                     disabled={!!actionLoading}
                                                 >
-                                                    <Ban className={`h-3.5 w-3.5 ${actionLoading === `pnd-${acc.id}` ? 'animate-spin' : ''}`} /> Toggle PND
-                                                </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
-                                                    className="gap-2 text-xs h-9"
-                                                    onClick={() => {
-                                                        setSelectedAccount(acc);
-                                                        setIsLienOpen(true);
-                                                    }}
-                                                    disabled={!!actionLoading}
-                                                >
-                                                    <DollarSign className="h-3.5 w-3.5" /> Manage Lien
+                                                    {acc.is_archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                                                    {acc.is_archived ? 'Restore' : 'Archive'}
                                                 </Button>
                                             </div>
                                         </div>

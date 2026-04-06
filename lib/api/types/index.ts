@@ -21,6 +21,9 @@ export interface Account {
     is_frozen?: boolean;
     pnd_enabled?: boolean;
     lien_amount?: number;
+    source: 'qore' | 'local';
+    is_primary: boolean;
+    is_archived: boolean;
     customer?: string | Customer;
 }
 

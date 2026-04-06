@@ -60,6 +60,38 @@ export const Accounts: CollectionConfig = {
             defaultValue: 'NGN',
         },
         {
+            name: 'source',
+            type: 'select',
+            required: true,
+            defaultValue: 'qore',
+            options: [
+                { label: 'Qore Core Banking', value: 'qore' },
+                { label: 'Abia MFB Local', value: 'local' },
+            ],
+            admin: {
+                position: 'sidebar',
+                description: 'The authoritative source for this account data. Qore accounts are synchronized and read-only.'
+            }
+        },
+        {
+            name: 'is_primary',
+            type: 'checkbox',
+            defaultValue: false,
+            admin: {
+                position: 'sidebar',
+                description: 'Designates this as the default account displayed in the client dashboard.'
+            }
+        },
+        {
+            name: 'is_archived',
+            type: 'checkbox',
+            defaultValue: false,
+            admin: {
+                position: 'sidebar',
+                description: 'Marks an account as no longer found in core banking (but retained for ledger history).'
+            }
+        },
+        {
             name: 'status',
             type: 'select',
             required: true,

@@ -139,7 +139,16 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                 results.customersCreated++;
             }
 
-            // 4. Fetch Account Details (POST to Channels)
+            // 4. PRE-SYNC AUDIT: Get all existing local accounts for this customer to identify "Head-Scratchers"
+            const localAccountsBefore = await payload.find({
+                collection: 'accounts',
+                where: { customer: { equals: customerId } },
+                limit: 100
+            });
+            const qoreAccountsInLedger = localAccountsBefore.docs.filter(a => a.source === 'qore');
+            const processedAccountNumbers: string[] = [];
+
+            // 5. Fetch Account Details (POST to Channels)
             const accountResolved = await resolveEndpoint(getAccountEndpoint, {
                 body: { AccountNo: accNo }
             });
@@ -195,6 +204,7 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                 });
                 results.accountsCreated++;
             }
+            processedAccountNumbers.push(accNo);
 
             // 5b. DEEP SYNC: Discover all other accounts for this Customer
             if (syncConfig.customerAccountsEndpoint) {
@@ -231,6 +241,7 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                                 pnd_enabled: otherAcc.PNDStatus === 'Active',
                                 customer: customerId,
                                 user_id: email,
+                                source: 'qore',
                             };
 
                             if (existingOther.docs.length > 0) {
@@ -247,11 +258,40 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                                 });
                                 results.accountsCreated++;
                             }
+                            processedAccountNumbers.push(otherAccNo);
                         }
                     }
                 } catch (deepErr) {
                     console.error(`[SYNC] Deep sync failed for customer ${qoreCustomerID}:`, deepErr);
                 }
+            }
+
+            // 5c. POST-SYNC AUDIT (Archiving)
+            // Identify accounts that were in our ledger as 'qore' but weren't found in this sync pulse
+            const missingAccounts = qoreAccountsInLedger.filter(a => !processedAccountNumbers.includes(a.account_number));
+            for (const missing of missingAccounts) {
+                console.log(`[SYNC_AUDIT] Account ${missing.account_number} not found in Qore. Archiving...`);
+                await payload.update({
+                    collection: 'accounts',
+                    id: missing.id,
+                    data: { is_archived: true, status: 'closed' }
+                });
+            }
+
+            // 5d. PRIMARY ASSIGNMENT
+            // Ensure at least one account is marked as primary
+            const finalAccounts = await payload.find({
+                collection: 'accounts',
+                where: { customer: { equals: customerId }, is_archived: { equals: false } },
+                limit: 10
+            });
+            
+            if (finalAccounts.docs.length > 0 && !finalAccounts.docs.some(a => a.is_primary)) {
+                await payload.update({
+                    collection: 'accounts',
+                    id: finalAccounts.docs[0].id,
+                    data: { is_primary: true }
+                });
             }
 
             // 6. Supabase Shadow User Creation
