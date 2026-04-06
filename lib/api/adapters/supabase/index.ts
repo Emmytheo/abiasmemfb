@@ -12,12 +12,26 @@ export const SupabaseAdapter: ApiAdapter = {
         throw new Error("Supabase Adapter not fully implemented");
     },
 
+    // Customers
+    getAllCustomers: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getCustomerById: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    updateCustomer: async (id, data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+
     // Products
     getAllAccounts: async () => {
         throw new Error("Supabase Adapter not fully implemented");
     },
     getUserAccounts: async () => [],
     createAccount: async (data: any) => ({ ...data, id: 'supa_acc', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Account),
+    updateAccount: async (id, data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
     getAllLoans: async () => [],
     getUserLoans: async () => [],
     createLoan: async (data: any) => ({ ...data, id: 'supa_loan', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Loan),
@@ -195,6 +209,17 @@ export const SupabaseAdapter: ApiAdapter = {
     },
     // Pages
     getPageBySlug: async (slug: string) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    // Site Settings
+    getSiteSettings: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    updateSiteSettings: async (data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    // Endpoints
+    getAllEndpoints: async () => {
         throw new Error("Supabase Adapter not fully implemented");
     }
 };
