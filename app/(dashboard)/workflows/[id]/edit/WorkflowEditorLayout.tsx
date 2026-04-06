@@ -7,6 +7,9 @@ import { FlowEditor, SaveWorkflowFn, DynamicOptions } from '@/components/workflo
 import { toast } from 'sonner'
 import { renameWorkflow } from '@/app/(dashboard)/workflows/actions'
 import { runWorkflow } from './actions'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { WorkflowRunHistoryTab } from '@/components/workflow/WorkflowRunHistoryTab'
+import { Layout, History, Database, Activity } from 'lucide-react'
 
 interface WorkflowEditorLayoutProps {
     workflowId: string
@@ -19,6 +22,8 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
     const [isSaving, setIsSaving] = useState<'draft' | 'published' | null>(null)
     const [isRunning, setIsRunning] = useState(false)
     const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null)
+    const [activeTab, setActiveTab] = useState<'editor' | 'runs'>('editor')
+    const [refreshKey, setRefreshKey] = useState(0)
 
     // Editable workflow name state
     const [wfName, setWfName] = useState(workflow?.name || 'Untitled Workflow')
@@ -77,7 +82,9 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
             const result = await runWorkflow(workflowId)
             if (result.success && result.executionId) {
                 toast.success(`Workflow executed! Execution ID: ${result.executionId}`)
-                setCurrentExecutionId(result.executionId) // This triggers the FlowEditor polling loop
+                setCurrentExecutionId(result.executionId) 
+                setRefreshKey(prev => prev + 1)
+                setActiveTab('runs') // Auto-switch to runs tab
             } else {
                 toast.error(result.error || 'Execution failed.')
             }
@@ -129,6 +136,19 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
                     </div>
                 </div>
 
+                <div className="hidden lg:flex items-center justify-center flex-1 max-w-md mx-auto">
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+                        <TabsList className="grid grid-cols-2 bg-muted/60 h-9 p-1 rounded-lg">
+                            <TabsTrigger value="editor" className="text-xs h-7 gap-2 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <Layout size={14} /> Design
+                            </TabsTrigger>
+                            <TabsTrigger value="runs" className="text-xs h-7 gap-2 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <Activity size={14} /> Runs
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <ThemeCustomizer />
                     <button
@@ -159,13 +179,31 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
             </header>
 
             <div className="flex-1 w-full relative min-h-0 overflow-hidden">
-                <FlowEditor
-                    onReady={handleReady}
-                    dynamicOptions={dynamicOptions}
-                    workflowId={workflowId !== 'new' ? workflowId : undefined}
-                    initialData={workflow?.definition as any}
-                    runningExecutionId={currentExecutionId}
-                />
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="h-full flex flex-col">
+                    {/* Mobile Switcher (Bottom) */}
+                    <div className="lg:hidden h-12 bg-background border-b flex items-center px-4 shrink-0">
+                        <TabsList className="bg-muted h-8 p-1 w-full grid grid-cols-2">
+                            <TabsTrigger value="editor" className="text-[10px] h-6 font-bold uppercase tracking-widest">Design</TabsTrigger>
+                            <TabsTrigger value="runs" className="text-[10px] h-6 font-bold uppercase tracking-widest">Runs</TabsTrigger>
+                        </TabsList>
+                    </div>
+
+                    <TabsContent value="editor" className="flex-1 m-0 relative">
+                        <FlowEditor
+                            onReady={handleReady}
+                            dynamicOptions={dynamicOptions}
+                            workflowId={workflowId !== 'new' ? workflowId : undefined}
+                            initialData={workflow?.definition as any}
+                            runningExecutionId={currentExecutionId}
+                        />
+                    </TabsContent>
+                    <TabsContent value="runs" className="flex-1 m-0">
+                        <WorkflowRunHistoryTab 
+                            workflowId={workflowId} 
+                            refreshKey={refreshKey}
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     )
