@@ -58,7 +58,8 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
     // Resolve specific endpoints by ID from settings
     const [getCustomerEndpoint, getAccountEndpoint] = await Promise.all([
         customerLookupEndpointId ? payload.findByID({ collection: 'endpoints', id: customerLookupEndpointId }) : Promise.resolve(null),
-        accountEnquiryEndpointId ? payload.findByID({ collection: 'endpoints', id: accountEnquiryEndpointId }) : Promise.resolve(null)
+        accountEnquiryEndpointId ? payload.findByID({ collection: 'endpoints', id: accountEnquiryEndpointId }) : Promise.resolve(null),
+        syncConfig.customerAccountsEndpoint ? payload.findByID({ collection: 'endpoints', id: typeof syncConfig.customerAccountsEndpoint === 'object' ? syncConfig.customerAccountsEndpoint.id : syncConfig.customerAccountsEndpoint }) : Promise.resolve(null)
     ]);
 
     if (!getCustomerEndpoint || !getAccountEndpoint) {
@@ -193,6 +194,64 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                     data: accountData
                 });
                 results.accountsCreated++;
+            }
+
+            // 5b. DEEP SYNC: Discover all other accounts for this Customer
+            if (syncConfig.customerAccountsEndpoint) {
+                try {
+                    const deepSyncResolved = await resolveEndpoint(syncConfig.customerAccountsEndpoint, {
+                        query: { customerID: qoreCustomerID }
+                    });
+
+                    const deepRes = await fetch(deepSyncResolved.url, {
+                        method: deepSyncResolved.method,
+                        headers: deepSyncResolved.headers
+                    });
+
+                    if (deepRes.ok) {
+                        const allAccounts = await deepRes.json();
+                        const accountList = Array.isArray(allAccounts) ? allAccounts : (allAccounts.Accounts || []);
+
+                        for (const otherAcc of accountList) {
+                            const otherAccNo = otherAcc.AccountNo || otherAcc.accountNumber;
+                            if (otherAccNo === accNo) continue; // Skip the one we just did
+
+                            const existingOther = await payload.find({
+                                collection: 'accounts',
+                                where: { account_number: { equals: otherAccNo } },
+                                limit: 1
+                            });
+
+                            const otherData = {
+                                account_number: otherAccNo,
+                                account_type: accountTypeMap[otherAcc.AccountType] || 'Savings',
+                                balance: Math.round(parseFloat(otherAcc.AvailableBalance || '0') * 100),
+                                status: otherAcc.Status === 'Active' ? 'active' : 'frozen',
+                                is_frozen: otherAcc.Status !== 'Active',
+                                pnd_enabled: otherAcc.PNDStatus === 'Active',
+                                customer: customerId,
+                                user_id: email,
+                            };
+
+                            if (existingOther.docs.length > 0) {
+                                await payload.update({
+                                    collection: 'accounts',
+                                    id: existingOther.docs[0].id,
+                                    data: otherData
+                                });
+                                results.accountsUpdated++;
+                            } else {
+                                await payload.create({
+                                    collection: 'accounts',
+                                    data: otherData
+                                });
+                                results.accountsCreated++;
+                            }
+                        }
+                    }
+                } catch (deepErr) {
+                    console.error(`[SYNC] Deep sync failed for customer ${qoreCustomerID}:`, deepErr);
+                }
             }
 
             // 6. Supabase Shadow User Creation

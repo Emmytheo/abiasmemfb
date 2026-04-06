@@ -15,7 +15,8 @@ import {
     CheckCircle2,
     AlertCircle,
     Package,
-    Cpu
+    Cpu,
+    ArrowRightLeft
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,9 +25,11 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { SiteSettings } from "@/lib/api/types"
+import { HarmonizationReport } from "@/components/dashboard/HarmonizationReport"
 
 export default function SyncSettingsPage() {
     const [isLoading, setIsLoading] = useState(true)
@@ -140,206 +143,233 @@ export default function SyncSettingsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
-                {/* Left Columns: Sync Settings */}
-                <div className="lg:col-span-2 space-y-4 md:space-y-6">
-                    {/* Identity & Ledger Endpoints */}
-                    <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5">
-                        <CardHeader className="bg-primary/[0.02] border-b p-4 md:p-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                    <Database className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-lg">Identity & Ledger Endpoints</CardTitle>
-                                    <CardDescription className="text-xs">Core paths for customer and account resolution.</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-4 md:p-6 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                                <EndpointSelector 
-                                    label="Customer Lookup"
-                                    value={getEndpointId(settings.sync.customerLookupEndpoint)}
-                                    onChange={(val) => setSettings({...settings, sync: {...settings.sync, customerLookupEndpoint: val}})}
-                                    endpoints={endpoints}
-                                    health={healthStatus[getEndpointId(settings.sync.customerLookupEndpoint)]}
-                                    onCheck={() => checkHealth(getEndpointId(settings.sync.customerLookupEndpoint))}
-                                />
-                                <EndpointSelector 
-                                    label="Account Enquiry"
-                                    value={getEndpointId(settings.sync.accountEnquiryEndpoint)}
-                                    onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountEnquiryEndpoint: val}})}
-                                    endpoints={endpoints}
-                                    health={healthStatus[getEndpointId(settings.sync.accountEnquiryEndpoint)]}
-                                    onCheck={() => checkHealth(getEndpointId(settings.sync.accountEnquiryEndpoint))}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
+            <Tabs defaultValue="settings" className="w-full">
+                <TabsList className="bg-muted/50 p-1 rounded-xl mb-8 flex-wrap h-auto gap-1">
+                    <TabsTrigger value="settings" className="rounded-lg py-2 px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-bold uppercase tracking-wider">
+                        <Settings2 className="h-4 w-4 mr-2" /> Discovery Settings
+                    </TabsTrigger>
+                    <TabsTrigger value="harmonization" className="rounded-lg py-2 px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-bold uppercase tracking-wider">
+                        <ArrowRightLeft className="h-4 w-4 mr-2" /> Identity Harmonization
+                    </TabsTrigger>
+                </TabsList>
 
-                    {/* Product & Service Registry Endpoints */}
-                    <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5">
-                        <CardHeader className="bg-indigo-500/[0.02] border-b p-4 md:p-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
-                                    <Package className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-lg">Registry Synchronization</CardTitle>
-                                    <CardDescription className="text-xs">Endpoints for mapping Qore products and services.</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-4 md:p-6 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                                <EndpointSelector 
-                                    label="Product Sync Path"
-                                    value={getEndpointId(settings.sync.productSyncEndpoint)}
-                                    onChange={(val) => setSettings({...settings, sync: {...settings.sync, productSyncEndpoint: val}})}
-                                    endpoints={endpoints}
-                                    health={healthStatus[getEndpointId(settings.sync.productSyncEndpoint)]}
-                                    onCheck={() => checkHealth(getEndpointId(settings.sync.productSyncEndpoint))}
-                                />
-                                <EndpointSelector 
-                                    label="Service Registry Path"
-                                    value={getEndpointId(settings.sync.serviceSyncEndpoint)}
-                                    onChange={(val) => setSettings({...settings, sync: {...settings.sync, serviceSyncEndpoint: val}})}
-                                    endpoints={endpoints}
-                                    health={healthStatus[getEndpointId(settings.sync.serviceSyncEndpoint)]}
-                                    onCheck={() => checkHealth(getEndpointId(settings.sync.serviceSyncEndpoint))}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Automation & Seeds */}
-                    <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5 overflow-hidden">
-                        <CardHeader className="bg-primary/[0.02] border-b p-4 md:p-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                    <LinkIcon className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-lg">Discovery Seeds (Baseline)</CardTitle>
-                                    <CardDescription className="text-xs">Seed accounts used to identify and map customers.</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-4 md:p-6 space-y-6">
-                            <div className="space-y-4">
-                                {settings.sync.baselineAccounts.map((acc, idx) => (
-                                    <div key={idx} className="flex gap-2 items-center group animate-in slide-in-from-left-2 fade-in duration-200">
-                                        <div className="grow relative">
-                                            <Input 
-                                                value={acc.accountNumber}
-                                                onChange={(e) => {
-                                                    const newAccts = [...settings.sync.baselineAccounts]
-                                                    newAccts[idx].accountNumber = e.target.value
-                                                    setSettings({...settings, sync: {...settings.sync, baselineAccounts: newAccts}})
-                                                }}
-                                                placeholder="Enter account number..."
-                                                className="pl-9 h-11 md:h-10 text-base md:text-sm"
-                                            />
-                                            <Badge className="absolute left-2.5 top-3 md:top-2.5 bg-muted text-muted-foreground hover:bg-muted border-none p-0 w-5 h-5 flex items-center justify-center text-[10px]">{idx + 1}</Badge>
+                <TabsContent value="settings" className="space-y-4 md:space-y-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
+                        {/* Left Columns: Sync Settings */}
+                        <div className="lg:col-span-2 space-y-4 md:space-y-6">
+                            {/* Identity & Ledger Endpoints */}
+                            <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5">
+                                <CardHeader className="bg-primary/[0.02] border-b p-4 md:p-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                                            <Database className="h-5 w-5" />
                                         </div>
+                                        <div>
+                                            <CardTitle className="text-lg">Identity & Ledger Endpoints</CardTitle>
+                                            <CardDescription className="text-xs">Core paths for customer and account resolution.</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 md:p-6 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                        <EndpointSelector 
+                                            label="Customer Lookup"
+                                            value={getEndpointId(settings.sync.customerLookupEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, customerLookupEndpoint: val}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.customerLookupEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.customerLookupEndpoint))}
+                                        />
+                                        <EndpointSelector 
+                                            label="Account Enquiry"
+                                            value={getEndpointId(settings.sync.accountEnquiryEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountEnquiryEndpoint: val}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.accountEnquiryEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.accountEnquiryEndpoint))}
+                                        />
+                                    </div>
+                                    <div className="pt-4 mt-4 border-t">
+                                        <EndpointSelector 
+                                            label="Deep Sync (Accounts Discovery)"
+                                            value={getEndpointId(settings.sync.customerAccountsEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, customerAccountsEndpoint: val}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.customerAccountsEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.customerAccountsEndpoint))}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Product & Service Registry Endpoints */}
+                            <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5">
+                                <CardHeader className="bg-indigo-500/[0.02] border-b p-4 md:p-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
+                                            <Package className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg">Registry Synchronization</CardTitle>
+                                            <CardDescription className="text-xs">Endpoints for mapping Qore products and services.</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 md:p-6 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                        <EndpointSelector 
+                                            label="Product Sync Path"
+                                            value={getEndpointId(settings.sync.productSyncEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, productSyncEndpoint: val}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.productSyncEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.productSyncEndpoint))}
+                                        />
+                                        <EndpointSelector 
+                                            label="Service Registry Path"
+                                            value={getEndpointId(settings.sync.serviceSyncEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, serviceSyncEndpoint: val}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.serviceSyncEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.serviceSyncEndpoint))}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Automation & Seeds */}
+                            <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5 overflow-hidden">
+                                <CardHeader className="bg-primary/[0.02] border-b p-4 md:p-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                                            <LinkIcon className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg">Discovery Seeds (Baseline)</CardTitle>
+                                            <CardDescription className="text-xs">Seed accounts used to identify and map customers.</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 md:p-6 space-y-6">
+                                    <div className="space-y-4">
+                                        {settings.sync.baselineAccounts.map((acc, idx) => (
+                                            <div key={idx} className="flex gap-2 items-center group animate-in slide-in-from-left-2 fade-in duration-200">
+                                                <div className="grow relative">
+                                                    <Input 
+                                                        value={acc.accountNumber}
+                                                        onChange={(e) => {
+                                                            const newAccts = [...settings.sync.baselineAccounts]
+                                                            newAccts[idx].accountNumber = e.target.value
+                                                            setSettings({...settings, sync: {...settings.sync, baselineAccounts: newAccts}})
+                                                        }}
+                                                        placeholder="Enter account number..."
+                                                        className="pl-9 h-11 md:h-10 text-base md:text-sm"
+                                                    />
+                                                    <Badge className="absolute left-2.5 top-3 md:top-2.5 bg-muted text-muted-foreground hover:bg-muted border-none p-0 w-5 h-5 flex items-center justify-center text-[10px]">{idx + 1}</Badge>
+                                                </div>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="text-destructive h-11 w-11 md:h-10 md:w-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                                    onClick={() => {
+                                                        const newAccts = settings.sync.baselineAccounts.filter((_, i) => i !== idx)
+                                                        setSettings({...settings, sync: {...settings.sync, baselineAccounts: newAccts}})
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
                                         <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="text-destructive h-11 w-11 md:h-10 md:w-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                            variant="outline" 
+                                            className="w-full border-dashed border-2 h-12 text-muted-foreground hover:text-primary transition-all rounded-xl"
                                             onClick={() => {
-                                                const newAccts = settings.sync.baselineAccounts.filter((_, i) => i !== idx)
-                                                setSettings({...settings, sync: {...settings.sync, baselineAccounts: newAccts}})
+                                                setSettings({...settings, sync: {...settings.sync, baselineAccounts: [...settings.sync.baselineAccounts, { accountNumber: '' }]}})
                                             }}
                                         >
-                                            <Trash2 className="h-4 w-4" />
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Discovery Seed
                                         </Button>
                                     </div>
-                                ))}
-                                <Button 
-                                    variant="outline" 
-                                    className="w-full border-dashed border-2 h-12 text-muted-foreground hover:text-primary transition-all rounded-xl"
-                                    onClick={() => {
-                                        setSettings({...settings, sync: {...settings.sync, baselineAccounts: [...settings.sync.baselineAccounts, { accountNumber: '' }]}})
-                                    }}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add Discovery Seed
-                                </Button>
-                            </div>
 
-                            <div className="pt-6 border-t flex items-center justify-between gap-4">
-                                <div className="space-y-0.5">
-                                    <Label className="text-sm md:text-base font-bold">Automated Daily Discovery</Label>
-                                    <p className="text-[10px] md:text-sm text-muted-foreground">Automatically scan baseline accounts for registry changes every 24h.</p>
-                                </div>
-                                <Switch 
-                                    checked={settings.sync.autoDiscoveryEnabled}
-                                    onCheckedChange={(val) => setSettings({...settings, sync: {...settings.sync, autoDiscoveryEnabled: val}})}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                    <div className="pt-6 border-t flex items-center justify-between gap-4">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm md:text-base font-bold">Automated Daily Discovery</Label>
+                                            <p className="text-[10px] md:text-sm text-muted-foreground">Automatically scan baseline accounts for registry changes every 24h.</p>
+                                        </div>
+                                        <Switch 
+                                            checked={settings.sync.autoDiscoveryEnabled}
+                                            onCheckedChange={(val) => setSettings({...settings, sync: {...settings.sync, autoDiscoveryEnabled: val}})}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
 
-                {/* Right Column: Status Summary */}
-                <div className="space-y-4 md:space-y-6">
-                    <Card className="shadow-lg shadow-emerald-500/5">
-                        <CardHeader className="p-4 md:p-6">
-                            <CardTitle className="text-lg">System Integrity</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 md:p-6 pt-0 space-y-4">
-                            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-                                <ShieldCheck className="h-5 w-5 text-emerald-600" />
-                                <div className="text-xs">
-                                    <p className="font-bold text-emerald-950">Active Sync Registry</p>
-                                    <p className="text-emerald-700/70">Connected to Qore Sandbox Environment.</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/5 border border-blue-500/20">
-                                <Activity className="h-5 w-5 text-blue-600" />
-                                <div className="text-xs">
-                                    <p className="font-bold text-blue-950">Next discovery pulse</p>
-                                    <p className="text-blue-700/70 font-mono">Tomorrow, 02:00 AM</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        {/* Right Column: Status Summary */}
+                        <div className="space-y-4 md:space-y-6">
+                            <Card className="shadow-lg shadow-emerald-500/5">
+                                <CardHeader className="p-4 md:p-6">
+                                    <CardTitle className="text-lg">System Integrity</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-4 md:p-6 pt-0 space-y-4">
+                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                                        <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                                        <div className="text-xs">
+                                            <p className="font-bold text-emerald-950">Active Sync Registry</p>
+                                            <p className="text-emerald-700/70">Connected to Qore Sandbox Environment.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                                        <Activity className="h-5 w-5 text-blue-600" />
+                                        <div className="text-xs">
+                                            <p className="font-bold text-blue-950">Next discovery pulse</p>
+                                            <p className="text-blue-700/70 font-mono">Tomorrow, 02:00 AM</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    <Card className="bg-zinc-950 border-zinc-900 text-white shadow-2xl overflow-hidden">
-                        <CardHeader className="p-4 md:p-6 border-b border-white/5">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-zinc-500 text-[10px] uppercase tracking-widest font-black">Live Sync Stream</CardTitle>
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-4 md:p-6">
-                            <div className="font-mono text-[10px] space-y-3 opacity-90 overflow-hidden">
-                                <div className="flex gap-2">
-                                    <span className="text-emerald-500 shrink-0">[OK]</span>
-                                    <p className="truncate">SYNC_COMPLETE: Scanned 12 seeds</p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <span className="text-blue-400 shrink-0">[IN]</span>
-                                    <p className="truncate">UPSERT: Customer registry (id: 9912)</p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <span className="text-zinc-600 shrink-0">[LG]</span>
-                                    <p className="truncate">FETCH: /api/accounts/1100312676</p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <span className="text-amber-500 shrink-0">[WR]</span>
-                                    <p className="truncate">LATENCY: Endpoint timeout @ 2.4s</p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <span className="text-zinc-600 shrink-0">[LG]</span>
-                                    <p className="truncate">INDEX: Rebuilding registry lookup cache</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+                            <Card className="bg-zinc-950 border-zinc-900 text-white shadow-2xl overflow-hidden">
+                                <CardHeader className="p-4 md:p-6 border-b border-white/5">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-zinc-500 text-[10px] uppercase tracking-widest font-black">Live Sync Stream</CardTitle>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 md:p-6">
+                                    <div className="font-mono text-[10px] space-y-3 opacity-90 overflow-hidden">
+                                        <div className="flex gap-2">
+                                            <span className="text-emerald-500 shrink-0">[OK]</span>
+                                            <p className="truncate">SYNC_COMPLETE: Scanned 12 seeds</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className="text-blue-400 shrink-0">[IN]</span>
+                                            <p className="truncate">UPSERT: Customer registry (id: 9912)</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className="text-zinc-600 shrink-0">[LG]</span>
+                                            <p className="truncate">FETCH: /api/accounts/1100312676</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className="text-amber-500 shrink-0">[WR]</span>
+                                            <p className="truncate">LATENCY: Endpoint timeout @ 2.4s</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className="text-zinc-600 shrink-0">[LG]</span>
+                                            <p className="truncate">INDEX: Rebuilding registry lookup cache</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="harmonization">
+                    <HarmonizationReport />
+                </TabsContent>
+            </Tabs>
         </div>
     )
 }

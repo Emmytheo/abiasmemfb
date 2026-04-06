@@ -62,6 +62,12 @@ export const SiteSettings: GlobalConfig = {
                     admin: { description: 'The API endpoint used to fetch detailed account/balance info.' }
                 },
                 {
+                    name: 'customerAccountsEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to discover all secondary accounts for a customer ID.' }
+                },
+                {
                     name: 'productSyncEndpoint',
                     type: 'relationship',
                     relationTo: 'endpoints',

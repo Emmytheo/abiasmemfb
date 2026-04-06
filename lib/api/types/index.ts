@@ -182,6 +182,7 @@ export interface SiteSyncConfig {
     autoDiscoveryEnabled: boolean;
     customerLookupEndpoint: string | any;
     accountEnquiryEndpoint: string | any;
+    customerAccountsEndpoint?: string | any;
     productSyncEndpoint?: string | any;
     serviceSyncEndpoint?: string | any;
 }

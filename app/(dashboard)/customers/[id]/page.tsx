@@ -45,6 +45,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Pencil } from "lucide-react";
 import { LienDialog } from "@/components/dashboard/LienDialog";
+import { IdentityLinkDialog } from "@/components/dashboard/IdentityLinkDialog";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -251,9 +252,13 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit Profile
                     </Button>
-                    <Button className="shadow-lg shadow-primary/20 flex-1 md:flex-none">
-                        {customer.is_associated ? 'Manage User' : 'Grant Digital Access'}
-                    </Button>
+                    {customer.is_associated ? (
+                        <Button className="shadow-lg shadow-primary/20 flex-1 md:flex-none" variant="secondary">
+                            Manage Digital User
+                        </Button>
+                    ) : (
+                        <IdentityLinkDialog customerId={customer.id} onLinked={loadData} />
+                    )}
 
                     <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                         <DialogContent className="sm:max-w-[500px]">

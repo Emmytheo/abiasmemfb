@@ -369,7 +369,8 @@ export const DummyAdapter: ApiAdapter = {
                 baselineAccounts: [{ accountNumber: '0123456789' }],
                 autoDiscoveryEnabled: true,
                 customerLookupEndpoint: 'dummy-ep-1',
-                accountEnquiryEndpoint: 'dummy-ep-2'
+                accountEnquiryEndpoint: 'dummy-ep-2',
+                customerAccountsEndpoint: 'dummy-ep-3'
             }
         };
     },
@@ -384,7 +385,8 @@ export const DummyAdapter: ApiAdapter = {
         await delay(400);
         return [
             { id: 'dummy-ep-1', name: 'Standard Customer Lookup' },
-            { id: 'dummy-ep-2', name: 'General Account Enquiry' }
+            { id: 'dummy-ep-2', name: 'General Account Enquiry' },
+            { id: 'dummy-ep-3', name: 'Customer Accounts Discovery' }
         ];
     }
 };
