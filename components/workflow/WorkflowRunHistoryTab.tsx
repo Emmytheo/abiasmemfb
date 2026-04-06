@@ -95,7 +95,7 @@ export function WorkflowRunHistoryTab({ workflowId, refreshKey }: WorkflowRunHis
                                             {run.status === 'COMPLETED' ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> :
                                              run.status === 'FAILED' ? <XCircle size={16} className="text-destructive shrink-0" /> :
                                              <Clock size={16} className="text-amber-500 shrink-0 animate-pulse" />}
-                                            <span className="font-mono text-[10px] font-bold text-primary opacity-60">RUN #{run.id.slice(0, 6).toUpperCase()}</span>
+                                            <span className="font-mono text-[10px] font-bold text-primary opacity-60">RUN #{String(run.id).slice(0, 6).toUpperCase()}</span>
                                         </div>
                                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase border-none bg-muted font-black tracking-tighter">
                                             {run.trigger}

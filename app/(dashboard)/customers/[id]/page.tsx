@@ -550,26 +550,28 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                             ) : (
                                 accounts.filter(acc => !!acc.is_archived === showArchived).map((acc) => (
                                     <Card key={acc.id} className={`rounded-2xl border-primary/5 hover:border-primary/20 transition-all overflow-hidden group ${acc.is_archived ? 'opacity-70 grayscale-[0.5]' : ''}`}>
-                                        <div className="p-6">
-                                            <div className="flex justify-between items-start mb-6">
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="text-xl font-bold uppercase tracking-tight">{acc.account_type} Account</h3>
-                                                        {acc.is_primary && (
-                                                            <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-none gap-1 px-2">
-                                                                <Star className="h-3 w-3 fill-current" /> Primary
+                                        <div className="p-4 sm:p-6">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
+                                                <div className="space-y-2 min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <h3 className="text-lg sm:text-xl font-bold uppercase tracking-tight truncate">{acc.account_type} Account</h3>
+                                                        <div className="flex gap-2">
+                                                            {acc.is_primary && (
+                                                                <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-none gap-1 px-2 whitespace-nowrap">
+                                                                    <Star className="h-3 w-3 fill-current" /> Primary
+                                                                </Badge>
+                                                            )}
+                                                            <Badge variant="outline" className={`gap-1 px-2 whitespace-nowrap ${acc.source === 'qore' ? 'border-primary/20 text-primary' : 'border-purple-500/20 text-purple-600'}`}>
+                                                                {acc.source === 'qore' ? <Globe className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                                                                {acc.source === 'qore' ? 'Qore' : 'Local'}
                                                             </Badge>
-                                                        )}
-                                                        <Badge variant="outline" className={`gap-1 px-2 ${acc.source === 'qore' ? 'border-primary/20 text-primary' : 'border-purple-500/20 text-purple-600'}`}>
-                                                            {acc.source === 'qore' ? <Globe className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
-                                                            {acc.source === 'qore' ? 'Qore' : 'Local'}
-                                                        </Badge>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-sm font-mono text-primary mt-1 tracking-[0.2em] font-bold">{acc.account_number}</p>
+                                                    <p className="text-xs sm:text-sm font-mono text-primary mt-1 tracking-[0.2em] font-bold break-all">{acc.account_number}</p>
                                                 </div>
-                                                <div className="text-right">
+                                                <div className="text-left sm:text-right w-full sm:w-auto shrink-0 border-t sm:border-t-0 pt-4 sm:pt-0">
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Available Balance</p>
-                                                    <p className="text-2xl font-black">₦{acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                    <p className="text-xl sm:text-2xl font-black truncate">₦{acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                                                 </div>
                                             </div>
 

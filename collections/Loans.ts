@@ -16,6 +16,12 @@ export const Loans: CollectionConfig = {
     },
     fields: [
         {
+            name: 'customer',
+            type: 'relationship',
+            relationTo: 'customers',
+            admin: { description: 'The linked banking customer profile for bilateral identity bridging.' },
+        },
+        {
             name: 'user_id',
             type: 'text',
             required: true,

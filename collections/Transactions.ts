@@ -111,6 +111,13 @@ export const Transactions: CollectionConfig = {
             type: 'json',
             admin: { description: 'Additional context (external reference, provider response, etc.).' },
         },
+        {
+            name: 'customer',
+            type: 'relationship',
+            relationTo: 'customers',
+            admin: { description: 'The banking customer profile linked to this transaction for identity recovery.' },
+            index: true,
+        },
     ],
     timestamps: true,
 }

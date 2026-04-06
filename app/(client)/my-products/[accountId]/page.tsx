@@ -119,18 +119,18 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                     <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors duration-700" />
                     <CardHeader className="pb-2">
                         <CardDescription className="tracking-wider text-xs uppercase font-medium">Available Balance</CardDescription>
-                        <div className="flex items-baseline gap-2">
-                            <CardTitle className="text-5xl font-mono tracking-tight text-primary">
+                        <div className="flex items-baseline gap-2 overflow-hidden">
+                            <CardTitle className="text-3xl sm:text-4xl md:text-5xl font-mono tracking-tight text-primary truncate">
                                 ₦{account.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                             </CardTitle>
                         </div>
                     </CardHeader>
                     <CardContent className="pt-4">
-                        <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-end p-4 rounded-xl bg-background/50 border backdrop-blur-sm">
-                            <div className="space-y-1">
+                        <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-end p-4 rounded-xl bg-background/50 border backdrop-blur-sm overflow-hidden">
+                            <div className="space-y-1 min-w-0 flex-1">
                                 <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Account Number</p>
                                 <div className="flex items-center gap-2">
-                                    <p className="font-mono text-xl md:text-2xl font-medium tracking-widest">{account.account_number}</p>
+                                    <p className="font-mono text-lg sm:text-xl md:text-2xl font-medium tracking-widest truncate">{account.account_number}</p>
                                     <Button
                                         variant="ghost"
                                         size="icon"
