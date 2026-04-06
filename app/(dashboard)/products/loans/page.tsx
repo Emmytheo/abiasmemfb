@@ -47,7 +47,7 @@ export default function AdminLoansPage() {
 
             {/* Active Loans Summary */}
             {activeLoans.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-8 pb-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-8 px-6 pb-2">
                     <Card className="bg-card border shadow-sm">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm text-muted-foreground font-medium flex items-center gap-2">

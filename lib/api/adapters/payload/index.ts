@@ -16,6 +16,7 @@ export const PayloadAdapter: ApiAdapter = {
     getUserAccounts: (...args) => actions.getUserAccounts(...args),
     getAccountById: (...args) => actions.getAccountById(...args),
     createAccount: (...args) => actions.createAccount(...args),
+    updateAccount: (...args) => actions.updateAccount(...args),
     getAllLoans: (...args) => actions.getAllLoans(...args),
     getUserLoans: (...args) => actions.getUserLoans(...args),
     getLoanById: (...args) => actions.getLoanById(...args),
@@ -82,6 +83,10 @@ export const PayloadAdapter: ApiAdapter = {
     // Global CMS
     getPageBySlug: (...args) => actions.getPageBySlug(...args),
 
+    // Site Settings
+    getSiteSettings: (...args) => actions.getSiteSettings(...args),
+    updateSiteSettings: (...args) => actions.updateSiteSettings(...args),
+
     // Blog
     getBlogPosts: (...args) => actions.getBlogPosts(...args),
     getBlogPostBySlug: (...args) => actions.getBlogPostBySlug(...args),
@@ -92,4 +97,7 @@ export const PayloadAdapter: ApiAdapter = {
 
     // Careers
     getOpenPositions: (...args) => actions.getOpenPositions(...args),
+
+    // Endpoints
+    getAllEndpoints: (...args) => actions.getAllEndpoints(...args),
 };

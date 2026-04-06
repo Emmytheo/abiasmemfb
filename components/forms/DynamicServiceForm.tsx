@@ -6,6 +6,8 @@ import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { runWorkflow } from '@/app/(dashboard)/workflows/[id]/edit/actions'
 
+import { FieldValidation, FieldEvent } from '@/lib/api/types'
+
 export type FormFieldSchema = {
     name: string
     label: string
@@ -13,15 +15,16 @@ export type FormFieldSchema = {
     required?: boolean
     placeholder?: string
     options?: any
-    triggers_validation?: boolean // Service specific
-    validations?: any[] // Product Type specific
-    events?: any[] // Product Type specific
+    triggers_validation?: boolean // Legacy Service specific
+    validations?: FieldValidation[]
+    events?: FieldEvent[]
 }
 
 export interface DynamicServiceFormProps {
     fields: FormFieldSchema[]
     validationWorkflowId?: string | null
     onSubmit: (data: Record<string, any>) => void
+    onEvent?: (event: { type: 'validation' | 'api_event' | 'workflow', field: string, status: 'start' | 'success' | 'error', message?: string }) => void
     submitLabel?: string
     isSubmitting?: boolean
 }
@@ -30,83 +33,172 @@ export function DynamicServiceForm({
     fields,
     validationWorkflowId,
     onSubmit,
+    onEvent,
     submitLabel = 'Submit',
     isSubmitting = false
 }: DynamicServiceFormProps) {
     const [formData, setFormData] = useState<Record<string, any>>({})
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string | null>>({})
     const [isEvaluating, setIsEvaluating] = useState<string | null>(null) // specific field being evaluated
     const [isValidatingWorkflow, setIsValidatingWorkflow] = useState(false)
 
     // Handle standard field edits
     const handleChange = (name: string, value: any) => {
         setFormData(prev => ({ ...prev, [name]: value }))
+        // Clear error when user types
+        if (fieldErrors[name]) {
+            setFieldErrors(prev => ({ ...prev, [name]: null }))
+        }
+        
+        // Handle onChange events
+        const field = fields.find(f => f.name === name)
+        if (field?.events) {
+            handleEvents(field, 'onChange', value)
+        }
     }
 
-    // Handle blur events (e.g. triggers_validation for Services)
-    const handleBlur = async (field: FormFieldSchema) => {
-        if (!field.triggers_validation || !validationWorkflowId || isEvaluating) return
+    const validateField = async (field: FormFieldSchema, value: any): Promise<boolean> => {
+        if (field.required && !value) {
+            setFieldErrors(prev => ({ ...prev, [field.name]: `${field.label} is required` }))
+            return false
+        }
 
-        const val = formData[field.name]
-        if (!val) return
+        if (!field.validations || field.validations.length === 0) return true
 
-        setIsEvaluating(field.name)
-        try {
-            // 1. Trigger the workflow locally via server action
-            const result = await runWorkflow(validationWorkflowId, { [field.name]: val })
-            if (!result.success || !result.executionId) {
-                throw new Error(result.error || 'Failed to trigger validation workflow')
-            }
-
-            // 2. Poll execution until complete
-            const executionId = result.executionId
-            let completed = false
-            let attempts = 0
-            while (!completed && attempts < 15) { // 15s absolute max
-                attempts++
-                await new Promise(r => setTimeout(r, 1000))
-                
-                const pollRes = await fetch(`/api/workflows/executions/${executionId}`)
-                const data = await pollRes.json()
-
-                if (data.success && data.execution) {
-                    const status = data.execution.status
-                    if (status === 'COMPLETED') {
-                        completed = true
-                        // Extract output from the final node (or mapping) and assign it to the form
-                        // Here we assume the workflow outputs standard key-values that map back exactly to form fields 
-                        // (e.g. outputting "accountName": "John Doe" updates the "accountName" field)
-                        if (data.execution.phases) {
-                            const lastPhase = data.execution.phases[data.execution.phases.length - 1]
-                            if (lastPhase?.outputs) {
-                                // Merge outputs into formData dynamically!
-                                setFormData(prev => ({ ...prev, ...lastPhase.outputs }))
-                            }
-                        }
-                        toast.success(`${field.label} validated successfully`)
-                    } else if (status === 'FAILED' || status === 'CANCELLED') {
-                        completed = true
-                        toast.error(`Validation failed for ${field.name}`)
-                    }
+        for (const v of field.validations) {
+            if (v.type === 'regex' && v.value) {
+                const re = new RegExp(v.value)
+                if (!re.test(String(value))) {
+                    const msg = v.errorMessage || 'Invalid format'
+                    setFieldErrors(prev => ({ ...prev, [field.name]: msg }))
+                    onEvent?.({ type: 'validation', field: field.name, status: 'error', message: msg })
+                    return false
                 }
             }
-            if (!completed) toast.error(`Validation timed out for ${field.name}`)
+            if (v.type === 'min' && v.value !== undefined) {
+                const num = parseFloat(value)
+                if (isNaN(num) || num < parseFloat(v.value)) {
+                    const msg = v.errorMessage || `Minimum value is ${v.value}`
+                    setFieldErrors(prev => ({ ...prev, [field.name]: msg }))
+                    onEvent?.({ type: 'validation', field: field.name, status: 'error', message: msg })
+                    return false
+                }
+            }
+            if (v.type === 'max' && v.value !== undefined) {
+                const num = parseFloat(value)
+                if (isNaN(num) || num > parseFloat(v.value)) {
+                    const msg = v.errorMessage || `Maximum value is ${v.value}`
+                    setFieldErrors(prev => ({ ...prev, [field.name]: msg }))
+                    onEvent?.({ type: 'validation', field: field.name, status: 'error', message: msg })
+                    return false
+                }
+            }
+        }
 
-        } catch (e: any) {
-            toast.error(e.message || 'Validation error')
-        } finally {
-            setIsEvaluating(null)
+        setFieldErrors(prev => ({ ...prev, [field.name]: null }))
+        onEvent?.({ type: 'validation', field: field.name, status: 'success' })
+        return true
+    }
+
+    const handleEvents = async (field: FormFieldSchema, trigger: 'onChange' | 'onBlur' | 'onLoad', value: any) => {
+        const events = field.events?.filter(e => e.trigger === trigger)
+        if (!events || events.length === 0) return
+
+        for (const event of events) {
+            if (event.action === 'EXECUTE_ENDPOINT' && event.endpointId) {
+                setIsEvaluating(field.name)
+                onEvent?.({ type: 'api_event', field: field.name, status: 'start', message: `Executing endpoint ${event.endpointId}` })
+                try {
+                    const endpointRes = await fetch(`/api/endpoints/execute/${event.endpointId}`, {
+                        method: 'POST',
+                        body: JSON.stringify({ ...formData, [field.name]: value })
+                    })
+                    const apiData = await endpointRes.json()
+                    
+                    if (apiData.success && event.mappingConfig) {
+                        const newUpdates: Record<string, any> = {}
+                        Object.entries(event.mappingConfig).forEach(([apiKey, formKey]) => {
+                            if (apiData.data[apiKey] !== undefined) {
+                                newUpdates[formKey] = apiData.data[apiKey]
+                            }
+                        })
+                        setFormData(prev => ({ ...prev, ...newUpdates }))
+                        onEvent?.({ type: 'api_event', field: field.name, status: 'success', message: `Mapped ${Object.keys(newUpdates).length} fields` })
+                    } else if (!apiData.success) {
+                        const msg = apiData.error || 'Validation failed'
+                        setFieldErrors(prev => ({ ...prev, [field.name]: msg }))
+                        onEvent?.({ type: 'api_event', field: field.name, status: 'error', message: msg })
+                    }
+                } catch (e: any) {
+                    onEvent?.({ type: 'api_event', field: field.name, status: 'error', message: e.message })
+                } finally {
+                    setIsEvaluating(null)
+                }
+            }
         }
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        // Client-side required check
-        for (const f of fields) {
-            if (f.required && !formData[f.name]) {
-                toast.error(`"${f.label}" is required`)
-                return
+    // Handle blur events
+    const handleBlur = async (field: FormFieldSchema) => {
+        const value = formData[field.name]
+        
+        // 1. Run local validations
+        const isValid = await validateField(field, value)
+        if (!isValid) return
+
+        // 2. Trigger events (onBlur)
+        await handleEvents(field, 'onBlur', value)
+
+        // 3. Legacy triggers_validation (Workflow)
+        if (field.triggers_validation && validationWorkflowId && !isEvaluating) {
+            if (!value) return
+            setIsEvaluating(field.name)
+            onEvent?.({ type: 'workflow', field: field.name, status: 'start', message: 'Triggering validation workflow' })
+            try {
+                const result = await runWorkflow(validationWorkflowId, { [field.name]: value })
+                if (result.success && result.executionId) {
+                    let completed = false
+                    let attempts = 0
+                    while (!completed && attempts < 15) {
+                        attempts++
+                        await new Promise(r => setTimeout(r, 1000))
+                        const pollRes = await fetch(`/api/workflows/executions/${result.executionId}`)
+                        const data = await pollRes.json()
+                        if (data.success && data.execution?.status === 'COMPLETED') {
+                            completed = true
+                            if (data.execution.phases) {
+                                const lastPhase = data.execution.phases[data.execution.phases.length - 1]
+                                if (lastPhase?.outputs) setFormData(prev => ({ ...prev, ...lastPhase.outputs }))
+                            }
+                            onEvent?.({ type: 'workflow', field: field.name, status: 'success' })
+                        } else if (data.execution?.status === 'FAILED') {
+                            completed = true
+                            setFieldErrors(prev => ({ ...prev, [field.name]: 'Advanced validation failed' }))
+                            onEvent?.({ type: 'workflow', field: field.name, status: 'error', message: 'Workflow Failed' })
+                        }
+                    }
+                }
+            } finally {
+                setIsEvaluating(null)
             }
         }
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        
+        // Run all validations
+        let hasErrors = false
+        for (const f of fields) {
+            const isValid = await validateField(f, formData[f.name])
+            if (!isValid) hasErrors = true
+        }
+
+        if (hasErrors) {
+            toast.error("Please fix form errors before submitting")
+            return
+        }
+
         onSubmit(formData)
     }
 
@@ -125,7 +217,7 @@ export function DynamicServiceForm({
                         
                         {field.type === 'select' ? (
                             <select
-                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className={`flex h-10 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors[field.name] ? 'border-destructive' : 'border-input'}`}
                                 value={formData[field.name] || ''}
                                 onChange={(e) => handleChange(field.name, e.target.value)}
                                 disabled={field.name === isEvaluating || isSubmitting}
@@ -133,15 +225,17 @@ export function DynamicServiceForm({
                             >
                                 <option value="" disabled>Select option...</option>
                                 {typeof field.options === 'string' ? (
-                                    field.options.split(',').map(o => {
+                                    field.options.split(',').map((o: string) => {
                                         const parts = o.split('-')
                                         const label = parts[0]?.trim()
                                         const val = parts[1]?.trim() || label
                                         return <option key={val} value={val}>{label}</option>
                                     })
-                                ) : (
-                                    <option value="" disabled>Invalid options format</option>
-                                )}
+                                ) : Array.isArray(field.options) ? (
+                                    field.options.map((o: any) => (
+                                        <option key={o.value || o} value={o.value || o}>{o.label || o}</option>
+                                    ))
+                                ) : null}
                             </select>
                         ) : (
                             <Input
@@ -151,18 +245,19 @@ export function DynamicServiceForm({
                                 placeholder={field.placeholder || ''}
                                 disabled={field.name === isEvaluating || isSubmitting}
                                 onBlur={() => handleBlur(field)}
-                                className={isLoading ? 'pr-8 border-primary/50 ring-1 ring-primary/20' : ''}
+                                className={`${isLoading ? 'pr-8 border-primary/50 ring-1 ring-primary/20' : ''} ${fieldErrors[field.name] ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                             />
                         )}
 
-                        {field.triggers_validation && (
-                            <p className="text-[10px] text-muted-foreground italic">
-                                This field triggers automatic validation when you finish typing.
+                        {fieldErrors[field.name] && (
+                            <p className="text-[11px] text-destructive font-medium mt-0.5">
+                                {fieldErrors[field.name]}
                             </p>
                         )}
-                        {field.events && field.events.length > 0 && (
+
+                        {!fieldErrors[field.name] && field.triggers_validation && (
                             <p className="text-[10px] text-muted-foreground italic">
-                                Interacting triggers dynamic API data checks.
+                                This field triggers automatic validation.
                             </p>
                         )}
                     </div>

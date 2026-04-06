@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-import { User, Account, Customer, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition, ServiceCategory, Service, Beneficiary } from '../../types';
+import { User, Account, Customer, Loan, ProductType, ProductClass, ProductCategory, ProductApplication, Transaction, SystemConfig, BlogPost, JobPosition, ServiceCategory, Service, Beneficiary, SiteSettings } from '../../types';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
 import { lexicalToHtml } from '@/lib/utils/lexical-to-html';
@@ -1701,5 +1701,81 @@ export const updateCustomer = async (id: string, data: Partial<Customer>): Promi
     } catch (e) {
         console.error('Payload updateCustomer Error:', e);
         throw e;
+    }
+};
+
+export const getSiteSettings = async (): Promise<SiteSettings | null> => {
+    try {
+        const payload = await initPayload();
+        const settings = await payload.findGlobal({
+            slug: 'site-settings',
+            depth: 1,
+        });
+        return settings as unknown as SiteSettings;
+    } catch (e) {
+        console.error('Payload getSiteSettings Error:', e);
+        return null;
+    }
+};
+
+export const updateSiteSettings = async (data: Partial<SiteSettings>): Promise<SiteSettings> => {
+    try {
+        const payload = await initPayload();
+        const settings = await payload.updateGlobal({
+            slug: 'site-settings',
+            data: data as any,
+        });
+        return settings as unknown as SiteSettings;
+    } catch (e) {
+        console.error('Payload updateSiteSettings Error:', e);
+        throw e;
+    }
+};
+
+export const updateAccount = async (id: string, data: Partial<Account>): Promise<Account | null> => {
+    try {
+        const payload = await initPayload();
+        
+        // Prepare data for Payload, handle kobo conversion for lien_amount
+        const updateData: any = { ...data };
+        if (data.lien_amount !== undefined) {
+            updateData.lien_amount = Math.round(data.lien_amount * 100);
+        }
+
+        const doc = await payload.update({
+            collection: 'accounts',
+            id,
+            data: updateData,
+        });
+
+        return {
+            id: String(doc.id),
+            user_id: (doc as any).user_id,
+            account_number: (doc as any).account_number,
+            account_type: (doc as any).account_type,
+            balance: ((doc as any).balance ?? 0) / 100,
+            status: (doc as any).status,
+            is_frozen: (doc as any).is_frozen,
+            pnd_enabled: (doc as any).pnd_enabled,
+            lien_amount: ((doc as any).lien_amount ?? 0) / 100,
+            created_at: doc.createdAt,
+        } as Account;
+    } catch (e) {
+        console.error('Payload updateAccount Error:', e);
+        return null;
+    }
+};
+
+export const getAllEndpoints = async (): Promise<any[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'endpoints',
+            limit: 100,
+        });
+        return docs;
+    } catch (e) {
+        console.error('Payload getAllEndpoints Error:', e);
+        return [];
     }
 };

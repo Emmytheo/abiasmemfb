@@ -26,6 +26,7 @@ import {
     FileText,
     Play,
     Users,
+    RefreshCw,
 } from "lucide-react";
 
 import {
@@ -54,6 +55,11 @@ const navGroups = [
                 title: "Dashboard",
                 url: "/dashboard",
                 icon: LayoutDashboard,
+            },
+            {
+                title: "Infrastructure & Sync",
+                url: "/settings/sync",
+                icon: RefreshCw,
             },
         ],
     },

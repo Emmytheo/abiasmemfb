@@ -3,14 +3,13 @@ import config from '@payload-config';
 import { resolveEndpoint } from '../utils/apiResolver';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-const BASELINE_ACCOUNTS = ['1100321676', '1100321669', '1100321535'];
-
 interface SyncResults {
     customersCreated: number;
     customersUpdated: number;
     accountsCreated: number;
     accountsUpdated: number;
     shadowUsersCreated: number;
+    discoveryAccountsProcessed: number;
     errors: string[];
 }
 
@@ -18,38 +17,65 @@ interface SyncResults {
  * CustomerBulkSyncExecutor: Automates the discovery and synchronization of 
  * Core Banking customers and their associated accounts.
  */
-export async function CustomerBulkSyncExecutor(targetAccounts: string[] = BASELINE_ACCOUNTS) {
+export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
     const payload = await getPayload({ config });
     const supabaseAdmin = createAdminClient();
     
+    // 1. Fetch Dynamic Settings and Endpoints
+    const settings = await payload.findGlobal({
+        slug: 'site-settings',
+    }) as any;
+
+    const syncConfig = settings.sync || {};
+    const discoveryAccounts = (syncConfig.baselineAccounts || []).map((a: any) => a.accountNumber);
+    
+    // Prioritize passed accounts, fallback to CMS discovery accounts
+    const activeAccounts = targetAccounts && targetAccounts.length > 0 
+        ? targetAccounts 
+        : discoveryAccounts;
+
+    if (activeAccounts.length === 0) {
+        console.warn('[SYNC] No discovery accounts defined in Site Settings. Skipping bulk sync.');
+        return { 
+            customersCreated: 0, 
+            customersUpdated: 0, 
+            accountsCreated: 0, 
+            accountsUpdated: 0, 
+            shadowUsersCreated: 0, 
+            discoveryAccountsProcessed: 0,
+            errors: ['No discovery accounts found in settings. Please add account numbers to Site Settings > Sync.'] 
+        };
+    }
+
+    const customerLookupEndpointId = typeof syncConfig.customerLookupEndpoint === 'object' 
+        ? syncConfig.customerLookupEndpoint?.id 
+        : syncConfig.customerLookupEndpoint;
+        
+    const accountEnquiryEndpointId = typeof syncConfig.accountEnquiryEndpoint === 'object' 
+        ? syncConfig.accountEnquiryEndpoint?.id 
+        : syncConfig.accountEnquiryEndpoint;
+
+    // Resolve specific endpoints by ID from settings
+    const [getCustomerEndpoint, getAccountEndpoint] = await Promise.all([
+        customerLookupEndpointId ? payload.findByID({ collection: 'endpoints', id: customerLookupEndpointId }) : Promise.resolve(null),
+        accountEnquiryEndpointId ? payload.findByID({ collection: 'endpoints', id: accountEnquiryEndpointId }) : Promise.resolve(null)
+    ]);
+
+    if (!getCustomerEndpoint || !getAccountEndpoint) {
+        throw new Error("Sync failed: Required endpoints (Customer Lookup / Account Enquiry) are not configured in Site Settings.");
+    }
+
     const results: SyncResults = {
         customersCreated: 0,
         customersUpdated: 0,
         accountsCreated: 0,
         accountsUpdated: 0,
         shadowUsersCreated: 0,
+        discoveryAccountsProcessed: activeAccounts.length,
         errors: []
     };
 
-    // 1. Resolve Dynamic Endpoints
-    const endpoints = await payload.find({
-        collection: 'endpoints',
-        where: {
-            or: [
-                { name: { equals: 'Get Customer By Account Number' } },
-                { name: { equals: 'Account Enquiry' } }
-            ]
-        }
-    });
-
-    const getCustomerEndpoint = endpoints.docs.find(e => e.name === 'Get Customer By Account Number');
-    const getAccountEndpoint = endpoints.docs.find(e => e.name === 'Account Enquiry');
-
-    if (!getCustomerEndpoint || !getAccountEndpoint) {
-        throw new Error("Sync failed: Missing required endpoints 'Get Customer By Account Number' or 'Account Enquiry' in CMS.");
-    }
-
-    for (const accNo of targetAccounts) {
+    for (const accNo of activeAccounts) {
         try {
             // 2. Fetch Customer Data
             const customerResolved = await resolveEndpoint(getCustomerEndpoint, {
@@ -80,18 +106,22 @@ export async function CustomerBulkSyncExecutor(targetAccounts: string[] = BASELI
             });
 
             let customerId: string | number;
+            const customerBaseData = {
+                firstName: qoreCust.LastName || qoreCust.FirstName || 'Unknown',
+                lastName: qoreCust.OtherNames || qoreCust.Surname || 'Customer',
+                phone_number: phone,
+                email: email,
+                bvn: bvn,
+                metadata: qoreCust,
+                kyc_status: (qoreCust.KYCStatus === 'Verified' || qoreCust.Status === 'Active') ? 'active' : 'pending',
+                risk_tier: (qoreCust.RiskLevel === 'High') ? 'high' : (qoreCust.RiskLevel === 'Medium') ? 'medium' : 'low',
+            };
+
             if (existingCustomers.docs.length > 0) {
                 const updated = await payload.update({
                     collection: 'customers',
                     id: existingCustomers.docs[0].id,
-                    data: {
-                        firstName: qoreCust.LastName,
-                        lastName: qoreCust.OtherNames,
-                        phone_number: phone,
-                        email: email,
-                        bvn: bvn,
-                        metadata: qoreCust
-                    }
+                    data: customerBaseData
                 });
                 customerId = updated.id;
                 results.customersUpdated++;
@@ -99,15 +129,9 @@ export async function CustomerBulkSyncExecutor(targetAccounts: string[] = BASELI
                 const created = await payload.create({
                     collection: 'customers',
                     data: {
-                        firstName: qoreCust.LastName,
-                        lastName: qoreCust.OtherNames,
-                        phone_number: phone,
-                        email: email,
-                        bvn: bvn,
+                        ...customerBaseData,
                         qore_customer_id: qoreCustomerID,
-                        kyc_status: 'active',
-                        is_test_account: BASELINE_ACCOUNTS.includes(accNo),
-                        metadata: qoreCust
+                        is_test_account: discoveryAccounts.includes(accNo),
                     }
                 });
                 customerId = created.id;

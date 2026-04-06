@@ -177,6 +177,22 @@ export interface SystemConfig {
     updated_at: string;
 }
 
+export interface SiteSyncConfig {
+    baselineAccounts: { accountNumber: string }[];
+    autoDiscoveryEnabled: boolean;
+    customerLookupEndpoint: string | any;
+    accountEnquiryEndpoint: string | any;
+    productSyncEndpoint?: string | any;
+    serviceSyncEndpoint?: string | any;
+}
+
+export interface SiteSettings {
+    siteTitle: string;
+    contactEmail?: string;
+    supportPhone?: string;
+    sync: SiteSyncConfig;
+}
+
 export interface Beneficiary {
     id: string;
     user: string;
@@ -238,6 +254,7 @@ export interface ApiAdapter {
     getUserAccounts: (userId: string) => Promise<Account[]>;
     getAccountById: (id: string) => Promise<Account | null>;
     createAccount: (data: Omit<Account, 'id' | 'created_at' | 'updated_at'>) => Promise<Account>;
+    updateAccount: (id: string, data: Partial<Account>) => Promise<Account | null>;
     getAllLoans: () => Promise<Loan[]>;
     getUserLoans: (userId: string) => Promise<Loan[]>;
     getLoanById: (id: string) => Promise<Loan | null>;
@@ -303,6 +320,10 @@ export interface ApiAdapter {
 
     // Global CMS
     getPageBySlug: (slug: string) => Promise<any | null>;
+
+    // Site Settings
+    getSiteSettings: () => Promise<SiteSettings | null>;
+    updateSiteSettings: (data: Partial<SiteSettings>) => Promise<SiteSettings>;
 
     // Blog
     getBlogPosts: () => Promise<BlogPost[]>;

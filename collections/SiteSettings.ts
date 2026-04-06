@@ -27,5 +27,53 @@ export const SiteSettings: GlobalConfig = {
             name: 'supportPhone',
             type: 'text',
         },
+        {
+            name: 'sync',
+            type: 'group',
+            admin: {
+                description: 'Configuration for the Automated Customer Discovery & Sync Engine.',
+            },
+            fields: [
+                {
+                    name: 'baselineAccounts',
+                    type: 'array',
+                    label: 'Sync Discovery Accounts',
+                    admin: { description: 'Specific core banking account numbers used as seeds for customer discovery.' },
+                    fields: [{ name: 'accountNumber', type: 'text', required: true }]
+                },
+                {
+                    name: 'autoDiscoveryEnabled',
+                    type: 'checkbox',
+                    label: 'Enable Automated Discovery',
+                    defaultValue: true,
+                },
+                {
+                    name: 'customerLookupEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    required: true,
+                    admin: { description: 'The API endpoint used to resolve Customer data by account number.' }
+                },
+                {
+                    name: 'accountEnquiryEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    required: true,
+                    admin: { description: 'The API endpoint used to fetch detailed account/balance info.' }
+                },
+                {
+                    name: 'productSyncEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to synchronize the Product Registry with Qore.' }
+                },
+                {
+                    name: 'serviceSyncEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to synchronize available Services/Form Schemas.' }
+                }
+            ]
+        }
     ],
 }

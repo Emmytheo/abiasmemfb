@@ -18,14 +18,47 @@ import {
     Unlock, 
     Ban, 
     DollarSign,
-    RefreshCw
+    RefreshCw,
+    Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Pencil } from "lucide-react";
+import { LienDialog } from "@/components/dashboard/LienDialog";
 
 interface PageProps {
     params: Promise<{ id: string }>;
 }
+
+const customerSchema = z.object({
+    firstName: z.string().min(2, "First name is too short"),
+    lastName: z.string().min(2, "Last name is too short"),
+    email: z.string().email("Invalid email address"),
+    phone_number: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    kyc_status: z.enum(['pending', 'active', 'inactive', 'rejected']),
+    risk_tier: z.enum(['low', 'medium', 'high']),
+});
 
 export default function AdminCustomerDetailPage({ params }: PageProps) {
     const { id } = use(params);
@@ -34,6 +67,10 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     const [loans, setLoans] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [editData, setEditData] = useState<Partial<Customer>>({});
+    const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+    const [isLienOpen, setIsLienOpen] = useState(false);
 
     async function loadData() {
         setLoading(true);
@@ -73,23 +110,115 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     const handleSync = async () => {
         if (!customer) return;
         setActionLoading('sync');
-        toast.info(`Triggering refresh for ${customer.firstName}...`);
+        toast.info(`Triggering refresh from Core for ${customer.firstName}...`, {
+            description: "Fetching latest balances and profile data."
+        });
         try {
             // Re-sync specific account if we have one or just the customer
+            const syncId = accounts.length > 0 ? accounts[0].account_number : null;
             const res = await fetch('/api/sync/customers', { 
                 method: 'POST',
-                body: JSON.stringify({ accounts: accounts.map(a => a.account_number).slice(0, 1) }) 
+                body: JSON.stringify({ accounts: syncId ? [syncId] : [] }) 
             });
             const result = await res.json();
-            if (result.success) {
-                toast.success("Customer profile refreshed.");
+            
+            if (result.success && result.results) {
+                const r = result.results;
+                toast.success("Sync complete", {
+                    description: `Updated ${r.customersUpdated} customers and ${r.accountsUpdated} accounts.`
+                });
                 loadData();
             } else {
-                toast.error(result.error);
+                toast.error(result.error || "Sync failed", {
+                    description: result.errors?.join(', ')
+                });
             }
+        } catch (err: any) {
+            toast.error("Network error during sync");
         } finally {
             setActionLoading(null);
         }
+    };
+
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!customer) return;
+
+        // Perform Zod validation
+        const validation = customerSchema.safeParse(editData);
+        if (!validation.success) {
+            const firstError = validation.error.issues[0]?.message;
+            toast.error(firstError || "Invalid form data");
+            return;
+        }
+
+        setActionLoading('update');
+        try {
+            const updated = await api.updateCustomer(customer.id, validation.data as any);
+            if (updated) {
+                setCustomer(updated);
+                setIsEditOpen(false);
+                toast.success("Profile synchronized with registry.");
+            }
+        } catch (error) {
+            toast.error("Update failed. Please check registry connectivity.");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleToggleFreeze = async (account: Account) => {
+        setActionLoading(`freeze-${account.id}`);
+        try {
+            const nextStatus = account.is_frozen ? false : true;
+            await api.updateAccount(account.id, { is_frozen: nextStatus, status: nextStatus ? 'frozen' : 'active' });
+            toast.success(`Account ${nextStatus ? 'frozen' : 'unfrozen'} successfully.`);
+            loadData();
+        } catch (error) {
+            toast.error("Failed to update account status.");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleTogglePND = async (account: Account) => {
+        setActionLoading(`pnd-${account.id}`);
+        try {
+            const nextStatus = !account.pnd_enabled;
+            await api.updateAccount(account.id, { pnd_enabled: nextStatus });
+            toast.success(`PND ${nextStatus ? 'enabled' : 'disabled'} successfully.`);
+            loadData();
+        } catch (error) {
+            toast.error("Failed to update PND status.");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleUpdateLien = async (amount: number, reason: string) => {
+        if (!selectedAccount) return;
+        try {
+            await api.updateAccount(selectedAccount.id, { lien_amount: amount });
+            toast.success("Lien amount updated in ledger.");
+            loadData();
+        } catch (error) {
+            toast.error("Lien update failed.");
+            throw error;
+        }
+    };
+
+    const openEdit = () => {
+        if (!customer) return;
+        setEditData({
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            email: customer.email,
+            phone_number: customer.phone_number,
+            address: customer.address,
+            kyc_status: customer.kyc_status,
+            risk_tier: customer.risk_tier,
+        });
+        setIsEditOpen(true);
     };
 
     if (loading) return <div className="p-8">Loading profile...</div>;
@@ -114,13 +243,119 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <Button variant="outline" onClick={handleSync} disabled={actionLoading === 'sync'} className="flex-1 md:flex-none">
+                    <Button onClick={handleSync} disabled={actionLoading === 'sync'} className="flex-1 md:flex-none">
                         <RefreshCw className={`h-4 w-4 mr-2 ${actionLoading === 'sync' ? 'animate-spin' : ''}`} />
                         Sync from Core
+                    </Button>
+                    <Button variant="outline" onClick={openEdit} className="flex-1 md:flex-none">
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit Profile
                     </Button>
                     <Button className="shadow-lg shadow-primary/20 flex-1 md:flex-none">
                         {customer.is_associated ? 'Manage User' : 'Grant Digital Access'}
                     </Button>
+
+                    <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                        <DialogContent className="sm:max-w-[500px]">
+                            <DialogHeader>
+                                <DialogTitle>Edit Customer Profile</DialogTitle>
+                                <DialogDescription>
+                                    Update the core registry details for this customer.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleUpdate} className="space-y-4 py-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="firstName">First Name</Label>
+                                        <Input 
+                                            id="firstName" 
+                                            value={editData.firstName || ""} 
+                                            onChange={e => setEditData({...editData, firstName: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lastName">Last Name</Label>
+                                        <Input 
+                                            id="lastName" 
+                                            value={editData.lastName || ""} 
+                                            onChange={e => setEditData({...editData, lastName: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email">Email Address</Label>
+                                        <Input 
+                                            id="email" 
+                                            type="email"
+                                            value={editData.email || ""} 
+                                            onChange={e => setEditData({...editData, email: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="phone">Phone Number</Label>
+                                        <Input 
+                                            id="phone" 
+                                            value={editData.phone_number || ""} 
+                                            onChange={e => setEditData({...editData, phone_number: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="address">Residential Address</Label>
+                                    <Textarea 
+                                        id="address" 
+                                        value={editData.address || ""} 
+                                        onChange={e => setEditData({...editData, address: e.target.value})}
+                                        rows={2}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>KYC Status</Label>
+                                        <Select 
+                                            value={editData.kyc_status} 
+                                            onValueChange={v => setEditData({...editData, kyc_status: v as any})}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="active">Active</SelectItem>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                                <SelectItem value="rejected">Rejected</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Risk Tier</Label>
+                                        <Select 
+                                            value={editData.risk_tier} 
+                                            onValueChange={v => setEditData({...editData, risk_tier: v as any})}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select tier" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="low">Low Risk</SelectItem>
+                                                <SelectItem value="medium">Medium Risk</SelectItem>
+                                                <SelectItem value="high">High Risk</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <DialogFooter className="pt-4">
+                                    <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+                                    <Button type="submit" disabled={actionLoading === 'update'}>
+                                        {actionLoading === 'update' ? 'Saving...' : 'Update Profile'}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
@@ -295,21 +530,51 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <Button size="sm" variant={acc.is_frozen ? "outline" : "destructive"} className="gap-2 text-xs h-9">
-                                                    {acc.is_frozen ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                                            <div className="flex items-center gap-2 pt-2 flex-wrap">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant={acc.is_frozen ? "outline" : "destructive"} 
+                                                    className="gap-2 text-xs h-9"
+                                                    onClick={() => handleToggleFreeze(acc)}
+                                                    disabled={!!actionLoading}
+                                                >
+                                                    {actionLoading === `freeze-${acc.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : acc.is_frozen ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                                                     {acc.is_frozen ? 'Unfreeze' : 'Freeze'}
                                                 </Button>
-                                                <Button size="sm" variant="outline" className="gap-2 text-xs h-9">
-                                                    <Ban className="h-3.5 w-3.5" /> Toggle PND
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    className="gap-2 text-xs h-9"
+                                                    onClick={() => handleTogglePND(acc)}
+                                                    disabled={!!actionLoading}
+                                                >
+                                                    <Ban className={`h-3.5 w-3.5 ${actionLoading === `pnd-${acc.id}` ? 'animate-spin' : ''}`} /> Toggle PND
                                                 </Button>
-                                                <Button size="sm" variant="outline" className="gap-2 text-xs h-9">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    className="gap-2 text-xs h-9"
+                                                    onClick={() => {
+                                                        setSelectedAccount(acc);
+                                                        setIsLienOpen(true);
+                                                    }}
+                                                    disabled={!!actionLoading}
+                                                >
                                                     <DollarSign className="h-3.5 w-3.5" /> Manage Lien
                                                 </Button>
                                             </div>
                                         </div>
                                     </Card>
                                 ))
+                            )}
+
+                            {selectedAccount && (
+                                <LienDialog 
+                                    open={isLienOpen}
+                                    onOpenChange={setIsLienOpen}
+                                    account={selectedAccount}
+                                    onConfirm={handleUpdateLien}
+                                />
                             )}
                         </TabsContent>
 

@@ -14,6 +14,7 @@ import {
     SidebarMenuSub,
     SidebarMenuSubItem,
     SidebarMenuSubButton,
+    useSidebar,
 } from "@/components/ui/sidebar";
 
 export function NavMain({
@@ -34,6 +35,7 @@ export function NavMain({
     }[];
 }) {
     const pathname = usePathname();
+    const { setOpenMobile, isMobile } = useSidebar();
 
     const isActive = (url: string) => {
         return pathname === url || pathname.startsWith(url + "/");
@@ -53,7 +55,11 @@ export function NavMain({
                             {group.items.map((item) => (
                                 <SidebarMenuItem key={item.title}>
                                     <SidebarMenuButton tooltip={item.title} isActive={isActive(item.url)} asChild>
-                                        <Link href={item.url} className={`flex items-center gap-3 w-full group-data-[collapsible=icon]:!justify-center ${isActive(item.url) ? 'bg-primary/10 text-primary font-bold' : ''}`}>
+                                        <Link 
+                                            href={item.url} 
+                                            onClick={() => isMobile && setOpenMobile(false)}
+                                            className={`flex items-center gap-3 w-full group-data-[collapsible=icon]:!justify-center ${isActive(item.url) ? 'bg-primary/10 text-primary font-bold' : ''}`}
+                                        >
                                             {item.icon && <item.icon className={`h-4 w-4 shrink-0 ${isActive(item.url) ? 'text-primary' : ''}`} />}
                                             <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                                         </Link>
@@ -63,7 +69,11 @@ export function NavMain({
                                             {item.items.map((subItem) => (
                                                 <SidebarMenuSubItem key={subItem.title}>
                                                     <SidebarMenuSubButton asChild isActive={isActive(subItem.url)}>
-                                                        <Link href={subItem.url} className={`flex items-center gap-2 ${isActive(subItem.url) ? 'text-primary font-bold' : ''}`}>
+                                                        <Link 
+                                                            href={subItem.url} 
+                                                            onClick={() => isMobile && setOpenMobile(false)}
+                                                            className={`flex items-center gap-2 ${isActive(subItem.url) ? 'text-primary font-bold' : ''}`}
+                                                        >
                                                             {subItem.icon && <subItem.icon className="h-3 w-3" />}
                                                             <span>{subItem.title}</span>
                                                         </Link>

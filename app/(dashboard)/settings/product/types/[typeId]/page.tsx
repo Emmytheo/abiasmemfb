@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { DualRangeSlider } from "@/components/ui/dual-range-slider";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { z } from "zod";
 import { 
     ProductType, 
     ProductCategory, 
@@ -22,6 +23,16 @@ import {
     ProductFinancialTerms 
 } from "@/lib/api/types";
 import { FormFieldBuilder } from "@/components/forms/builder/FormFieldBuilder";
+const productTypeSchema = z.object({
+    name: z.string().min(3, "Product name is too short"),
+    tagline: z.string().min(5, "Tagline should be more descriptive"),
+    description: z.string().min(10, "Description is too short"),
+    category: z.string().min(1, "Please select a category"),
+    status: z.enum(['active', 'draft', 'archived']),
+    financial_terms: z.array(z.any()).min(1, "At least one financial term must be defined"),
+    form_schema: z.array(z.any()).min(1, "At least one form field must be defined"),
+});
+
 function RichTextEditor({ value, onChange }: { value: string, onChange: (v: string) => void }) {
     const editorRef = React.useRef<HTMLDivElement>(null);
     const hasInit = React.useRef(false);
@@ -128,14 +139,25 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
 
     const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        
+        // Validation logic
+        const validation = productTypeSchema.safeParse(product);
+        if (!validation.success) {
+            const error = validation.error.issues[0];
+            toast.error(error.message, {
+                description: `Field: ${error.path.join('.')}`
+            });
+            return;
+        }
+
         setIsSaving(true);
         try {
             await api.saveProductType(product);
-            toast.success("Product type updated successfully.");
-            router.push("/settings/product/types"); // Redirect to listings
+            toast.success("Product published to registry.");
+            // router.push("/settings/product/types"); // Redirect removed to allow continuous editing
         } catch (error) {
             console.error("Save failed", error);
-            toast.error("Failed to update product type.");
+            toast.error("Failed to publish product type.");
         } finally {
             setIsSaving(false);
         }

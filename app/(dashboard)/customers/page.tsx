@@ -136,47 +136,49 @@ export default function AdminCustomersPage() {
                     }
                 ]}
                 gridRenderItem={(item) => (
-                    <div key={item.id} className="border rounded-xl p-5 bg-background shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-2">
-                             {item.is_test_account && <Badge variant="outline" className="bg-purple-50 text-purple-700">TEST</Badge>}
+                    <div key={item.id} className="relative border rounded-2xl p-6 bg-background shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden border-primary/5">
+                        <div className="absolute top-0 right-0 p-3 flex gap-2">
+                             {item.is_test_account && <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-100 font-bold px-2 py-0 text-[10px]">TEST</Badge>}
+                             <Badge variant={item.kyc_status === 'active' ? 'default' : 'secondary'} className="capitalize text-[10px] px-2 py-0">
+                                {item.kyc_status}
+                             </Badge>
                         </div>
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+                        
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-black text-2xl shadow-inner">
                                 {item.firstName[0]}{item.lastName[0]}
                             </div>
-                            <div>
-                                <h3 className="font-semibold text-lg leading-none">{item.firstName} {item.lastName}</h3>
-                                <p className="text-sm text-muted-foreground mt-1">{item.email}</p>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-xl tracking-tight truncate">{item.firstName} {item.lastName}</h3>
+                                <p className="text-xs text-muted-foreground truncate font-medium">{item.email}</p>
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4 py-4 border-y mb-4 text-sm">
+                        <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-muted/30 mb-6 text-sm border border-black/5">
                             <div>
-                                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">KYC Status</p>
-                                <Badge variant={item.kyc_status === 'active' ? 'default' : 'secondary'} className="capitalize">
-                                    {item.kyc_status}
-                                </Badge>
+                                <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-widest font-black opacity-60">Bank Identifier</p>
+                                <p className="font-mono text-xs font-bold text-primary">{item.qore_customer_id}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Bank ID</p>
-                                <p className="font-mono text-xs">{item.qore_customer_id}</p>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
+                                <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-widest font-black opacity-60">Identity Status</p>
                                 {item.is_associated ? (
-                                    <span className="text-xs text-green-600 flex items-center font-medium">
-                                        <UserCheck className="h-3 w-3 mr-1" /> Auth Linked
+                                    <span className="text-[11px] text-emerald-600 flex items-center font-black">
+                                        <UserCheck className="h-3 w-3 mr-1" /> AUTH LINKED
                                     </span>
                                 ) : (
-                                    <span className="text-xs text-yellow-600 flex items-center font-medium">
-                                        <ShieldAlert className="h-3 w-3 mr-1" /> Shadow User
+                                    <span className="text-[11px] text-amber-600 flex items-center font-black">
+                                        <ShieldAlert className="h-3 w-3 mr-1" /> SHADOW USER
                                     </span>
                                 )}
                             </div>
-                            <Button variant="outline" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground" asChild>
-                                <Link href={`/customers/${item.id}`}>Details</Link>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <Button variant="default" size="sm" className="flex-1 shadow-md shadow-primary/20 font-bold" asChild>
+                                <Link href={`/customers/${item.id}`}>View Profile</Link>
+                            </Button>
+                            <Button variant="outline" size="sm" className="w-12 p-0 border-primary/10">
+                                <RefreshCw className="h-4 w-4 text-primary" />
                             </Button>
                         </div>
                     </div>
