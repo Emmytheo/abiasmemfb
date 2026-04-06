@@ -1,5 +1,5 @@
 import { ApiAdapter, ProductApplication } from '../../types';
-import { MOCK_USERS, MOCK_ACCOUNTS, MOCK_LOANS, MOCK_TRANSACTIONS, MOCK_CONFIGS, MOCK_POSTS, MOCK_JOBS, MOCK_PRODUCT_TYPES, MOCK_APPLICATIONS } from './data';
+import { MOCK_USERS, MOCK_ACCOUNTS, MOCK_LOANS, MOCK_TRANSACTIONS, MOCK_CONFIGS, MOCK_POSTS, MOCK_JOBS, MOCK_PRODUCT_TYPES, MOCK_APPLICATIONS, MOCK_CUSTOMERS } from './data';
 
 // Simulate network delay for realistic mock
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -16,6 +16,27 @@ export const DummyAdapter: ApiAdapter = {
         return MOCK_USERS;
     },
 
+    // Customers
+    getAllCustomers: async () => {
+        await delay(500);
+        return MOCK_CUSTOMERS;
+    },
+
+    getCustomerById: async (id) => {
+        await delay(400);
+        return MOCK_CUSTOMERS.find(c => c.id === id) || null;
+    },
+
+    updateCustomer: async (id, data) => {
+        await delay(600);
+        const existing = MOCK_CUSTOMERS.find(c => c.id === id);
+        return { 
+            ...(existing || MOCK_CUSTOMERS[0]), 
+            ...data, 
+            updated_at: new Date().toISOString() 
+        } as any;
+    },
+
     // Products
     getAllAccounts: async () => {
         await delay(600);
@@ -30,6 +51,16 @@ export const DummyAdapter: ApiAdapter = {
     createAccount: async (data) => {
         await delay(500);
         return { ...data, id: `acc_${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    },
+
+    updateAccount: async (id, data) => {
+        await delay(500);
+        const existing = MOCK_ACCOUNTS.find(a => a.id === id);
+        return {
+            ...(existing || MOCK_ACCOUNTS[0]),
+            ...data,
+            updated_at: new Date().toISOString()
+        } as any;
     },
 
     getAllLoans: async () => {
@@ -327,5 +358,33 @@ export const DummyAdapter: ApiAdapter = {
     deleteBeneficiary: async (id, userId) => {
         await delay(400);
         return true;
+    },
+
+    // Site Settings
+    getSiteSettings: async () => {
+        await delay(300);
+        return {
+            siteTitle: 'Abia MFB',
+            sync: {
+                baselineAccounts: [{ accountNumber: '0123456789' }],
+                autoDiscoveryEnabled: true,
+                customerLookupEndpoint: 'dummy-ep-1',
+                accountEnquiryEndpoint: 'dummy-ep-2'
+            }
+        };
+    },
+
+    updateSiteSettings: async (data) => {
+        await delay(500);
+        return data as any;
+    },
+
+    // Endpoints
+    getAllEndpoints: async () => {
+        await delay(400);
+        return [
+            { id: 'dummy-ep-1', name: 'Standard Customer Lookup' },
+            { id: 'dummy-ep-2', name: 'General Account Enquiry' }
+        ];
     }
 };

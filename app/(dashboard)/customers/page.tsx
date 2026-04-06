@@ -54,12 +54,12 @@ export default function AdminCustomersPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-center p-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-4 md:p-8 border-b md:border-none">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Customer Management</h1>
-                    <p className="text-muted-foreground mt-1">Manage core banking profiles and digital channel associations.</p>
+                    <h1 className="text-2xl md:text-3xl font-black tracking-tight">Customer Management</h1>
+                    <p className="text-sm md:text-base text-muted-foreground mt-1">Manage core banking profiles and digital channel associations.</p>
                 </div>
-                <Button onClick={handleSync} disabled={isSyncing} variant="default" className="shadow-lg">
+                <Button onClick={handleSync} disabled={isSyncing} variant="default" className="shadow-lg shadow-primary/20 h-11 md:h-10 w-full md:w-auto">
                     <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
                     {isSyncing ? 'Syncing...' : 'Sync from Qore'}
                 </Button>

@@ -335,6 +335,9 @@ export interface ApiAdapter {
 
     // Careers
     getOpenPositions: () => Promise<JobPosition[]>;
+
+    // Endpoints
+    getAllEndpoints: () => Promise<any[]>;
 }
 
 export interface ServiceCategory {

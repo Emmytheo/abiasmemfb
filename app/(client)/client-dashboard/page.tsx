@@ -241,9 +241,14 @@ export default function ClientDashboard() {
                             </div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="mt-6 w-full text-xs font-bold bg-background/50 hover:bg-background" onClick={() => toast.info("Syncing with core banking...")}>
-                        <RefreshCw className="h-3 w-3 mr-2" /> Sync Profile
-                    </Button>
+                    <div className="flex gap-2 mt-6">
+                        <Button variant="ghost" size="sm" className="flex-1 text-[10px] font-black bg-background/50 hover:bg-background h-8" onClick={() => toast.info("Syncing with core banking...")}>
+                            <RefreshCw className="h-3 w-3 mr-1.5" /> SYNC
+                        </Button>
+                        <Button variant="default" size="sm" className="flex-1 text-[10px] font-black h-8 shadow-none" asChild>
+                            <Link href="/client-dashboard/profile">MANAGE</Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="lg:col-span-3 bg-card p-1 rounded-2xl border shadow-sm flex overflow-x-auto gap-4 p-4 scrollbar-hide">

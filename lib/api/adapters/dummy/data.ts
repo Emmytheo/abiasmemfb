@@ -1,4 +1,38 @@
-import { User, Account, Loan, Transaction, SystemConfig, BlogPost, JobPosition, ProductType, ProductApplication } from '../../types';
+import { User, Account, Loan, Transaction, SystemConfig, BlogPost, JobPosition, ProductType, ProductApplication, Customer } from '../../types';
+
+export const MOCK_CUSTOMERS: Customer[] = [
+    {
+        id: 'cust_1',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        phone_number: '+234 801 234 5678',
+        address: '123 Abia Way, Umuahia',
+        kyc_status: 'active',
+        risk_tier: 'low',
+        bvn: '22233344455',
+        qore_customer_id: 'Q-998877',
+        is_associated: true,
+        supabase_id: 'usr_1',
+        is_test_account: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    },
+    {
+        id: 'cust_2',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        email: 'jane@smith.io',
+        phone_number: '+234 700 999 8888',
+        kyc_status: 'pending',
+        risk_tier: 'medium',
+        qore_customer_id: 'Q-112233',
+        is_associated: false,
+        is_test_account: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    }
+];
 
 export const MOCK_USERS: User[] = [
     { id: 'usr_1', email: 'john@example.com', full_name: 'John Doe', role: 'customer', created_at: new Date().toISOString() },

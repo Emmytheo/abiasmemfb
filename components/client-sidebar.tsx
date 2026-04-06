@@ -126,6 +126,11 @@ const navGroups: NavGroup[] = [
         minRole: "user",
         items: [
             {
+                title: "My Profile",
+                url: "/client-dashboard/profile",
+                icon: User,
+            },
+            {
                 title: "Preferences",
                 url: "/settings",
                 icon: Settings,
