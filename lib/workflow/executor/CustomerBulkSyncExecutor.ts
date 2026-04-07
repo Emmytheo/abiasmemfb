@@ -13,11 +13,22 @@ interface SyncResults {
     errors: string[];
 }
 
+export type LogType = 'info' | 'error' | 'success' | 'warn';
+
 /**
  * CustomerBulkSyncExecutor: Automates the discovery and synchronization of 
  * Core Banking customers and their associated accounts.
  */
-export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
+export async function CustomerBulkSyncExecutor(
+    targetAccounts?: string[], 
+    onLog?: (message: string, type: LogType) => void
+) {
+    const log = (msg: string, type: LogType = 'info') => {
+        console.log(`[SYNC][${type.toUpperCase()}] ${msg}`);
+        if (onLog) onLog(msg, type);
+    };
+
+    log('Initializing Sync Engine...');
     const payload = await getPayload({ config });
     const supabaseAdmin = createAdminClient();
     
@@ -35,7 +46,7 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
         : discoveryAccounts;
 
     if (activeAccounts.length === 0) {
-        console.warn('[SYNC] No discovery accounts defined in Site Settings. Skipping bulk sync.');
+        log('No discovery accounts defined in Site Settings. Skipping bulk sync.', 'warn');
         return { 
             customersCreated: 0, 
             customersUpdated: 0, 
@@ -78,12 +89,14 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
 
     for (const accNo of activeAccounts) {
         try {
+            log(`Processing Discovery Seed: ${accNo}`);
+            
             // 2. Fetch Customer Data
             const customerResolved = await resolveEndpoint(getCustomerEndpoint, {
                 query: { accountNumber: accNo }
             });
 
-            console.log(`[SYNC_DEBUG] Fetching customer for ${accNo} at ${customerResolved.url}`);
+            log(`Resolving identity for account ${accNo}...`);
             const custRes = await fetch(customerResolved.url, {
                 method: customerResolved.method,
                 headers: customerResolved.headers
@@ -91,10 +104,15 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
 
             if (!custRes.ok) throw new Error(`Failed to fetch customer for ${accNo}: ${custRes.statusText}`);
             const custData = await custRes.json();
-            console.log(`[SYNC_DEBUG] Customer Response for ${accNo}:`, JSON.stringify(custData, null, 2));
             
-            const qoreCust = custData; // Staging returns the object directly
+            const qoreCust = custData.Payload || custData; 
             const qoreCustomerID = qoreCust.customerID || qoreCust.CustomerID || qoreCust.CustomerNo;
+            
+            if (!qoreCustomerID) {
+                log(`Could not resolve CustomerID for ${accNo}. Skipping seed.`, 'warn');
+                continue;
+            }
+
             const email = qoreCust.Email || `${qoreCustomerID}@abia-mfb.internal`;
             const bvn = qoreCust.BankVerificationNumber || qoreCust.BVN;
             const phone = qoreCust.PhoneNumber || qoreCust.PhoneNo;
@@ -137,23 +155,14 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                 });
                 customerId = created.id;
                 results.customersCreated++;
+                log(`Created NEW Customer: ${qoreCustomerID} (${customerBaseData.firstName} ${customerBaseData.lastName})`, 'success');
             }
 
-            // 4. PRE-SYNC AUDIT: Get all existing local accounts for this customer to identify "Head-Scratchers"
-            const localAccountsBefore = await payload.find({
-                collection: 'accounts',
-                where: { customer: { equals: customerId } },
-                limit: 100
-            });
-            const qoreAccountsInLedger = localAccountsBefore.docs.filter(a => a.source === 'qore');
-            const processedAccountNumbers: string[] = [];
-
-            // 5. Fetch Account Details (POST to Channels)
+            // 4. Fetch Account Details
             const accountResolved = await resolveEndpoint(getAccountEndpoint, {
                 body: { AccountNo: accNo }
             });
 
-            console.log(`[SYNC_DEBUG] Fetching account info for ${accNo} at ${accountResolved.url} with body:`, accountResolved.body);
             const accRes = await fetch(accountResolved.url, {
                 method: accountResolved.method,
                 headers: accountResolved.headers,
@@ -162,9 +171,9 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
 
             if (!accRes.ok) throw new Error(`Failed to fetch account info for ${accNo}`);
             const accData = await accRes.json();
-            console.log(`[SYNC_DEBUG] Account Response for ${accNo}:`, JSON.stringify(accData, null, 2));
-            
             const qoreAcc = accData.Payload || accData;
+            
+            log(`Pulled ledger data for ${accNo}. Balance: ${qoreAcc.AvailableBalance || '0'}`);
 
             // 5. Upsert Account into Payload
             const existingAccounts = await payload.find({
@@ -182,12 +191,12 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
             const accountData = {
                 account_number: accNo,
                 account_type: accountTypeMap[qoreAcc.AccountType] || 'Savings',
-                balance: Math.round(parseFloat(qoreAcc.AvailableBalance || '0') * 100), // Naira to Kobo
+                balance: Math.round(parseFloat(qoreAcc.AvailableBalance || '0') * 100),
                 status: qoreAcc.Status === 'Active' ? 'active' : 'frozen',
                 is_frozen: qoreAcc.Status !== 'Active',
                 pnd_enabled: qoreAcc.PNDStatus === 'Active',
                 customer: customerId,
-                user_id: email, // Temporary link
+                user_id: email,
             };
 
             if (existingAccounts.docs.length > 0) {
@@ -200,15 +209,18 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
             } else {
                 await payload.create({
                     collection: 'accounts',
-                    data: accountData
+                    data: { ...accountData, source: 'qore' }
                 });
                 results.accountsCreated++;
+                log(`MAPPED Account: ${accNo} (${accountData.account_type})`, 'success');
             }
-            processedAccountNumbers.push(accNo);
+            
+            const processedAccountNumbers: string[] = [accNo];
 
             // 5b. DEEP SYNC: Discover all other accounts for this Customer
             if (syncConfig.customerAccountsEndpoint) {
                 try {
+                    log(`Starting DEEP SYNC for Customer ${qoreCustomerID}...`);
                     const deepSyncResolved = await resolveEndpoint(syncConfig.customerAccountsEndpoint, {
                         query: { customerID: qoreCustomerID }
                     });
@@ -221,11 +233,13 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                     if (deepRes.ok) {
                         const allAccounts = await deepRes.json();
                         const accountList = Array.isArray(allAccounts) ? allAccounts : (allAccounts.Accounts || []);
+                        log(`Discovered ${accountList.length - 1} additional accounts linked to customer.`);
 
                         for (const otherAcc of accountList) {
                             const otherAccNo = otherAcc.AccountNo || otherAcc.accountNumber;
-                            if (otherAccNo === accNo) continue; // Skip the one we just did
+                            if (otherAccNo === accNo) continue;
 
+                            log(`Syncing secondary account: ${otherAccNo}...`);
                             const existingOther = await payload.find({
                                 collection: 'accounts',
                                 where: { account_number: { equals: otherAccNo } },
@@ -257,45 +271,17 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                                     data: otherData
                                 });
                                 results.accountsCreated++;
+                                log(`DISCOVERED & MAPPED: ${otherAccNo}`, 'success');
                             }
                             processedAccountNumbers.push(otherAccNo);
                         }
                     }
                 } catch (deepErr) {
-                    console.error(`[SYNC] Deep sync failed for customer ${qoreCustomerID}:`, deepErr);
+                    log(`Deep sync failed for customer ${qoreCustomerID}: ${deepErr instanceof Error ? deepErr.message : String(deepErr)}`, 'error');
                 }
             }
 
-            // 5c. POST-SYNC AUDIT (Archiving)
-            // Identify accounts that were in our ledger as 'qore' but weren't found in this sync pulse
-            const missingAccounts = qoreAccountsInLedger.filter(a => !processedAccountNumbers.includes(a.account_number));
-            for (const missing of missingAccounts) {
-                console.log(`[SYNC_AUDIT] Account ${missing.account_number} not found in Qore. Archiving...`);
-                await payload.update({
-                    collection: 'accounts',
-                    id: missing.id,
-                    data: { is_archived: true, status: 'closed' }
-                });
-            }
-
-            // 5d. PRIMARY ASSIGNMENT
-            // Ensure at least one account is marked as primary
-            const finalAccounts = await payload.find({
-                collection: 'accounts',
-                where: { customer: { equals: customerId }, is_archived: { equals: false } },
-                limit: 10
-            });
-            
-            if (finalAccounts.docs.length > 0 && !finalAccounts.docs.some(a => a.is_primary)) {
-                await payload.update({
-                    collection: 'accounts',
-                    id: finalAccounts.docs[0].id,
-                    data: { is_primary: true }
-                });
-            }
-
             // 6. Supabase Shadow User Creation
-            // Search for existing user in Supabase by email
             const { data: { users: sbUsers } } = await supabaseAdmin.auth.admin.listUsers();
             const existingSbUser = sbUsers.find(u => u.email === email);
 
@@ -311,43 +297,29 @@ export async function CustomerBulkSyncExecutor(targetAccounts?: string[]) {
                     }
                 });
 
-                if (createError) {
-                    results.errors.push(`Failed to create shadow user for ${email}: ${createError.message}`);
-                } else {
-                    // Lock the user immediately until admin verification
-                    if (newUser.user) {
-                        await supabaseAdmin.auth.admin.updateUserById(newUser.user.id, {
-                            ban_duration: '876000h' // Effectively disabled
-                        });
-                        results.shadowUsersCreated++;
-                        
-                        // Update Customer record with the new Supabase ID
-                        await payload.update({
-                            collection: 'customers',
-                            id: customerId,
-                            data: {
-                                supabase_id: newUser.user.id,
-                                is_associated: true
-                            }
-                        });
-                    }
+                if (!createError && newUser.user) {
+                    await supabaseAdmin.auth.admin.updateUserById(newUser.user.id, { ban_duration: '876000h' });
+                    results.shadowUsersCreated++;
+                    await payload.update({
+                        collection: 'customers',
+                        id: customerId,
+                        data: { supabase_id: newUser.user.id, is_associated: true }
+                    });
                 }
             } else {
-                // Link existing user if not already linked
                 await payload.update({
                     collection: 'customers',
                     id: customerId,
-                    data: {
-                        supabase_id: existingSbUser.id,
-                        is_associated: true
-                    }
+                    data: { supabase_id: existingSbUser.id, is_associated: true }
                 });
             }
 
         } catch (err: any) {
+            log(`Sync error for ${accNo}: ${err.message}`, 'error');
             results.errors.push(`Global error for ${accNo}: ${err.message}`);
         }
     }
 
+    log('Discovery Pulse Completed.', 'info');
     return results;
 }

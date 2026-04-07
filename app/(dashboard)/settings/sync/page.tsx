@@ -38,6 +38,15 @@ export default function SyncSettingsPage() {
     const [settings, setSettings] = useState<SiteSettings | null>(null)
     const [endpoints, setEndpoints] = useState<any[]>([])
     const [healthStatus, setHealthStatus] = useState<Record<string, 'healthy' | 'unhealthy' | 'checking'>>({})
+    const [logs, setLogs] = useState<{message: string, type: string, timestamp: string}[]>([])
+    const logEndRef = React.useRef<HTMLDivElement>(null)
+
+    // Auto-scroll logs
+    useEffect(() => {
+        if (logEndRef.current) {
+            logEndRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+    }, [logs])
 
     useEffect(() => {
         async function loadData() {
@@ -72,22 +81,36 @@ export default function SyncSettingsPage() {
 
     const runDiscovery = async () => {
         setIsDiscovering(true)
-        toast.info("Triggering Bulk Customer Discovery...", {
-            description: "This may take a few moments depending on the number of accounts."
+        setLogs([]) // Clear previous logs
+        
+        toast.info("Establishing Live Sync Stream...", {
+            description: "Connection opened to Core Banking discovery engine."
         })
+
         try {
-            const res = await fetch('/api/sync/customers', { method: 'POST', body: JSON.stringify({ forceBulk: true }) })
-            const data = await res.json()
-            if (data.success) {
-                toast.success("Discovery completed", {
-                    description: `Processed ${data.results?.discoveryAccountsProcessed} accounts. Created ${data.results?.customersCreated} new customers.`
-                })
-            } else {
-                toast.error("Discovery failed", { description: data.error })
+            const eventSource = new EventSource('/api/sync/customers/stream')
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const log = JSON.parse(event.data)
+                    setLogs(prev => [...prev.slice(-49), log]) // Keep last 50 logs for performance
+                } catch (e) {
+                    console.error("Failed to parse log event", e)
+                }
             }
+
+            eventSource.onerror = (error) => {
+                console.error("EventSource failed:", error)
+                eventSource.close()
+                setIsDiscovering(false)
+                toast.error("Sync stream disconnected unexpectedly.")
+            }
+
+            // We don't have a built-in 'close' event for EventSource, 
+            // but our route closes the stream which triggers 'onerror' 
+            // or we can detect a 'success' message.
         } catch (err) {
-            toast.error("Network error during discovery")
-        } finally {
+            toast.error("Failed to connect to sync stream")
             setIsDiscovering(false)
         }
     }
@@ -338,27 +361,30 @@ export default function SyncSettingsPage() {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-4 md:p-6">
-                                    <div className="font-mono text-[10px] space-y-3 opacity-90 overflow-hidden">
-                                        <div className="flex gap-2">
-                                            <span className="text-emerald-500 shrink-0">[OK]</span>
-                                            <p className="truncate">SYNC_COMPLETE: Scanned 12 seeds</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <span className="text-blue-400 shrink-0">[IN]</span>
-                                            <p className="truncate">UPSERT: Customer registry (id: 9912)</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <span className="text-zinc-600 shrink-0">[LG]</span>
-                                            <p className="truncate">FETCH: /api/accounts/1100312676</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <span className="text-amber-500 shrink-0">[WR]</span>
-                                            <p className="truncate">LATENCY: Endpoint timeout @ 2.4s</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <span className="text-zinc-600 shrink-0">[LG]</span>
-                                            <p className="truncate">INDEX: Rebuilding registry lookup cache</p>
-                                        </div>
+                                    <div className="font-mono text-[10px] space-y-3 opacity-90 h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {logs.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-full text-zinc-600 gap-2">
+                                                <Database className="h-8 w-8 opacity-20" />
+                                                <p>Ready for Pulse Discovery...</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {logs.map((log, i) => (
+                                                    <div key={i} className="flex gap-2 animate-in fade-in slide-in-from-left-1 duration-200">
+                                                        <span className={`shrink-0 font-bold ${
+                                                            log.type === 'success' ? 'text-emerald-500' :
+                                                            log.type === 'error' ? 'text-rose-500' :
+                                                            log.type === 'warn' ? 'text-amber-500' :
+                                                            'text-blue-400'
+                                                        }`}>
+                                                            [{log.type === 'success' ? 'OK' : log.type === 'error' ? 'ER' : log.type === 'warn' ? 'WR' : 'IN'}]
+                                                        </span>
+                                                        <p className="break-all">{log.message}</p>
+                                                    </div>
+                                                ))}
+                                                <div ref={logEndRef} />
+                                            </>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>

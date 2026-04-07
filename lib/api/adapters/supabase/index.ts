@@ -221,5 +221,12 @@ export const SupabaseAdapter: ApiAdapter = {
     // Endpoints
     getAllEndpoints: async () => {
         throw new Error("Supabase Adapter not fully implemented");
+    },
+    // Merge & Reconciliation
+    mergeCustomers: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getQoreAccounts: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
     }
 };

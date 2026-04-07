@@ -388,5 +388,18 @@ export const DummyAdapter: ApiAdapter = {
             { id: 'dummy-ep-2', name: 'General Account Enquiry' },
             { id: 'dummy-ep-3', name: 'Customer Accounts Discovery' }
         ];
-    }
+    },
+
+    // Merge & Reconciliation
+    mergeCustomers: async () => {
+        await delay(1500);
+        return { success: true, mergedRecords: 1, archivedIds: ['merged_dummy_id'] };
+    },
+    getQoreAccounts: async () => {
+        await delay(800);
+        return [
+            { AccountNo: '1234567890', AccountType: '10', AvailableBalance: '50000.00', Status: 'Active' },
+            { AccountNo: '0987654321', AccountType: '20', AvailableBalance: '150000.00', Status: 'Active' }
+        ];
+    },
 };

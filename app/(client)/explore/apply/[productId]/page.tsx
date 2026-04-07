@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Send, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { UniversalDynamicForm } from "@/components/forms/UniversalDynamicForm";
 
 function ApplyProductContent({ params }: { params: Promise<{ productId: string }> }) {
     const resolvedParams = use(params);
@@ -64,8 +65,9 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
         }));
     };
 
-    const handleSubmit = async (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent, explicitData?: Record<string, any>) => {
         e.preventDefault();
+        const submissionData = explicitData || formData;
         if (!product) return;
 
         if (!userId) {
@@ -81,7 +83,7 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
                 status: 'pending',
                 // Always default to 'Submitted' — workflow_stages is optional and set by admin later
                 workflow_stage: 'Submitted',
-                submitted_data: formData,
+                submitted_data: submissionData,
                 requested_amount: requestedAmount
             });
 
@@ -180,59 +182,33 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
 
                         {/* Dynamic Admin-Defined Fields */}
                         <div className="space-y-6">
-                            {product.form_schema.map(field => (
-                                <div key={field.id} className="space-y-2 group">
-                                    <label className="text-sm font-medium group-focus-within:text-primary transition-colors flex items-center gap-1">
-                                        {field.label} {field.required && <span className="text-destructive">*</span>}
-                                    </label>
-
-                                    {field.type === 'select' ? (
-                                        <select
-                                            required={field.required}
-                                            value={formData[field.id]}
-                                            onChange={(e) => handleInputChange(field.id, e.target.value)}
-                                            className="w-full bg-background border rounded-lg h-11 px-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
-                                        >
-                                            <option value="" disabled>Select an option...</option>
-                                            {field.options?.map(opt => (
-                                                <option key={opt} value={opt}>{opt}</option>
-                                            ))}
-                                        </select>
-                                    ) : field.type === 'file' ? (
-                                        <div className="flex items-center justify-center w-full">
-                                            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-accent/30 hover:bg-accent/50 hover:border-primary/50 transition-colors">
-                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                    <UploadCloudIcon className="w-8 h-8 mb-3 text-muted-foreground" />
-                                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold text-primary">Click to upload</span> or drag and drop</p>
-                                                    <p className="text-xs text-muted-foreground">PDF, JPG or PNG (MAX. 5MB)</p>
-                                                </div>
-                                                <input id={field.id} type="file" className="hidden" required={field.required} />
-                                            </label>
-                                        </div>
-                                    ) : (
-                                        <input
-                                            type={field.type}
-                                            required={field.required}
-                                            placeholder={field.placeholder}
-                                            value={formData[field.id]}
-                                            onChange={(e) => handleInputChange(field.id, e.target.value)}
-                                            className="w-full bg-background border rounded-lg h-11 px-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                                        />
-                                    )}
-                                    {field.description && <p className="text-xs text-muted-foreground">{field.description}</p>}
+                            {product.form_schema.length > 0 ? (
+                                <UniversalDynamicForm
+                                    fields={product.form_schema}
+                                    onSubmit={(data: Record<string, any>) => {
+                                        setFormData(data);
+                                        // Trigger the parent submit logic
+                                        const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+                                        handleSubmit(syntheticEvent, data);
+                                    }}
+                                    submitLabel="Submit Application"
+                                    isSubmitting={submitting}
+                                />
+                            ) : (
+                                <div className="py-12 text-center border-2 border-dashed rounded-xl bg-accent/10">
+                                    <p className="text-sm text-muted-foreground italic">No additional application fields required.</p>
+                                    <Button 
+                                        type="button" 
+                                        onClick={(e) => handleSubmit(e as any)} 
+                                        disabled={submitting}
+                                        className="mt-4"
+                                    >
+                                        Proceed with Application
+                                    </Button>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </CardContent>
-                    <CardFooter className="bg-muted/30 pt-6 px-6 pb-6 border-t flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground max-w-[60%]">
-                            By sumitting this form, you agree to the Terms and Conditions associated with this product.
-                        </p>
-                        <Button type="submit" size="lg" disabled={submitting} className="shadow-md">
-                            {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                            Submit Application
-                        </Button>
-                    </CardFooter>
                 </form>
             </Card>
         </div>

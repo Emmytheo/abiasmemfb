@@ -129,6 +129,29 @@ export const Customers: CollectionConfig = {
             admin: {
                 description: 'Extended properties from the core banking system.'
             }
+        },
+        {
+            name: 'is_archived',
+            type: 'checkbox',
+            defaultValue: false,
+            admin: { position: 'sidebar' }
+        },
+        {
+            name: 'active',
+            type: 'checkbox',
+            defaultValue: true,
+            admin: { position: 'sidebar' }
+        },
+        {
+            name: 'merger_status',
+            type: 'select',
+            options: [
+                { label: 'None', value: 'none' },
+                { label: 'Primary', value: 'primary' },
+                { label: 'Archived (Merged)', value: 'archived' },
+            ],
+            defaultValue: 'none',
+            admin: { position: 'sidebar' }
         }
     ],
     hooks: {

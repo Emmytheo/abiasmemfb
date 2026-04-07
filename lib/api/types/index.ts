@@ -342,6 +342,15 @@ export interface ApiAdapter {
 
     // Endpoints
     getAllEndpoints: () => Promise<any[]>;
+
+    // Merge & Reconciliation
+    mergeCustomers: (params: {
+        primaryCustomerId: string;
+        supabaseUserId: string;
+        profileData: Partial<Customer>;
+        selectedAccountNumbers: string[];
+    }) => Promise<{ success: boolean; mergedRecords: number; archivedIds: string[] }>;
+    getQoreAccounts: (customerId: string) => Promise<any[]>;
 }
 
 export interface ServiceCategory {

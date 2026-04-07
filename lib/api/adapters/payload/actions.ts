@@ -1779,3 +1779,64 @@ export const getAllEndpoints = async (): Promise<any[]> => {
         return [];
     }
 };
+
+export const mergeCustomers = async (params: {
+    primaryCustomerId: string;
+    supabaseUserId: string;
+    profileData: any;
+    selectedAccountNumbers: string[];
+}) => {
+    const res = await fetch('/api/sync/customers/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+    });
+    if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Merge operation failed.");
+    }
+    return res.json();
+};
+
+export const getQoreAccounts = async (customerId: string): Promise<any[]> => {
+    try {
+        const payload = await initPayload();
+        const customer = await payload.findByID({
+            collection: 'customers',
+            id: customerId,
+        });
+
+        if (!customer || !customer.qore_customer_id) return [];
+
+        const settings = await payload.findGlobal({ slug: 'site-settings' }) as any;
+        const endpointId = typeof settings.sync?.customerAccountsEndpoint === 'object' 
+            ? settings.sync.customerAccountsEndpoint.id 
+            : settings.sync?.customerAccountsEndpoint;
+
+        if (!endpointId) return [];
+
+        const endpoint = await payload.findByID({ 
+            collection: 'endpoints', 
+            id: endpointId 
+        });
+
+        if (!endpoint) return [];
+
+        const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver');
+        const resolved = await resolveEndpoint(endpoint as any, {
+            query: { customerID: customer.qore_customer_id }
+        });
+
+        const res = await fetch(resolved.url, {
+            method: resolved.method,
+            headers: resolved.headers
+        });
+
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : (data.Accounts || []);
+    } catch (e) {
+        console.error('getQoreAccounts Error:', e);
+        return [];
+    }
+};

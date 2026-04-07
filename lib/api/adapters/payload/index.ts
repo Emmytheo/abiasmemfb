@@ -100,4 +100,8 @@ export const PayloadAdapter: ApiAdapter = {
 
     // Endpoints
     getAllEndpoints: (...args) => actions.getAllEndpoints(...args),
+
+    // Merge & Reconciliation
+    mergeCustomers: (...args) => actions.mergeCustomers(...args),
+    getQoreAccounts: (...args) => actions.getQoreAccounts(...args),
 };
