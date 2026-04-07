@@ -167,7 +167,7 @@ export default function SyncSettingsPage() {
             </div>
 
             <Tabs defaultValue="settings" className="w-full">
-                <TabsList className="bg-muted/50 p-1 rounded-xl mb-8 flex-wrap h-auto gap-1">
+                <TabsList className="bg-muted/50 !h-full p-2 rounded-xl mb-8 flex-wrap h-auto gap-1">
                     <TabsTrigger value="settings" className="rounded-lg py-2 px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-bold uppercase tracking-wider">
                         <Settings2 className="h-4 w-4 mr-2" /> Discovery Settings
                     </TabsTrigger>
@@ -255,6 +255,16 @@ export default function SyncSettingsPage() {
                                             endpoints={endpoints}
                                             health={healthStatus[getEndpointId(settings.sync.serviceSyncEndpoint)]}
                                             onCheck={() => checkHealth(getEndpointId(settings.sync.serviceSyncEndpoint))}
+                                        />
+                                    </div>
+                                    <div className="pt-4 mt-4 border-t">
+                                        <EndpointSelector 
+                                            label="Primary Bridge Push (Customer Update)"
+                                            value={getEndpointId(settings.sync.customerUpdateEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, customerUpdateEndpoint: val}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.customerUpdateEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.customerUpdateEndpoint))}
                                         />
                                     </div>
                                 </CardContent>

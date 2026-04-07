@@ -25,7 +25,8 @@ import {
     Archive,
     ArchiveRestore,
     Shield,
-    Globe
+    Globe,
+    Link2
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -78,6 +79,7 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     const [editData, setEditData] = useState<Partial<Customer>>({});
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
     const [isLienOpen, setIsLienOpen] = useState(false);
+    const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
 
     async function loadData() {
@@ -94,11 +96,12 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
 
                 const linkedAccounts = allAccounts.filter(acc => 
                     (typeof acc.customer === 'object' ? acc.customer?.id === id : acc.customer === id) ||
-                    (acc.user_id === cust.email || acc.user_id === cust.supabase_id)
+                    (!cust.is_archived && (acc.user_id === cust.email || acc.user_id === cust.supabase_id))
                 );
                 
                 const linkedLoans = allLoans.filter(loan => 
-                    (loan.user_id === cust.email || loan.user_id === cust.supabase_id)
+                    (typeof loan.customer === 'object' ? loan.customer?.id === id : loan.customer === id) ||
+                    (!cust.is_archived && (loan.user_id === cust.email || loan.user_id === cust.supabase_id))
                 );
 
                 setAccounts(linkedAccounts);
@@ -289,13 +292,25 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit Profile
                     </Button>
-                    {customer.is_associated ? (
-                        <Button className="shadow-lg shadow-primary/20 flex-1 md:flex-none" variant="secondary">
-                            Manage Digital User
-                        </Button>
-                    ) : (
-                        <IdentityLinkDialog customerId={customer.id} onLinked={loadData} />
-                    )}
+                    <Button 
+                        variant={customer.is_associated ? "secondary" : "outline"}
+                        onClick={() => setIsLinkDialogOpen(true)}
+                        className="flex-1 md:flex-none gap-2"
+                    >
+                        {customer.is_associated ? (
+                            <><ShieldCheck className="h-4 w-4" /> Manage Identity</>
+                        ) : (
+                            <><Link2 className="h-4 w-4" /> Link Identity</>
+                        )}
+                    </Button>
+
+                    <IdentityLinkDialog 
+                        customerId={customer.id} 
+                        isOpen={isLinkDialogOpen}
+                        onClose={() => setIsLinkDialogOpen(false)}
+                        onSuccess={loadData}
+                        isLinked={customer.is_associated} 
+                    />
 
                     <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                         <DialogContent className="sm:max-w-[500px]">

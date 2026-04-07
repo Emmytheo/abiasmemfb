@@ -35,10 +35,12 @@ export interface Customer {
     phone_number?: string;
     bvn?: string;
     qore_customer_id?: string;
-    supabase_id?: string;
+    supabase_id?: string | null;
     kyc_status: 'pending' | 'active' | 'inactive' | 'rejected';
     risk_tier: 'low' | 'medium' | 'high';
     is_associated: boolean;
+    merger_status?: 'none' | 'pending' | 'completed' | 'archived';
+    is_archived: boolean;
     is_test_account: boolean;
     address?: string;
     metadata?: any;
@@ -59,6 +61,7 @@ export interface Loan {
     maturity_date?: string;
     status: 'pending' | 'approved' | 'rejected' | 'repaid' | 'under_review' | 'active' | 'defaulted' | 'written_off';
     created_at: string;
+    customer?: string | Customer;
 }
 
 export interface FieldValidation {
@@ -188,6 +191,7 @@ export interface SiteSyncConfig {
     customerAccountsEndpoint?: string | any;
     productSyncEndpoint?: string | any;
     serviceSyncEndpoint?: string | any;
+    customerUpdateEndpoint?: string | any;
 }
 
 export interface SiteSettings {
@@ -242,6 +246,17 @@ export interface JobPosition {
     description?: string;
 }
 
+export interface CustomerAudit {
+    accounts: number;
+    loans: number;
+    applications: number;
+    beneficiaries: number;
+    financialData: {
+        accounts: Account[];
+        loans: Loan[];
+    };
+}
+
 // Unified API Adapter Interface
 export interface ApiAdapter {
     // Users
@@ -252,6 +267,8 @@ export interface ApiAdapter {
     getAllCustomers: () => Promise<Customer[]>;
     getCustomerById: (id: string) => Promise<Customer | null>;
     updateCustomer: (id: string, data: Partial<Customer>) => Promise<Customer>;
+    getCustomerAudit: (id: string) => Promise<CustomerAudit>;
+    deleteCustomer: (id: string) => Promise<boolean>;
 
     // Products (Accounts, Loans)
     getAllAccounts: () => Promise<Account[]>;
@@ -349,8 +366,11 @@ export interface ApiAdapter {
         supabaseUserId: string;
         profileData: Partial<Customer>;
         selectedAccountNumbers: string[];
+        isCustomerToCustomer?: boolean;
+        keepTargetAsPrimary?: boolean;
     }) => Promise<{ success: boolean; mergedRecords: number; archivedIds: string[] }>;
     getQoreAccounts: (customerId: string) => Promise<any[]>;
+    unlinkCustomer: (id: string) => Promise<Customer>;
 }
 
 export interface ServiceCategory {

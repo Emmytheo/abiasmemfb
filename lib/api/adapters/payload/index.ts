@@ -10,6 +10,8 @@ export const PayloadAdapter: ApiAdapter = {
     getAllCustomers: (...args) => actions.getAllCustomers(...args),
     getCustomerById: (...args) => actions.getCustomerById(...args),
     updateCustomer: (...args) => actions.updateCustomer(...args),
+    getCustomerAudit: (...args) => actions.getCustomerAudit(...args),
+    deleteCustomer: (...args) => actions.deleteCustomer(...args),
 
     // Products (Accounts, Loans)
     getAllAccounts: (...args) => actions.getAllAccounts(...args),
@@ -104,4 +106,5 @@ export const PayloadAdapter: ApiAdapter = {
     // Merge & Reconciliation
     mergeCustomers: (...args) => actions.mergeCustomers(...args),
     getQoreAccounts: (...args) => actions.getQoreAccounts(...args),
+    unlinkCustomer: (...args) => actions.unlinkCustomer(...args),
 };

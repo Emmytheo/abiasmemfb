@@ -402,4 +402,8 @@ export const DummyAdapter: ApiAdapter = {
             { AccountNo: '0987654321', AccountType: '20', AvailableBalance: '150000.00', Status: 'Active' }
         ];
     },
+    unlinkCustomer: async (id) => {
+        await delay(800);
+        return MOCK_CUSTOMERS[0];
+    }
 };

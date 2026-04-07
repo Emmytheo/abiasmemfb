@@ -65,6 +65,7 @@ export const Customers: CollectionConfig = {
         {
             name: 'supabase_id',
             type: 'text',
+            unique: true,
             index: true,
             admin: {
                 position: 'sidebar',
@@ -158,13 +159,18 @@ export const Customers: CollectionConfig = {
         beforeChange: [
             async ({ data, req, operation }) => {
                 // Automated Identity Discovery
-                if ((operation === 'create' || operation === 'update') && data.email && !data.supabase_id) {
+                // We only auto-link on CREATE. On UPDATE, we only auto-link if 
+                // the email is being changed and supabase_id isn't being explicitly cleared.
+                const isExplicitUnlink = data.supabase_id === null;
+                const shouldDiscover = operation === 'create' || 
+                    (operation === 'update' && data.email && !isExplicitUnlink);
+
+                if (shouldDiscover && data.email && !data.supabase_id) {
                     try {
                         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
                         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
                         if (supabaseUrl && supabaseServiceKey) {
-                            // Fetch via dynamic import to keep it out of the browser bundle if needed
                             const { createClient } = await import('@supabase/supabase-js');
                             const supabase = createClient(supabaseUrl, supabaseServiceKey);
                             
@@ -172,6 +178,7 @@ export const Customers: CollectionConfig = {
                             if (!error && users) {
                                 const found = users.find(u => u.email === data.email);
                                 if (found) {
+                                    console.log(`Identity Bridge: Auto-discovered identity for ${data.email}`);
                                     data.supabase_id = found.id;
                                     data.is_associated = true;
                                 }

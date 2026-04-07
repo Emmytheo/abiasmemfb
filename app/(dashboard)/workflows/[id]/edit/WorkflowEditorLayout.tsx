@@ -178,17 +178,9 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
                 </div>
             </header>
 
-            <div className="flex-1 w-full relative min-h-0 overflow-hidden">
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="h-full flex flex-col">
-                    {/* Mobile Switcher (Bottom) */}
-                    <div className="lg:hidden h-12 bg-background border-b flex items-center px-4 shrink-0">
-                        <TabsList className="bg-muted h-8 p-1 w-full grid grid-cols-2">
-                            <TabsTrigger value="editor" className="text-[10px] h-6 font-bold uppercase tracking-widest">Design</TabsTrigger>
-                            <TabsTrigger value="runs" className="text-[10px] h-6 font-bold uppercase tracking-widest">Runs</TabsTrigger>
-                        </TabsList>
-                    </div>
-
-                    <TabsContent value="editor" className="flex-1 m-0 relative">
+            <div className="flex-1 w-full relative min-h-0 overflow-hidden bg-background">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="h-full flex flex-col min-h-0">
+                    <TabsContent value="editor" className="flex-1 m-0 relative h-full min-h-0 data-[state=active]:flex flex-col">
                         <FlowEditor
                             onReady={handleReady}
                             dynamicOptions={dynamicOptions}
@@ -197,12 +189,25 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
                             runningExecutionId={currentExecutionId}
                         />
                     </TabsContent>
-                    <TabsContent value="runs" className="flex-1 m-0">
+                    
+                    <TabsContent value="runs" className="flex-1 m-0 h-full min-h-0 data-[state=active]:flex flex-col">
                         <WorkflowRunHistoryTab 
                             workflowId={workflowId} 
                             refreshKey={refreshKey}
                         />
                     </TabsContent>
+
+                    {/* Mobile Switcher (Bottom) */}
+                    <div className="lg:hidden h-14 bg-background border-t flex items-center px-4 shrink-0 pb-safe">
+                        <TabsList className="bg-muted h-10 p-1 w-full grid grid-cols-2 rounded-xl">
+                            <TabsTrigger value="editor" className="text-[10px] h-8 font-bold uppercase tracking-widest rounded-lg flex items-center gap-2">
+                                <Layout size={14} /> Design
+                            </TabsTrigger>
+                            <TabsTrigger value="runs" className="text-[10px] h-8 font-bold uppercase tracking-widest rounded-lg flex items-center gap-2">
+                                <Activity size={14} /> Runs
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
                 </Tabs>
             </div>
         </div>

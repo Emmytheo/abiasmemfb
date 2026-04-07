@@ -228,5 +228,8 @@ export const SupabaseAdapter: ApiAdapter = {
     },
     getQoreAccounts: async () => {
         throw new Error("Supabase Adapter not fully implemented");
+    },
+    unlinkCustomer: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
     }
 };

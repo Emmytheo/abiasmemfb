@@ -76,10 +76,10 @@ export function WorkflowRunHistoryTab({ workflowId, refreshKey }: WorkflowRunHis
             <div className="flex flex-1 min-h-0 overflow-hidden divide-x border-t">
                 {/* Runs List */}
                 <div className={cn(
-                    "flex flex-col transition-all duration-300",
-                    selectedRun ? "w-0 md:w-[350px] overflow-hidden" : "w-full"
+                    "flex flex-col transition-all duration-300 min-h-0",
+                    selectedRun ? "w-0 md:w-[380px] overflow-hidden" : "w-full"
                 )}>
-                    <ScrollArea className="flex-1">
+                    <div className="flex-1 overflow-y-auto scrollbar-hide">
                         <div className="p-2 space-y-1">
                             {runs.map((run) => (
                                 <button
@@ -116,87 +116,90 @@ export function WorkflowRunHistoryTab({ workflowId, refreshKey }: WorkflowRunHis
                                 </button>
                             ))}
                         </div>
-                    </ScrollArea>
+                    </div>
                 </div>
 
                 {/* Log Detail Sub-view */}
                 {selectedRun && (
                     <div className="flex-1 flex flex-col min-w-0 bg-background/80 animate-in slide-in-from-right-4 duration-300">
-                        <header className="h-12 border-b px-4 flex items-center justify-between bg-muted/10 shrink-0">
-                            <div className="flex items-center gap-2">
-                                <Terminal size={14} className="text-primary" />
-                                <span className="text-xs font-bold uppercase tracking-widest">Execution Telemetry</span>
+                        <header className="h-14 border-b px-4 flex items-center justify-between bg-muted/10 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <Button variant="ghost" size="icon" onClick={() => setSelectedRun(null)} className="md:hidden h-8 w-8 -ml-2">
+                                    <ChevronRight className="rotate-180" size={18} />
+                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Terminal size={14} className="text-primary" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Execution Telemetry</span>
+                                </div>
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedRun(null)} className="h-8 text-[10px] font-black uppercase">Close Trace</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedRun(null)} className="h-8 text-[10px] font-black uppercase hidden md:flex">Close Trace</Button>
                         </header>
                         
-                        <ScrollArea className="flex-1">
-                            <div className="p-4 space-y-6">
-                                {/* Trace Status */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-3 rounded-xl bg-muted/30 border border-muted/50">
-                                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black mb-1">Stability</p>
-                                        <div className="flex items-center gap-2">
-                                            <Badge className={cn(
-                                                "uppercase text-[10px] border-none font-bold",
-                                                selectedRun.status === 'COMPLETED' ? "bg-emerald-500 text-white" : "bg-destructive text-white"
-                                            )}>
-                                                {selectedRun.status}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-muted/30 border border-muted/50">
-                                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black mb-1">Latency</p>
-                                        <p className="text-xs font-mono font-bold">-- ms</p>
-                                    </div>
-                                </div>
-
-                                {/* Logs Section */}
-                                <div>
-                                    <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">
-                                        <FileText size={12} /> Log Stream
-                                    </h4>
-                                    <div className="space-y-2 font-mono text-[11px] leading-relaxed">
-                                        {selectedRun.logs && selectedRun.logs.length > 0 ? (
-                                            selectedRun.logs.map((log, idx) => (
-                                                <div key={idx} className="flex gap-3 text-foreground/80 group">
-                                                    <span className="text-muted-foreground opacity-50 shrink-0">{format(new Date(log.timestamp), 'HH:mm:ss.SSS')}</span>
-                                                    <span className={cn(
-                                                        "px-1 rounded font-bold uppercase text-[9px]",
-                                                        log.level === 'error' ? "text-destructive bg-destructive/10" : "text-primary bg-primary/10"
-                                                    )}>{log.level}</span>
-                                                    <span className="group-hover:text-foreground transition-colors">{log.message}</span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
-                                                <AlertCircle size={20} className="mb-2 opacity-20" />
-                                                <p className="text-[10px] font-bold italic">No log signals emitted during this pulse.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Data Inspect */}
-                                <div className="space-y-4 pt-4 border-t">
-                                    <div>
-                                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black mb-2">Input Payload</p>
-                                        <pre className="p-4 rounded-xl bg-muted/50 text-[10px] overflow-auto border font-mono">
-                                            {JSON.stringify(selectedRun.input || {}, null, 2)}
-                                        </pre>
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black mb-2">Result Manifest</p>
-                                        <pre className="p-4 rounded-xl bg-muted/50 text-[10px] overflow-auto border font-mono">
-                                            {JSON.stringify(selectedRun.output || {}, null, 2)}
-                                        </pre>
-                                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                        {/* Trace Status */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 rounded-xl bg-muted/30 border border-muted/50">
+                                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black mb-1">Stability</p>
+                                <div className="flex items-center gap-2">
+                                    <Badge className={cn(
+                                        "uppercase text-[10px] border-none font-bold",
+                                        selectedRun.status === 'COMPLETED' ? "bg-emerald-500 text-white" : "bg-destructive text-white"
+                                    )}>
+                                        {selectedRun.status}
+                                    </Badge>
                                 </div>
                             </div>
-                        </ScrollArea>
+                            <div className="p-3 rounded-xl bg-muted/30 border border-muted/50">
+                                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black mb-1">Latency</p>
+                                <p className="text-xs font-mono font-bold">-- ms</p>
+                            </div>
+                        </div>
+
+                        {/* Logs Section */}
+                        <div>
+                            <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">
+                                <FileText size={12} /> Log Stream
+                            </h4>
+                            <div className="space-y-2 font-mono text-[11px] leading-relaxed">
+                                {selectedRun.logs && selectedRun.logs.length > 0 ? (
+                                    selectedRun.logs.map((log, idx) => (
+                                        <div key={idx} className="flex gap-3 text-foreground/80 group">
+                                            <span className="text-muted-foreground opacity-50 shrink-0">{format(new Date(log.timestamp), 'HH:mm:ss.SSS')}</span>
+                                            <span className={cn(
+                                                "px-1 rounded font-bold uppercase text-[9px]",
+                                                log.level === 'error' ? "text-destructive bg-destructive/10" : "text-primary bg-primary/10"
+                                            )}>{log.level}</span>
+                                            <span className="group-hover:text-foreground transition-colors">{log.message}</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
+                                        <AlertCircle size={20} className="mb-2 opacity-20" />
+                                        <p className="text-[10px] font-bold italic">No log signals emitted during this pulse.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Data Inspect */}
+                        <div className="space-y-4 pt-4 border-t">
+                            <div>
+                                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black mb-2">Input Payload</p>
+                                <pre className="p-4 rounded-xl bg-muted/50 text-[10px] overflow-auto border font-mono">
+                                    {JSON.stringify(selectedRun.input || {}, null, 2)}
+                                </pre>
+                            </div>
+                            <div>
+                                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black mb-2">Result Manifest</p>
+                                <pre className="p-4 rounded-xl bg-muted/50 text-[10px] overflow-auto border font-mono">
+                                    {JSON.stringify(selectedRun.output || {}, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
-    )
+    </div>
+)
 }

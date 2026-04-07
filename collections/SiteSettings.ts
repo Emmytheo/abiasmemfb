@@ -78,6 +78,12 @@ export const SiteSettings: GlobalConfig = {
                     type: 'relationship',
                     relationTo: 'endpoints',
                     admin: { description: 'The API endpoint used to synchronize available Services/Form Schemas.' }
+                },
+                {
+                    name: 'customerUpdateEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to push reconciled demographic updates back to Qore (Core Banking).' }
                 }
             ]
         }
