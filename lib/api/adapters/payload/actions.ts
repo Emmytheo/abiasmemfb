@@ -908,6 +908,31 @@ export const executeCustomerMerge = async (params: MergeParams) => {
     return { success: true, mergedRecords: archivedIds.length, archivedIds };
 };
 
+export const sanitizeProductRegistry = async (payload: any) => {
+    try {
+        // 1. Find and consolidate Product Types
+        const orphanedTypes = await payload.find({ collection: 'product-types', where: { name: { contains: 'SavingsOrCurrent' } }, limit: 10 });
+        for (const type of orphanedTypes.docs) {
+            // Check if 'Savings' already exists
+            const correctType = await payload.find({ collection: 'product-types', where: { name: { equals: 'Savings' } }, limit: 1 });
+            if (correctType.docs.length > 0) {
+                // Re-point all accounts using the orphaned type to the correct one
+                const accounts = await payload.find({ collection: 'accounts', where: { product_type: { equals: type.id } }, limit: 1000 });
+                for (const acc of accounts.docs) {
+                    await payload.update({ collection: 'accounts', id: acc.id, data: { product_type: correctType.docs[0].id } });
+                }
+                // Optional: Archive orphaned type
+                await payload.update({ collection: 'product-types', id: type.id, data: { status: 'archived', name: `Legacy_${type.name}` } });
+            } else {
+                // Just rename this one to 'Savings'
+                await payload.update({ collection: 'product-types', id: type.id, data: { name: 'Savings' } });
+            }
+        }
+    } catch (e) {
+        console.error('Registry Sanitization Error:', e);
+    }
+};
+
 export const syncProductMetadata = async (payload: any, qoreAccount: any) => {
     try {
         // 1. Ensure Product Class exists
@@ -923,13 +948,18 @@ export const syncProductMetadata = async (payload: any, qoreAccount: any) => {
         const catName = qoreAccount.ProductCategory || 'Banking';
         let productCat = await payload.find({ collection: 'product-categories', where: { name: { equals: catName } }, limit: 1 });
         if (productCat.docs.length === 0) {
-            productCat = await payload.create({ collection: 'product-categories', data: { name: catName, class: productClass.id, status: 'active' }, overrideAccess: true });
+            productCat = await payload.create({ collection: 'product-categories', data: { name: catName, class_id: productClass.id, status: 'active' }, overrideAccess: true });
         } else {
             productCat = productCat.docs[0];
         }
 
         // 3. Ensure Product Type exists
-        const typeName = qoreAccount.ProductType || qoreAccount.AccountType || 'Basic Account';
+        let typeName = qoreAccount.ProductType || qoreAccount.AccountType || 'Basic Account';
+        // Consolidation Logic: Map legacy or complex names to standard ones
+        if (typeName.includes('SavingsOrCurrent')) typeName = 'Savings';
+        else if (typeName.includes('Savings')) typeName = 'Savings';
+        else if (typeName.includes('Current')) typeName = 'Current';
+
         let productType = await payload.find({ collection: 'product-types', where: { name: { equals: typeName } }, limit: 1 });
         if (productType.docs.length === 0) {
             productType = await payload.create({ collection: 'product-types', data: { name: typeName, category: productCat.id, status: 'active', code: qoreAccount.ProductCode || 'GEN' }, overrideAccess: true });
@@ -1034,11 +1064,18 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
             // Sync metadata using available info (Class/Category/Type/Code)
             const productTypeId = await syncProductMetadata(payload, qoreAccount);
 
+            // Normalize Account Type (Qore often returns 'SavingsOrCurrent')
+            let normalizedType: string = qoreAccount.AccountType || qoreAccount.accountType || 'Savings';
+            if (normalizedType.includes('Savings')) normalizedType = 'Savings';
+            else if (normalizedType.includes('Current')) normalizedType = 'Current';
+            else if (normalizedType.includes('Deposit')) normalizedType = 'Fixed Deposit';
+            else normalizedType = 'Savings';
+
             const accountData: any = {
                 customer: String(winnerId),
                 user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID || qoreAccount.customerID,
                 account_number: accountNo,
-                account_type: qoreAccount.AccountType || qoreAccount.accountType || 'Savings',
+                account_type: normalizedType,
                 balance: Math.round(parseFloat((qoreAccount.AvailableBalance || qoreAccount.availableBalance || '0').replace(/,/g, '')) * 100),
                 status: (qoreAccount.Status || qoreAccount.accountStatus || 'active').toLowerCase(),
                 source: 'qore',
@@ -1133,6 +1170,9 @@ export const refreshCustomerLedger = async (customerId: string): Promise<{ succe
         if (!accountNumbers.length) {
             return { success: true, message: 'No accounts found in Qore to sync.' };
         }
+
+        // Run a registry sanitization before unification to clean up orphans
+        await sanitizeProductRegistry(payload);
 
         // 2. Trigger mirror and unification logic
         // We pass the full objects directly to avoid failing redundant inquiries

@@ -19,7 +19,16 @@ export const SupabaseAdapter: ApiAdapter = {
     getCustomerById: async (id) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+    restoreCustomerIdentity: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
     updateCustomer: async (id, data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getCustomerAudit: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    deleteCustomer: async (id) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
 
