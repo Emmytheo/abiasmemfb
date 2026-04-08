@@ -260,9 +260,14 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                                     </div>
 
                                     {!confirmUnlink ? (
-                                        <Button variant="destructive" className="w-full h-12 rounded-xl font-black uppercase tracking-widest gap-2" onClick={() => setConfirmUnlink(true)}>
-                                            <Trash2 className="h-4 w-4" /> Sever Identity Bridge
-                                        </Button>
+                                        <div className="w-full space-y-3">
+                                            <Button variant="outline" className="w-full h-12 rounded-xl font-black uppercase tracking-widest gap-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary" onClick={() => setStep('select')}>
+                                                <ArrowLeftRight className="h-4 w-4" /> Reconcile with Banking Record
+                                            </Button>
+                                            <Button variant="ghost" className="w-full h-12 rounded-xl font-black uppercase tracking-widest gap-2 text-destructive hover:bg-destructive/10" onClick={() => setConfirmUnlink(true)}>
+                                                <Trash2 className="h-4 w-4" /> Sever Identity Bridge
+                                            </Button>
+                                        </div>
                                     ) : (
                                         <div className="w-full space-y-3 animate-in slide-in-from-top-2">
                                             <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl mb-1 text-left">

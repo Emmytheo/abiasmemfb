@@ -42,7 +42,7 @@ export const DummyAdapter: ApiAdapter = {
         return true;
     },
 
-    getCustomerAudit: async () => {
+    getCustomerAudit: async (id) => {
         await delay(800);
         return {
             accounts: 2,
@@ -56,7 +56,7 @@ export const DummyAdapter: ApiAdapter = {
         };
     },
 
-    deleteCustomer: async () => {
+    deleteCustomer: async (id) => {
         await delay(500);
         return true;
     },
@@ -415,7 +415,7 @@ export const DummyAdapter: ApiAdapter = {
     },
 
     // Merge & Reconciliation
-    mergeCustomers: async () => {
+    mergeCustomers: async (params) => {
         await delay(1500);
         return { success: true, mergedRecords: 1, archivedIds: ['merged_dummy_id'] };
     },

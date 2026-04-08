@@ -825,8 +825,11 @@ export const executeCustomerMerge = async (params: MergeParams) => {
         const timestamp = Date.now();
         const loser = await payload.findByID({ collection: 'customers', id: loserId });
         const loserSupabaseId = loser.supabase_id;
+        
+        // Safety: Renaming unique fields on loser to allow winner to adopt them if needed
         const cleanEmail = loser.email.replace(/^archived_\d+_/, '');
         const cleanBvn = loser.bvn ? loser.bvn.replace(/^archived_\d+_/, '') : null;
+        
         await payload.update({
             collection: 'customers',
             id: loserId,
@@ -840,32 +843,105 @@ export const executeCustomerMerge = async (params: MergeParams) => {
                 merger_status: 'archived',
             } as any
         });
+
         const collections = ['accounts', 'loans', 'transactions'];
         for (const col of collections) {
-            const records = await payload.find({ collection: col as any, where: { customer: { equals: loserId } }, limit: 1000, overrideAccess: true });
-            for (const doc of records.docs) {
-                const updateData: any = { customer: winnerId };
-                // transactions does not have a user_id field, but accounts and loans do.
-                if (winnerSupabaseId && col !== 'transactions') {
-                    updateData.user_id = winnerSupabaseId;
+            try {
+                const records = await payload.find({ 
+                    collection: col as any, 
+                    where: { customer: { equals: loserId } }, 
+                    limit: 1000, 
+                    overrideAccess: true 
+                });
+                
+                for (const doc of records.docs) {
+                    const updateData: any = { customer: String(winnerId) };
+                    // transactions does not have a user_id field, but accounts and loans do.
+                    if (winnerSupabaseId && col !== 'transactions') {
+                        updateData.user_id = winnerSupabaseId;
+                    }
+                    
+                    try {
+                        await payload.update({ 
+                            collection: col as any, 
+                            id: doc.id, 
+                            data: updateData, 
+                            overrideAccess: true 
+                        });
+                    } catch (updateErr: any) {
+                        console.error(`Record update failed in ${col} for doc ${doc.id}:`, updateErr.message);
+                        // Log full error to find specific field validation issues
+                        if (updateErr.data) console.dir(updateErr.data, { depth: null });
+                    }
                 }
-                await payload.update({ collection: col as any, id: doc.id, data: updateData, overrideAccess: true });
+            } catch (e: any) {
+                console.error(`Merge Asset Migration Failed for collection ${col}:`, e.message);
+                // We continue with other collections to ensure at least partial recovery
             }
         }
+
         if (winnerSupabaseId && loserSupabaseId) {
-            // Re-point product applications
-            const apps = await payload.find({ collection: 'product-applications', where: { user_id: { equals: loserSupabaseId } }, limit: 1000, overrideAccess: true });
-            for (const doc of apps.docs) await payload.update({ collection: 'product-applications', id: doc.id, data: { user_id: winnerSupabaseId }, overrideAccess: true });
-            
-            // Re-point beneficiaries
-            const beneficiaries = await payload.find({ collection: 'beneficiaries', where: { user: { equals: loserSupabaseId } }, limit: 1000, overrideAccess: true });
-            for (const doc of beneficiaries.docs) await payload.update({ collection: 'beneficiaries', id: doc.id, data: { user: winnerSupabaseId }, overrideAccess: true });
+            try {
+                // Re-point product applications (string-based user_id)
+                const apps = await payload.find({ collection: 'product-applications', where: { user_id: { equals: loserSupabaseId } }, limit: 1000, overrideAccess: true });
+                for (const doc of apps.docs) await payload.update({ collection: 'product-applications', id: doc.id, data: { user_id: winnerSupabaseId }, overrideAccess: true });
+                
+                // Re-point beneficiaries (relates to numeric Payload Users)
+                // We must find the Payload User record that corresponds to the winnerSupabaseId
+                const winningUsers = await payload.find({ collection: 'users', where: { supabase_id: { equals: winnerSupabaseId } }, limit: 1, overrideAccess: true });
+                const losingUsers = await payload.find({ collection: 'users', where: { supabase_id: { equals: loserSupabaseId } }, limit: 1, overrideAccess: true });
+                
+                if (winningUsers.docs.length > 0 && losingUsers.docs.length > 0) {
+                    const winnerUserId = winningUsers.docs[0].id;
+                    const loserUserId = losingUsers.docs[0].id;
+                    const beneficiaries = await payload.find({ collection: 'beneficiaries', where: { user: { equals: loserUserId } }, limit: 1000, overrideAccess: true });
+                    for (const doc of beneficiaries.docs) await payload.update({ collection: 'beneficiaries', id: doc.id, data: { user: winnerUserId }, overrideAccess: true });
+                }
+            } catch (e: any) {
+                console.warn(`Bridge Digital Asset Re-pointing Warning:`, e.message);
+            }
         }
         archivedIds.push(loserId);
     }
     const finalSupabaseId = supabaseId || (targetCustomer?.supabase_id || primary.supabase_id);
     await payload.update({ collection: 'customers', id: winnerId, data: { ...profileData, supabase_id: finalSupabaseId, is_associated: !!finalSupabaseId, merger_status: 'primary', active: true, is_archived: false } as any, overrideAccess: true });
     return { success: true, mergedRecords: archivedIds.length, archivedIds };
+};
+
+export const syncProductMetadata = async (payload: any, qoreAccount: any) => {
+    try {
+        // 1. Ensure Product Class exists
+        const className = qoreAccount.ProductClass || 'Standard';
+        let productClass = await payload.find({ collection: 'product-classes', where: { name: { equals: className } }, limit: 1 });
+        if (productClass.docs.length === 0) {
+            productClass = await payload.create({ collection: 'product-classes', data: { name: className, status: 'active' }, overrideAccess: true });
+        } else {
+            productClass = productClass.docs[0];
+        }
+
+        // 2. Ensure Product Category exists
+        const catName = qoreAccount.ProductCategory || 'Banking';
+        let productCat = await payload.find({ collection: 'product-categories', where: { name: { equals: catName } }, limit: 1 });
+        if (productCat.docs.length === 0) {
+            productCat = await payload.create({ collection: 'product-categories', data: { name: catName, class: productClass.id, status: 'active' }, overrideAccess: true });
+        } else {
+            productCat = productCat.docs[0];
+        }
+
+        // 3. Ensure Product Type exists
+        const typeName = qoreAccount.ProductType || qoreAccount.AccountType || 'Basic Account';
+        let productType = await payload.find({ collection: 'product-types', where: { name: { equals: typeName } }, limit: 1 });
+        if (productType.docs.length === 0) {
+            productType = await payload.create({ collection: 'product-types', data: { name: typeName, category: productCat.id, status: 'active', code: qoreAccount.ProductCode || 'GEN' }, overrideAccess: true });
+        } else {
+            productType = productType.docs[0];
+        }
+
+        return productType.id;
+    } catch (e) {
+        console.error('Metadata Sync Error:', e);
+        return null;
+    }
 };
 
 export const syncCustomerToQore = async (winnerId: string, profileData: any) => {
@@ -885,10 +961,63 @@ export const syncCustomerToQore = async (winnerId: string, profileData: any) => 
     } catch (e) { console.error('Qore Sync Failed:', e); }
 };
 
+export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId: string | null, accountNumbers: string[]) => {
+    if (!accountNumbers.length) return;
+    try {
+        const payload = await initPayload();
+        const settings = await payload.findGlobal({ slug: 'site-settings' }) as any;
+        const endpointId = typeof settings.sync?.accountEnquiryEndpoint === 'object' ? settings.sync.accountEnquiryEndpoint.id : settings.sync?.accountEnquiryEndpoint;
+        if (!endpointId) return;
+
+        const endpoint = await payload.findByID({ collection: 'endpoints', id: endpointId });
+        const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver');
+
+        for (const accountNo of accountNumbers) {
+            // Check if account already exists
+            const existing = await payload.find({ collection: 'accounts', where: { account_number: { equals: accountNo } }, limit: 1 });
+            
+            // Resolve Qore details
+            const resolved = await resolveEndpoint(endpoint as any, { query: { accountNumber: accountNo } });
+            const res = await fetch(resolved.url, { method: resolved.method, headers: resolved.headers });
+            if (!res.ok) continue;
+            const qoreData = await res.json();
+            const qoreAccount = qoreData.Account || qoreData;
+
+            // Sync metadata (Classes/Types)
+            const productTypeId = await syncProductMetadata(payload, qoreAccount);
+
+            const accountData: any = {
+                customer: winnerId,
+                user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID,
+                account_number: accountNo,
+                account_type: qoreAccount.AccountType || 'Savings',
+                balance: Math.round(parseFloat(qoreAccount.AvailableBalance || '0') * 100), // Naira to Kobo
+                status: (qoreAccount.Status || 'active').toLowerCase(),
+                source: 'qore',
+                product_type: productTypeId,
+            };
+
+            if (existing.docs.length > 0) {
+                await payload.update({ collection: 'accounts', id: existing.docs[0].id, data: accountData, overrideAccess: true });
+            } else {
+                await payload.create({ collection: 'accounts', data: accountData, overrideAccess: true });
+            }
+        }
+    } catch (e) {
+        console.error('Account Mirroring Error:', e);
+    }
+};
+
 export const mergeCustomers = async (params: { primaryCustomerId: string; supabaseUserId: string; profileData: any; selectedAccountNumbers: string[]; isCustomerToCustomer?: boolean; keepTargetAsPrimary?: boolean; }) => {
     const result = await executeCustomerMerge({ primaryCustomerId: params.primaryCustomerId, targetId: params.supabaseUserId, isCustomerToCustomer: !!params.isCustomerToCustomer, profileData: params.profileData, selectedAccountNumbers: params.selectedAccountNumbers, keepTargetAsPrimary: params.keepTargetAsPrimary });
     const winnerId = params.keepTargetAsPrimary && params.isCustomerToCustomer ? params.supabaseUserId : params.primaryCustomerId;
+    
+    // Perform Qore Sync
     await syncCustomerToQore(winnerId, params.profileData);
+    
+    // Perform Account Mirroring
+    await mirrorSelectedAccounts(winnerId, result.success ? (params.isCustomerToCustomer ? null : params.supabaseUserId) : null, params.selectedAccountNumbers);
+    
     return result;
 };
 
