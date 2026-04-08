@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { refreshCustomerLedger } from "@/lib/api/adapters/payload/actions";
 import { Customer, Account } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,27 +122,20 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     const handleSync = async () => {
         if (!customer) return;
         setActionLoading('sync');
-        toast.info(`Triggering refresh from Core for ${customer.firstName}...`, {
-            description: "Fetching latest balances and profile data."
+        toast.info(`Full ledger reconciliation for ${customer.firstName}...`, {
+            description: "Fetching accounts from Qore and syncing transaction history."
         });
         try {
-            // Re-sync specific account if we have one or just the customer
-            const syncId = accounts.length > 0 ? accounts[0].account_number : null;
-            const res = await fetch('/api/sync/customers', { 
-                method: 'POST',
-                body: JSON.stringify({ accounts: syncId ? [syncId] : [] }) 
-            });
-            const result = await res.json();
+            const result = await refreshCustomerLedger(customer.id);
             
-            if (result.success && result.results) {
-                const r = result.results;
-                toast.success("Sync complete", {
-                    description: `Updated ${r.customersUpdated} customers and ${r.accountsUpdated} accounts.`
+            if (result.success) {
+                toast.success("Ledger unified successfully", {
+                    description: "Balances refreshed and product metadata updated."
                 });
                 loadData();
             } else {
-                toast.error(result.error || "Sync failed", {
-                    description: result.errors?.join(', ')
+                toast.error("Sync failed", {
+                    description: result.message
                 });
             }
         } catch (err: any) {

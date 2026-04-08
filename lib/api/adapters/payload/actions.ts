@@ -961,8 +961,57 @@ export const syncCustomerToQore = async (winnerId: string, profileData: any) => 
     } catch (e) { console.error('Qore Sync Failed:', e); }
 };
 
-export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId: string | null, accountNumbers: string[]) => {
-    if (!accountNumbers.length) return;
+export const backfillTransactionHistory = async (payload: any, accountId: string, accountNumber: string, customerId: string) => {
+    try {
+        const settings = await payload.findGlobal({ slug: 'site-settings' }) as any;
+        const endpointId = typeof settings.sync?.accountTransactionsEndpoint === 'object' ? settings.sync.accountTransactionsEndpoint.id : settings.sync?.accountTransactionsEndpoint;
+        if (!endpointId) return;
+
+        const endpoint = await payload.findByID({ collection: 'endpoints', id: endpointId });
+        const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver');
+
+        // Calculate 30-day window
+        const toDate = new Date().toISOString();
+        const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        const resolved = await resolveEndpoint(endpoint as any, { query: { accountNumber, fromDate, toDate, numberOfItems: 50 } });
+        const res = await fetch(resolved.url, { method: resolved.method, headers: resolved.headers });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const qoreTransactions = data.Payload || data.payload || data.transactions || [];
+
+        for (const tx of qoreTransactions) {
+            const txRef = tx.TransactionReference || tx.reference || `QORE-${tx.id || Date.now()}`;
+            
+            // Avoid duplicates
+            const existing = await payload.find({ collection: 'transactions', where: { reference: { equals: txRef } }, limit: 1 });
+            if (existing.docs.length > 0) continue;
+
+            const amountKobo = Math.round(parseFloat(tx.Amount || tx.amount || '0') * 100);
+            const isCredit = (tx.TransactionType || tx.type || '').toLowerCase().includes('credit');
+
+            await payload.create({
+                collection: 'transactions',
+                data: {
+                    reference: txRef,
+                    type: isCredit ? 'credit' : 'debit',
+                    amount: Math.abs(amountKobo),
+                    status: 'successful',
+                    narration: tx.Narration || tx.narration || 'Banking Transaction',
+                    [isCredit ? 'to_account' : 'from_account']: accountId,
+                    customer: customerId,
+                    metadata: { source: 'qore_backfill', qore_data: tx }
+                },
+                overrideAccess: true
+            });
+        }
+    } catch (e) {
+        console.error(`Transaction Backfill Error for ${accountNumber}:`, e);
+    }
+};
+
+export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId: string | null, accountNumbers: string[], loserId?: string) => {
     try {
         const payload = await initPayload();
         const settings = await payload.findGlobal({ slug: 'site-settings' }) as any;
@@ -972,9 +1021,20 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
         const endpoint = await payload.findByID({ collection: 'endpoints', id: endpointId });
         const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver');
 
+        // 1. Identify ALL legacy local accounts for both winner and loser
+        // Defensive: Only include IDs that are truthy and not 'undefined'
+        const relevantCustomerIds = [winnerId, loserId].filter(id => id && id !== 'undefined' && id !== 'null').map(id => String(id));
+
+        const legacyAccounts = await payload.find({ 
+            collection: 'accounts', 
+            where: { customer: { in: relevantCustomerIds } }, 
+            limit: 1000, 
+            overrideAccess: true 
+        });
+
+        // 2. Mirror/Unify loop
         for (const accountNo of accountNumbers) {
-            // Check if account already exists
-            const existing = await payload.find({ collection: 'accounts', where: { account_number: { equals: accountNo } }, limit: 1 });
+            const existing = legacyAccounts.docs.find((a: any) => a.account_number === accountNo);
             
             // Resolve Qore details
             const resolved = await resolveEndpoint(endpoint as any, { query: { accountNumber: accountNo } });
@@ -983,28 +1043,50 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
             const qoreData = await res.json();
             const qoreAccount = qoreData.Account || qoreData;
 
-            // Sync metadata (Classes/Types)
+            // Sync metadata
             const productTypeId = await syncProductMetadata(payload, qoreAccount);
 
             const accountData: any = {
-                customer: winnerId,
+                customer: String(winnerId),
                 user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID,
                 account_number: accountNo,
                 account_type: qoreAccount.AccountType || 'Savings',
-                balance: Math.round(parseFloat(qoreAccount.AvailableBalance || '0') * 100), // Naira to Kobo
+                balance: Math.round(parseFloat(qoreAccount.AvailableBalance || '0') * 100),
                 status: (qoreAccount.Status || 'active').toLowerCase(),
-                source: 'qore',
+                source: 'qore', // Upgraded to Qore authority if matched or new
                 product_type: productTypeId,
             };
 
-            if (existing.docs.length > 0) {
-                await payload.update({ collection: 'accounts', id: existing.docs[0].id, data: accountData, overrideAccess: true });
+            let targetAccountId;
+            if (existing) {
+                const updated = await payload.update({ collection: 'accounts', id: existing.id, data: accountData, overrideAccess: true });
+                targetAccountId = updated.id;
             } else {
-                await payload.create({ collection: 'accounts', data: accountData, overrideAccess: true });
+                const created = await payload.create({ collection: 'accounts', data: accountData, overrideAccess: true });
+                targetAccountId = created.id;
+            }
+
+            // 3. Initiate Transaction Backfill
+            await backfillTransactionHistory(payload, String(targetAccountId), accountNo, String(winnerId));
+        }
+
+        // 4. Handle "Preservation" for legacy accounts NOT in the selected Qore set
+        for (const legacy of legacyAccounts.docs) {
+            if (!accountNumbers.includes(legacy.account_number)) {
+                await payload.update({
+                    collection: 'accounts',
+                    id: legacy.id,
+                    data: {
+                        customer: String(winnerId),
+                        user_id: winnerSupabaseId || legacy.user_id,
+                        source: 'local' // Preserve as local ledger item
+                    },
+                    overrideAccess: true
+                });
             }
         }
     } catch (e) {
-        console.error('Account Mirroring Error:', e);
+        console.error('Account Mirroring/Unification Error:', e);
     }
 };
 
@@ -1015,8 +1097,8 @@ export const mergeCustomers = async (params: { primaryCustomerId: string; supaba
     // Perform Qore Sync
     await syncCustomerToQore(winnerId, params.profileData);
     
-    // Perform Account Mirroring
-    await mirrorSelectedAccounts(winnerId, result.success ? (params.isCustomerToCustomer ? null : params.supabaseUserId) : null, params.selectedAccountNumbers);
+    // Perform Account Mirroring & Unification
+    await mirrorSelectedAccounts(winnerId, result.success ? (params.isCustomerToCustomer ? null : params.supabaseUserId) : null, params.selectedAccountNumbers, params.isCustomerToCustomer ? params.supabaseUserId : undefined);
     
     return result;
 };
@@ -1037,6 +1119,32 @@ export const getQoreAccounts = async (customerId: string): Promise<any[]> => {
         const data = await res.json();
         return Array.isArray(data) ? data : (data.Accounts || []);
     } catch (e) { return []; }
+};
+
+export const refreshCustomerLedger = async (customerId: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+        const payload = await initPayload();
+        const customer = await payload.findByID({ collection: 'customers', id: customerId });
+        if (!customer) throw new Error('Customer not found');
+        if (!customer.qore_customer_id) throw new Error('Customer is not linked to Qore');
+
+        // 1. Fetch ALL current account numbers from Qore
+        const qoreAccounts = await getQoreAccounts(customerId);
+        const accountNumbers = qoreAccounts.map((a: any) => a.AccountNumber || a.accountNumber).filter(Boolean);
+
+        if (!accountNumbers.length) {
+            return { success: true, message: 'No accounts found in Qore to sync.' };
+        }
+
+        // 2. Trigger mirror and unification logic
+        // This will sync balances, metadata, and perform 30-day delta-backfills
+        await mirrorSelectedAccounts(customerId, customer.supabase_id, accountNumbers);
+
+        return { success: true };
+    } catch (e: any) {
+        console.error('Manual Ledger Sync Error:', e.message);
+        return { success: false, message: e.message };
+    }
 };
 
 export const unlinkCustomer = async (id: string): Promise<Customer> => {
