@@ -107,6 +107,13 @@ export const Transactions: CollectionConfig = {
             admin: { description: 'Account balance (in kobo) after this transaction. For auditing.' },
         },
         {
+            name: 'date',
+            type: 'date',
+            admin: { description: 'The actual date/time this transaction occurred in the core system.' },
+            required: true,
+            index: true,
+        },
+        {
             name: 'metadata',
             type: 'json',
             admin: { description: 'Additional context (external reference, provider response, etc.).' },

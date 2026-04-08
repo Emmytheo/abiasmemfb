@@ -970,6 +970,14 @@ export const syncProductMetadata = async (payload: any, qoreAccount: any) => {
                     status: 'active', 
                     code: qoreAccount.ProductCode || 'GEN',
                     form_schema: [], // Prevent client-side .map() crashes
+                    financial_terms: [
+                        {
+                            blockType: 'savings-terms',
+                            min_balance: 0,
+                            interest_rate: 0,
+                            monthly_maintenance_fee: 0,
+                        }
+                    ],
                     workflow_stages: [
                         { stage: 'Submitted' },
                         { stage: 'Under Review' },
