@@ -139,6 +139,27 @@ export const getCustomerById = async (id: string): Promise<Customer | null> => {
     }
 };
 
+export const restoreCustomerIdentity = async (customerId: string, supabaseId: string, email: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        await payload.update({
+            collection: 'customers',
+            id: customerId,
+            data: {
+                is_archived: false,
+                email: email,
+                supabase_id: supabaseId,
+                is_associated: true,
+                kyc_status: 'active'
+            }
+        });
+        return true;
+    } catch (e) {
+        console.error('Payload restoreCustomerIdentity Error:', e);
+        return false;
+    }
+};
+
 export const updateCustomer = async (id: string, data: Partial<Customer>): Promise<Customer> => {
     try {
         const payload = await initPayload();
@@ -189,7 +210,23 @@ export const getCustomerAudit = async (id: string): Promise<CustomerAudit> => {
             loans: loans.totalDocs,
             applications: ('totalDocs' in applications) ? applications.totalDocs : 0,
             beneficiaries: 0,
-            financialData: { accounts: accounts.docs as any, loans: loans.docs as any }
+            financialData: { 
+                accounts: accounts.docs.map((doc: any) => ({
+                    id: String(doc.id),
+                    account_number: doc.account_number,
+                    account_type: doc.account_type,
+                    balance: (doc.balance ?? 0) / 100,
+                    status: doc.status,
+                    created_at: doc.createdAt
+                })) as any, 
+                loans: loans.docs.map((doc: any) => ({
+                    id: String(doc.id),
+                    amount: (doc.amount ?? 0) / 100,
+                    duration_months: doc.duration_months,
+                    status: doc.status,
+                    created_at: doc.createdAt
+                })) as any 
+            }
         };
     } catch (e) {
         return { accounts: 0, loans: 0, applications: 0, beneficiaries: 0, financialData: { accounts: [], loans: [] } };
@@ -231,7 +268,17 @@ export const getAllAccounts = async (): Promise<Account[]> => {
 export const getUserAccounts = async (userId: string): Promise<Account[]> => {
     try {
         const payload = await initPayload();
-        const { docs: customers } = await payload.find({ collection: 'customers', where: { or: [{ supabase_id: { equals: userId } }, { email: { equals: userId } }] }, limit: 1 });
+        // Strict Match: Exclude archived customers from fuzzy matching
+        const { docs: customers } = await payload.find({ 
+            collection: 'customers', 
+            where: { 
+                and: [
+                    { is_archived: { not_equals: true } },
+                    { or: [{ supabase_id: { equals: userId } }, { email: { equals: userId } }] }
+                ]
+            }, 
+            limit: 1 
+        });
         const customerId = customers.length > 0 ? customers[0].id : null;
         const { docs } = await payload.find({
             collection: 'accounts' as any,
@@ -320,7 +367,17 @@ export const getAllLoans = async (): Promise<Loan[]> => {
 export const getUserLoans = async (userId: string): Promise<Loan[]> => {
     try {
         const payload = await initPayload();
-        const { docs: customers } = await payload.find({ collection: 'customers', where: { or: [{ supabase_id: { equals: userId } }, { email: { equals: userId } }] }, limit: 1 });
+        // Strict Match: Exclude archived customers from fuzzy matching
+        const { docs: customers } = await payload.find({ 
+            collection: 'customers', 
+            where: { 
+                and: [
+                    { is_archived: { not_equals: true } },
+                    { or: [{ supabase_id: { equals: userId } }, { email: { equals: userId } }] }
+                ]
+            }, 
+            limit: 1 
+        });
         const customerId = customers.length > 0 ? customers[0].id : null;
         const { docs } = await payload.find({
             collection: 'loans' as any,
@@ -333,8 +390,14 @@ export const getUserLoans = async (userId: string): Promise<Loan[]> => {
         return docs.map((doc: any) => ({
             id: String(doc.id),
             user_id: doc.user_id,
-            product_type_id: typeof doc.product_type === 'object' ? doc.product_type?.id : doc.product_type,
+            product_type_id: typeof doc.product_type === 'object' ? (doc.product_type as any)?.id : doc.product_type,
             amount: (doc.principal ?? 0) / 100,
+            interest_rate: doc.interest_rate ?? 0,
+            duration_months: doc.duration_months ?? 0,
+            outstanding_balance: (doc.outstanding_balance ?? 0) / 100,
+            monthly_installment: (doc.monthly_installment ?? 0) / 100,
+            next_payment_date: doc.next_payment_date,
+            maturity_date: doc.maturity_date,
             status: doc.status || 'pending',
             created_at: doc.createdAt,
             customer: doc.customer
@@ -782,13 +845,21 @@ export const executeCustomerMerge = async (params: MergeParams) => {
             const records = await payload.find({ collection: col as any, where: { customer: { equals: loserId } }, limit: 1000, overrideAccess: true });
             for (const doc of records.docs) {
                 const updateData: any = { customer: winnerId };
-                if (winnerSupabaseId) updateData.user_id = winnerSupabaseId;
+                // transactions does not have a user_id field, but accounts and loans do.
+                if (winnerSupabaseId && col !== 'transactions') {
+                    updateData.user_id = winnerSupabaseId;
+                }
                 await payload.update({ collection: col as any, id: doc.id, data: updateData, overrideAccess: true });
             }
         }
         if (winnerSupabaseId && loserSupabaseId) {
+            // Re-point product applications
             const apps = await payload.find({ collection: 'product-applications', where: { user_id: { equals: loserSupabaseId } }, limit: 1000, overrideAccess: true });
             for (const doc of apps.docs) await payload.update({ collection: 'product-applications', id: doc.id, data: { user_id: winnerSupabaseId }, overrideAccess: true });
+            
+            // Re-point beneficiaries
+            const beneficiaries = await payload.find({ collection: 'beneficiaries', where: { user: { equals: loserSupabaseId } }, limit: 1000, overrideAccess: true });
+            for (const doc of beneficiaries.docs) await payload.update({ collection: 'beneficiaries', id: doc.id, data: { user: winnerSupabaseId }, overrideAccess: true });
         }
         archivedIds.push(loserId);
     }

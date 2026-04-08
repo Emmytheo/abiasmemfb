@@ -91,6 +91,34 @@ export function HarmonizationReport() {
         return email.replace(/^archived_\d+_/, '');
     };
 
+    const handleRestoreAndLink = async (customer: Customer) => {
+        const cleanedEmail = cleanArchivedEmail(customer.email);
+        // Find matching orphaned user by email
+        const targetUser = users.find(u => u.email.toLowerCase() === cleanedEmail.toLowerCase());
+        
+        if (!targetUser) {
+            toast.error("No digital user found with a matching email.", {
+                description: `Unable to link ${cleanedEmail} automatically.`
+            });
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const success = await (api as any).restoreCustomerIdentity(customer.id, targetUser.id, targetUser.email);
+            if (success) {
+                toast.success("Identity restored and associated successfully");
+                loadData();
+            } else {
+                toast.error("Failed to restore identity");
+            }
+        } catch (e) {
+            toast.error("An error occurred during restoration");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const filteredShadow = shadowClients.filter(c => 
         `${c.firstName} ${c.lastName}`.toLowerCase().includes(search.toLowerCase()) || 
         c.email.toLowerCase().includes(search.toLowerCase())
@@ -266,6 +294,17 @@ export function HarmonizationReport() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="text-[8px] h-7 border-emerald-500/20 text-emerald-600 bg-emerald-500/5 hover:bg-emerald-500/10 font-black uppercase tracking-widest"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRestoreAndLink(cust);
+                                        }}
+                                    >
+                                        Restore & Link
+                                    </Button>
                                     <Badge variant="outline" className="text-[8px] border-destructive/20 text-destructive h-5">Audit & Purge</Badge>
                                 </div>
                             </div>

@@ -7,9 +7,10 @@ export const PayloadAdapter: ApiAdapter = {
     getAllUsers: (...args) => actions.getAllUsers(...args),
 
     // Customers
-    getAllCustomers: (...args) => actions.getAllCustomers(...args),
-    getCustomerById: (...args) => actions.getCustomerById(...args),
-    updateCustomer: (...args) => actions.updateCustomer(...args),
+    getAllCustomers: () => actions.getAllCustomers(),
+    getCustomerById: (id) => actions.getCustomerById(id),
+    restoreCustomerIdentity: (customerId, supabaseId, email) => actions.restoreCustomerIdentity(customerId, supabaseId, email),
+    updateCustomer: (id, data) => actions.updateCustomer(id, data),
     getCustomerAudit: (...args) => actions.getCustomerAudit(...args),
     deleteCustomer: (...args) => actions.deleteCustomer(...args),
 

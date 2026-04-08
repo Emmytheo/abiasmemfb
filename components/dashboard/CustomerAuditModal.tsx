@@ -131,7 +131,11 @@ export function CustomerAuditModal({
                             <div className="p-4 rounded-2xl border bg-muted/5 space-y-1">
                                 <p className="text-[10px] font-black uppercase text-muted-foreground">Identity Bridge</p>
                                 <div className="flex items-center gap-2">
-                                    {customer.supabase_id ? (
+                                    {customer.is_archived && customer.supabase_id ? (
+                                        <Badge className="bg-zinc-500/10 text-zinc-600 border-zinc-500/10 h-5 text-[10px] flex items-center gap-1">
+                                            <ShieldAlert className="h-3 w-3" /> Legacy Bridge
+                                        </Badge>
+                                    ) : customer.supabase_id ? (
                                         <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/10 h-5 text-[10px] flex items-center gap-1">
                                             <CheckCircle2 className="h-3 w-3" /> Linked
                                         </Badge>

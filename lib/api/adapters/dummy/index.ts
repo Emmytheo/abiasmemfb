@@ -37,6 +37,30 @@ export const DummyAdapter: ApiAdapter = {
         } as any;
     },
 
+    restoreCustomerIdentity: async () => {
+        await delay(500);
+        return true;
+    },
+
+    getCustomerAudit: async () => {
+        await delay(800);
+        return {
+            accounts: 2,
+            loans: 1,
+            applications: 1,
+            beneficiaries: 0,
+            financialData: {
+                accounts: MOCK_ACCOUNTS.slice(0, 2),
+                loans: MOCK_LOANS.slice(0, 1)
+            }
+        };
+    },
+
+    deleteCustomer: async () => {
+        await delay(500);
+        return true;
+    },
+
     // Products
     getAllAccounts: async () => {
         await delay(600);
