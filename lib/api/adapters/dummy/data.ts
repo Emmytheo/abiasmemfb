@@ -13,6 +13,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
         bvn: '22233344455',
         qore_customer_id: 'Q-998877',
         is_associated: true,
+        is_archived: false,
         supabase_id: 'usr_1',
         is_test_account: false,
         created_at: new Date().toISOString(),
@@ -28,6 +29,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
         risk_tier: 'medium',
         qore_customer_id: 'Q-112233',
         is_associated: false,
+        is_archived: false,
         is_test_account: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
