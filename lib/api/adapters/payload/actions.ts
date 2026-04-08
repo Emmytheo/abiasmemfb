@@ -1030,7 +1030,7 @@ export const backfillTransactionHistory = async (payload: any, accountId: string
                     status: 'successful',
                     narration: tx.Narration || tx.narration || 'Banking Transaction',
                     [isCredit ? 'to_account' : 'from_account']: accountId,
-                    customer: customerId,
+                    customer: Number(customerId),
                     metadata: { source: 'qore_backfill', qore_data: tx }
                 },
                 overrideAccess: true
@@ -1072,7 +1072,7 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
             else normalizedType = 'Savings';
 
             const accountData: any = {
-                customer: String(winnerId),
+                customer: Number(winnerId),
                 user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID || qoreAccount.customerID,
                 account_number: accountNo,
                 account_type: normalizedType,
