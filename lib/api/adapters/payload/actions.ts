@@ -962,7 +962,22 @@ export const syncProductMetadata = async (payload: any, qoreAccount: any) => {
 
         let productType = await payload.find({ collection: 'product-types', where: { name: { equals: typeName } }, limit: 1 });
         if (productType.docs.length === 0) {
-            productType = await payload.create({ collection: 'product-types', data: { name: typeName, category: productCat.id, status: 'active', code: qoreAccount.ProductCode || 'GEN' }, overrideAccess: true });
+            productType = await payload.create({ 
+                collection: 'product-types', 
+                data: { 
+                    name: typeName, 
+                    category: productCat.id, 
+                    status: 'active', 
+                    code: qoreAccount.ProductCode || 'GEN',
+                    form_schema: [], // Prevent client-side .map() crashes
+                    workflow_stages: [
+                        { stage: 'Submitted' },
+                        { stage: 'Under Review' },
+                        { stage: 'Approved' }
+                    ]
+                }, 
+                overrideAccess: true 
+            });
         } else {
             productType = productType.docs[0];
         }
@@ -1073,7 +1088,8 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
 
             const accountData: any = {
                 customer: Number(winnerId),
-                user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID || qoreAccount.customerID,
+                // CRITICAL: Dashboard access (AccountDetailsPage:46) requires the user_id to match Supabase UUID
+                user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID, 
                 account_number: accountNo,
                 account_type: normalizedType,
                 balance: Math.round(parseFloat((qoreAccount.AvailableBalance || qoreAccount.availableBalance || '0').replace(/,/g, '')) * 100),
