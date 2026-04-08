@@ -1011,20 +1011,12 @@ export const backfillTransactionHistory = async (payload: any, accountId: string
     }
 };
 
-export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId: string | null, accountNumbers: string[], loserId?: string) => {
+export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId: string | null, accounts: any[], loserId?: string) => {
     try {
         const payload = await initPayload();
-        const settings = await payload.findGlobal({ slug: 'site-settings' }) as any;
-        const endpointId = typeof settings.sync?.accountEnquiryEndpoint === 'object' ? settings.sync.accountEnquiryEndpoint.id : settings.sync?.accountEnquiryEndpoint;
-        if (!endpointId) return;
-
-        const endpoint = await payload.findByID({ collection: 'endpoints', id: endpointId });
-        const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver');
-
+        
         // 1. Identify ALL legacy local accounts for both winner and loser
-        // Defensive: Only include IDs that are truthy and not 'undefined'
         const relevantCustomerIds = [winnerId, loserId].filter(id => id && id !== 'undefined' && id !== 'null').map(id => String(id));
-
         const legacyAccounts = await payload.find({ 
             collection: 'accounts', 
             where: { customer: { in: relevantCustomerIds } }, 
@@ -1033,27 +1025,23 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
         });
 
         // 2. Mirror/Unify loop
-        for (const accountNo of accountNumbers) {
+        for (const qoreAccount of accounts) {
+            const accountNo = qoreAccount.AccountNumber || qoreAccount.accountNumber;
+            if (!accountNo) continue;
+            
             const existing = legacyAccounts.docs.find((a: any) => a.account_number === accountNo);
             
-            // Resolve Qore details
-            const resolved = await resolveEndpoint(endpoint as any, { query: { accountNumber: accountNo } });
-            const res = await fetch(resolved.url, { method: resolved.method, headers: resolved.headers });
-            if (!res.ok) continue;
-            const qoreData = await res.json();
-            const qoreAccount = qoreData.Account || qoreData;
-
-            // Sync metadata
+            // Sync metadata using available info (Class/Category/Type/Code)
             const productTypeId = await syncProductMetadata(payload, qoreAccount);
 
             const accountData: any = {
                 customer: String(winnerId),
-                user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID,
+                user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID || qoreAccount.customerID,
                 account_number: accountNo,
-                account_type: qoreAccount.AccountType || 'Savings',
-                balance: Math.round(parseFloat(qoreAccount.AvailableBalance || '0') * 100),
-                status: (qoreAccount.Status || 'active').toLowerCase(),
-                source: 'qore', // Upgraded to Qore authority if matched or new
+                account_type: qoreAccount.AccountType || qoreAccount.accountType || 'Savings',
+                balance: Math.round(parseFloat((qoreAccount.AvailableBalance || qoreAccount.availableBalance || '0').replace(/,/g, '')) * 100),
+                status: (qoreAccount.Status || qoreAccount.accountStatus || 'active').toLowerCase(),
+                source: 'qore',
                 product_type: productTypeId,
             };
 
@@ -1070,16 +1058,17 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
             await backfillTransactionHistory(payload, String(targetAccountId), accountNo, String(winnerId));
         }
 
-        // 4. Handle "Preservation" for legacy accounts NOT in the selected Qore set
+        // 4. Handle "Preservation" for legacy accounts NOT in the synced set
+        const syncedAccountNumbers = accounts.map(a => a.AccountNumber || a.accountNumber).filter(Boolean);
         for (const legacy of legacyAccounts.docs) {
-            if (!accountNumbers.includes(legacy.account_number)) {
+            if (!syncedAccountNumbers.includes(legacy.account_number)) {
                 await payload.update({
                     collection: 'accounts',
                     id: legacy.id,
                     data: {
                         customer: String(winnerId),
                         user_id: winnerSupabaseId || legacy.user_id,
-                        source: 'local' // Preserve as local ledger item
+                        source: 'local'
                     },
                     overrideAccess: true
                 });
@@ -1098,7 +1087,11 @@ export const mergeCustomers = async (params: { primaryCustomerId: string; supaba
     await syncCustomerToQore(winnerId, params.profileData);
     
     // Perform Account Mirroring & Unification
-    await mirrorSelectedAccounts(winnerId, result.success ? (params.isCustomerToCustomer ? null : params.supabaseUserId) : null, params.selectedAccountNumbers, params.isCustomerToCustomer ? params.supabaseUserId : undefined);
+    // Note: mergeCustomers passes account numbers, so we fetch objects first
+    const qoreAccounts = await getQoreAccounts(winnerId);
+    const selectedAccounts = qoreAccounts.filter(a => params.selectedAccountNumbers.includes(a.AccountNumber || a.accountNumber));
+    
+    await mirrorSelectedAccounts(winnerId, result.success ? (params.isCustomerToCustomer ? null : params.supabaseUserId) : null, selectedAccounts, params.isCustomerToCustomer ? params.supabaseUserId : undefined);
     
     return result;
 };
@@ -1114,10 +1107,15 @@ export const getQoreAccounts = async (customerId: string): Promise<any[]> => {
         const endpoint = await payload.findByID({ collection: 'endpoints', id: endpointId });
         const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver');
         const resolved = await resolveEndpoint(endpoint as any, { query: { customerID: customer.qore_customer_id } });
+        console.log(`[Diagnostic] Fetching Customer Accounts: ${customer.qore_customer_id} via ${resolved.url}`);
         const res = await fetch(resolved.url, { method: resolved.method, headers: resolved.headers });
-        if (!res.ok) return [];
+        if (!res.ok) {
+            console.error(`[Diagnostic] Customer Accounts Inquiry Failed: ${res.status} ${res.statusText}`);
+            return [];
+        }
         const data = await res.json();
-        return Array.isArray(data) ? data : (data.Accounts || []);
+        console.log(`[Diagnostic] Customer Accounts Response:`, JSON.stringify(data, null, 2));
+        return Array.isArray(data) ? data : (data.Accounts || data.AccountsList || data.payload || []);
     } catch (e) { return []; }
 };
 
@@ -1137,8 +1135,8 @@ export const refreshCustomerLedger = async (customerId: string): Promise<{ succe
         }
 
         // 2. Trigger mirror and unification logic
-        // This will sync balances, metadata, and perform 30-day delta-backfills
-        await mirrorSelectedAccounts(customerId, customer.supabase_id, accountNumbers);
+        // We pass the full objects directly to avoid failing redundant inquiries
+        await mirrorSelectedAccounts(customerId, customer.supabase_id, qoreAccounts);
 
         return { success: true };
     } catch (e: any) {
