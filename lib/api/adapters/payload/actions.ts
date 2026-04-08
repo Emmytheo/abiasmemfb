@@ -1082,6 +1082,17 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
                 product_type: productTypeId,
             };
 
+            // Verbose Diagnostic Logging
+            console.log(`[Diagnostic] Attempting to ${existing ? 'UPDATE' : 'CREATE'} account: ${accountNo}`);
+            console.log(`[Diagnostic] Payload Structure:`, JSON.stringify(accountData, null, 2));
+            console.log(`[Diagnostic] Type Audit:`, {
+                customer: typeof accountData.customer,
+                account_type: typeof accountData.account_type,
+                balance: typeof accountData.balance,
+                status: typeof accountData.status,
+                product_type: typeof accountData.product_type
+            });
+
             let targetAccountId;
             if (existing) {
                 const updated = await payload.update({ collection: 'accounts', id: existing.id, data: accountData, overrideAccess: true });
