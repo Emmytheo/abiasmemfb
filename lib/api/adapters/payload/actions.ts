@@ -409,7 +409,21 @@ export const getLoanById = async (id: string): Promise<Loan | null> => {
     try {
         const payload = await initPayload();
         const doc = await payload.findByID({ collection: 'loans' as any, id, depth: 1 });
-        return { id: String(doc.id), user_id: doc.user_id, amount: (doc.principal ?? 0) / 100, status: doc.status, customer: doc.customer } as any;
+        return {
+            id: String(doc.id),
+            user_id: doc.user_id,
+            product_type_id: typeof doc.product_type === 'object' ? doc.product_type?.id : doc.product_type,
+            amount: (doc.principal ?? 0) / 100,
+            interest_rate: doc.interest_rate ?? 0,
+            duration_months: doc.duration_months ?? 0,
+            outstanding_balance: (doc.outstanding_balance ?? 0) / 100,
+            monthly_installment: (doc.monthly_installment ?? 0) / 100,
+            next_payment_date: doc.next_payment_date,
+            maturity_date: doc.maturity_date,
+            status: doc.status || 'pending',
+            created_at: doc.createdAt,
+            customer: doc.customer
+        } as Loan;
     } catch (e) { return null; }
 };
 
@@ -551,8 +565,20 @@ export const deleteProductCategory = async (id: string): Promise<boolean> => {
 export const getAllProductTypes = async (): Promise<ProductType[]> => {
     try {
         const payload = await initPayload();
-        const { docs } = await payload.find({ collection: 'product-types' as any, depth: 1, limit: 0 });
-        return docs.map((doc: any) => ({ id: String(doc.id), name: doc.name, category: typeof doc.category === 'object' && doc.category ? doc.category.name : doc.category, status: doc.status, created_at: doc.createdAt })) as any;
+        const { docs } = await payload.find({ collection: 'product-types' as any, depth: 1, limit: 100 });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            name: doc.name,
+            category: typeof doc.category === 'object' && doc.category ? doc.category.name : doc.category,
+            tagline: doc.tagline,
+            description: doc.description,
+            financial_terms: doc.financial_terms,
+            image_url: doc.image_url,
+            form_schema: doc.form_schema,
+            workflow_stages: (doc.workflow_stages || []).map((s: any) => s.stage),
+            status: doc.status,
+            created_at: doc.createdAt
+        } as any)) as ProductType[];
     } catch (e) { return []; }
 };
 
@@ -560,7 +586,19 @@ export const getProductTypeById = async (id: string): Promise<ProductType | null
     try {
         const payload = await initPayload();
         const doc = await payload.findByID({ collection: 'product-types' as any, id, depth: 1 });
-        return { id: String(doc.id), name: (doc as any).name, category: typeof (doc as any).category === 'object' && (doc as any).category ? String((doc as any).category.id) : String((doc as any).category), status: (doc as any).status, created_at: doc.createdAt } as any;
+        return {
+            id: String(doc.id),
+            name: doc.name,
+            category: typeof doc.category === 'object' && doc.category ? String(doc.category.id) : String(doc.category),
+            tagline: doc.tagline,
+            description: doc.description,
+            financial_terms: doc.financial_terms,
+            image_url: doc.image_url,
+            form_schema: doc.form_schema,
+            workflow_stages: (doc.workflow_stages || []).map((s: any) => s.stage),
+            status: doc.status,
+            created_at: doc.createdAt
+        } as any;
     } catch (e) { return null; }
 };
 
@@ -598,8 +636,15 @@ export const updateApplication = async (id: string, data: Partial<ProductApplica
 
 export const getUserApplications = async (userId: string): Promise<ProductApplication[]> => {
     const payload = await initPayload();
-    const { docs } = await payload.find({ collection: 'product-applications' as any, where: { user_id: { equals: userId } }, depth: 1 });
-    return docs.map((doc: any) => ({ id: String(doc.id), user_id: doc.user_id, status: doc.status })) as any;
+    const { docs } = await payload.find({ collection: 'product-applications' as any, where: { user_id: { equals: userId } }, depth: 1, overrideAccess: true });
+    return docs.map((doc: any) => ({
+        id: String(doc.id),
+        user_id: doc.user_id,
+        product_type: doc.product_type,
+        status: doc.status,
+        created_at: doc.createdAt,
+        metadata: doc.metadata
+    } as any)) as ProductApplication[];
 };
 
 export const getAllApplications = async (): Promise<ProductApplication[]> => {
@@ -615,7 +660,18 @@ export const getAllApplications = async (): Promise<ProductApplication[]> => {
 export const getAllTransactions = async (): Promise<Transaction[]> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'transactions' as any, depth: 1, limit: 500, sort: '-createdAt', overrideAccess: true });
-    return docs.map((doc: any) => ({ id: String(doc.id), amount: (doc.amount ?? 0) / 100, type: doc.type, status: doc.status, created_at: doc.createdAt })) as any;
+    return docs.map((doc: any) => ({
+        id: String(doc.id),
+        amount: (doc.amount ?? 0) / 100,
+        type: doc.type || 'credit',
+        status: doc.status || 'successful',
+        reference: doc.reference || 'REF-GEN',
+        narration: doc.narration || 'Banking Transaction',
+        from_account: doc.from_account,
+        to_account: doc.to_account,
+        user_id: doc.user_id,
+        created_at: doc.date || doc.createdAt
+    } as any)) as Transaction[];
 };
 
 export const getUserTransactions = async (userId: string): Promise<Transaction[]> => {
@@ -623,26 +679,82 @@ export const getUserTransactions = async (userId: string): Promise<Transaction[]
     if (!accounts.length) return [];
     const accountIds = accounts.map(a => a.id);
     const payload = await initPayload();
-    const { docs } = await payload.find({ collection: 'transactions' as any, where: { or: [{ from_account: { in: accountIds } }, { to_account: { in: accountIds } }] }, depth: 1, limit: 200, sort: '-createdAt', overrideAccess: true });
-    return docs.map((doc: any) => ({ id: String(doc.id), amount: (doc.amount ?? 0) / 100, status: doc.status })) as any;
+    const { docs } = await payload.find({ 
+        collection: 'transactions' as any, 
+        where: { or: [{ from_account: { in: accountIds } }, { to_account: { in: accountIds } }] }, 
+        depth: 1, 
+        limit: 200, 
+        sort: '-createdAt', 
+        overrideAccess: true 
+    });
+    return docs.map((doc: any) => ({
+        id: String(doc.id),
+        amount: (doc.amount ?? 0) / 100,
+        type: doc.type,
+        status: doc.status,
+        reference: doc.reference,
+        narration: doc.narration,
+        from_account: doc.from_account,
+        to_account: doc.to_account,
+        created_at: doc.date || doc.createdAt,
+    } as any)) as Transaction[];
 };
 
 export const getLoanTransactions = async (loanId: string): Promise<Transaction[]> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'transactions' as any, where: { loan: { equals: loanId } }, depth: 1, limit: 200, sort: '-createdAt', overrideAccess: true });
-    return docs.map((doc: any) => ({ id: String(doc.id), amount: (doc.amount ?? 0) / 100 })) as any;
+    return docs.map((doc: any) => ({
+        id: String(doc.id),
+        amount: (doc.amount ?? 0) / 100,
+        type: doc.type,
+        status: doc.status,
+        reference: doc.reference,
+        narration: doc.narration,
+        created_at: doc.date || doc.createdAt
+    } as any)) as Transaction[];
 };
 
 export const getAccountTransactions = async (accountId: string): Promise<Transaction[]> => {
     const payload = await initPayload();
-    const { docs } = await payload.find({ collection: 'transactions' as any, where: { or: [{ from_account: { equals: accountId } }, { to_account: { equals: accountId } }] }, depth: 1, limit: 200, sort: '-createdAt', overrideAccess: true });
-    return docs.map((doc: any) => ({ id: String(doc.id), amount: (doc.amount ?? 0) / 100 })) as any;
+    const { docs } = await payload.find({ 
+        collection: 'transactions' as any, 
+        where: { or: [{ from_account: { equals: accountId } }, { to_account: { equals: accountId } }] }, 
+        depth: 1, 
+        limit: 200, 
+        sort: '-createdAt', 
+        overrideAccess: true 
+    });
+    return docs.map((doc: any) => ({
+        id: String(doc.id),
+        amount: (doc.amount ?? 0) / 100,
+        type: doc.type,
+        status: doc.status,
+        reference: doc.reference,
+        narration: doc.narration,
+        from_account: doc.from_account,
+        to_account: doc.to_account,
+        created_at: doc.date || doc.createdAt,
+    } as any)) as Transaction[];
 };
 
 export const getTransactionById = async (id: string | number): Promise<Transaction | null> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'transactions' as any, where: { id: { equals: id } }, depth: 2, limit: 1, overrideAccess: true });
-    return docs.length ? { id: String(docs[0].id), amount: (docs[0].amount ?? 0) / 100 } as any : null;
+    if (!docs.length) return null;
+    const doc = docs[0];
+    return {
+        id: String(doc.id),
+        amount: (doc.amount ?? 0) / 100,
+        type: doc.type || 'credit',
+        status: doc.status || 'successful',
+        reference: doc.reference || 'REF-GEN',
+        narration: doc.narration || 'Banking Transaction',
+        from_account: doc.from_account,
+        to_account: doc.to_account,
+        user_id: doc.user_id,
+        created_at: doc.date || doc.createdAt,
+        metadata: doc.metadata
+    } as any;
 };
 
 export const getTransactionsByCategory = async (category: Transaction['category']): Promise<Transaction[]> => [];
@@ -654,7 +766,7 @@ export const getTransactionsByCategory = async (category: Transaction['category'
 export const getServiceCategories = async (): Promise<ServiceCategory[]> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'service-categories' as any, where: { status: { equals: 'active' } }, limit: 100 });
-    return docs.map((doc: any) => ({ id: String(doc.id), name: doc.name, status: doc.status })) as any;
+    return docs.map((doc: any) => ({ id: String(doc.id), name: doc.name || 'Service', slug: doc.slug || 'category', status: doc.status || 'active' })) as any;
 };
 
 export const getServicesByCategory = async (categorySlug: string): Promise<Service[]> => {
@@ -662,7 +774,7 @@ export const getServicesByCategory = async (categorySlug: string): Promise<Servi
     const { docs: cats } = await payload.find({ collection: 'service-categories' as any, where: { slug: { equals: categorySlug } }, limit: 1 });
     if (!cats.length) return [];
     const { docs } = await payload.find({ collection: 'services' as any, where: { and: [{ category: { equals: cats[0].id } }, { status: { equals: 'active' } }] }, depth: 1, limit: 200 });
-    return docs.map((doc: any) => ({ id: String(doc.id), name: doc.name, status: doc.status })) as any;
+    return docs.map((doc: any) => ({ id: String(doc.id), name: doc.name || 'Service', status: doc.status || 'active' })) as any;
 };
 
 export const getAllServices = async (): Promise<Service[]> => {
@@ -765,9 +877,24 @@ export const updateSiteSettings = async (data: Partial<SiteSettings>): Promise<S
 // ==========================================
 
 export const getBlogPosts = async (): Promise<BlogPost[]> => {
-    const payload = await initPayload();
-    const { docs } = await payload.find({ collection: 'posts' as any, depth: 2 });
-    return docs.map((doc: any) => ({ id: String(doc.id), title: doc.title, slug: doc.slug })) as any;
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({ 
+            collection: 'posts' as any, 
+            limit: 100, 
+            sort: '-createdAt',
+            overrideAccess: true 
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            title: doc.title,
+            slug: doc.slug,
+            excerpt: doc.excerpt || doc.meta?.description,
+            image_url: doc.feature_image?.url,
+            created_at: doc.createdAt,
+            content: doc.content
+        } as any)) as BlogPost[];
+    } catch (e) { return []; }
 };
 
 export const getBlogPostBySlug = async (slug: string): Promise<BlogPost | undefined> => {
@@ -857,7 +984,7 @@ export const executeCustomerMerge = async (params: MergeParams) => {
                 for (const doc of records.docs) {
                     const updateData: any = { customer: String(winnerId) };
                     // transactions does not have a user_id field, but accounts and loans do.
-                    if (winnerSupabaseId && col !== 'transactions') {
+                    if (winnerSupabaseId) {
                         updateData.user_id = winnerSupabaseId;
                     }
                     
@@ -969,6 +1096,8 @@ export const syncProductMetadata = async (payload: any, qoreAccount: any) => {
                     category: productCat.id, 
                     status: 'active', 
                     code: qoreAccount.ProductCode || 'GEN',
+                    tagline: `Standard ${typeName} product from Qore system.`,
+                    description: `Automated product mirrored from core banking system.`,
                     form_schema: [], // Prevent client-side .map() crashes
                     financial_terms: [
                         {
@@ -1014,7 +1143,7 @@ export const syncCustomerToQore = async (winnerId: string, profileData: any) => 
     } catch (e) { console.error('Qore Sync Failed:', e); }
 };
 
-export const backfillTransactionHistory = async (payload: any, accountId: string, accountNumber: string, customerId: string) => {
+export const backfillTransactionHistory = async (payload: any, accountId: string, accountNumber: string, customerId: string, userId: string | null = null) => {
     try {
         const settings = await payload.findGlobal({ slug: 'site-settings' }) as any;
         const endpointId = typeof settings.sync?.accountTransactionsEndpoint === 'object' ? settings.sync.accountTransactionsEndpoint.id : settings.sync?.accountTransactionsEndpoint;
@@ -1044,16 +1173,21 @@ export const backfillTransactionHistory = async (payload: any, accountId: string
             const amountKobo = Math.round(parseFloat(tx.Amount || tx.amount || '0') * 100);
             const isCredit = (tx.TransactionType || tx.type || '').toLowerCase().includes('credit');
 
+            const txDate = tx.TransactionDate || tx.dateCreated || tx.date || new Date().toISOString();
+            const cleanedDate = new Date(txDate).toISOString();
+
             await payload.create({
                 collection: 'transactions',
                 data: {
                     reference: txRef,
+                    date: cleanedDate,
                     type: isCredit ? 'credit' : 'debit',
                     amount: Math.abs(amountKobo),
                     status: 'successful',
-                    narration: tx.Narration || tx.narration || 'Banking Transaction',
+                    narration: tx.Narration || tx.narration || `CoreSync: ${isCredit ? 'Credit' : 'Debit'}`,
                     [isCredit ? 'to_account' : 'from_account']: accountId,
                     customer: Number(customerId),
+                    user_id: userId,
                     metadata: { source: 'qore_backfill', qore_data: tx }
                 },
                 overrideAccess: true
@@ -1127,7 +1261,7 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
             }
 
             // 3. Initiate Transaction Backfill
-            await backfillTransactionHistory(payload, String(targetAccountId), accountNo, String(winnerId));
+            await backfillTransactionHistory(payload, String(targetAccountId), accountNo, String(winnerId), winnerSupabaseId);
         }
 
         // 4. Handle "Preservation" for legacy accounts NOT in the synced set

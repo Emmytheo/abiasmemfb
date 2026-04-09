@@ -110,7 +110,7 @@ export const Transactions: CollectionConfig = {
             name: 'date',
             type: 'date',
             admin: { description: 'The actual date/time this transaction occurred in the core system.' },
-            required: true,
+            required: false,
             index: true,
         },
         {
@@ -123,6 +123,12 @@ export const Transactions: CollectionConfig = {
             type: 'relationship',
             relationTo: 'customers',
             admin: { description: 'The banking customer profile linked to this transaction for identity recovery.' },
+            index: true,
+        },
+        {
+            name: 'user_id',
+            type: 'text',
+            admin: { description: 'The Supabase digital identity UUID for dashboard access.' },
             index: true,
         },
     ],
