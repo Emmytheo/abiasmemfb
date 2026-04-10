@@ -15,6 +15,7 @@ export const ProductCategories: CollectionConfig = {
             name: 'name',
             type: 'text',
             required: true,
+            unique: true,
         },
         {
             name: 'class_id',

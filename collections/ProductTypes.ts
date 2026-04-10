@@ -57,6 +57,7 @@ export const ProductTypes: CollectionConfig = {
             name: 'name',
             type: 'text',
             required: true,
+            unique: true,
         },
         {
             name: 'category',

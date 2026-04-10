@@ -1,0 +1,156 @@
+{
+    "version": "1.0.0",
+    "products": [],
+    "services": [
+        {
+            "name": "Intra-Bank Funds Transfer",
+            "categorySlug": "transfers",
+            "provider_service_code": "QORE-INTRA-TRF",
+            "fee_type": "none",
+            "fee_value": 0,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "source_account",
+                    "label": "Source Account",
+                    "type": "select",
+                    "required": true,
+                    "description": "Select the account to debit",
+                    "events": [
+                        {
+                            "trigger": "onLoad",
+                            "action": "EXECUTE_ENDPOINT",
+                            "endpointId": "QORE_CUSTOMER_ACCOUNTS",
+                            "mappingConfig": {
+                                "responseMap": {
+                                    "options": "Payload.Accounts[*].AccountNumber"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "destination_account",
+                    "label": "Destination Account Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Enter 10-digit Abia MFB Account",
+                    "validations": [
+                        {
+                            "type": "regex",
+                            "value": "^[0-9]{10}$",
+                            "errorMessage": "Account Number must be exactly 10 digits"
+                        }
+                    ],
+                    "events": [
+                        {
+                            "trigger": "onChange",
+                            "action": "EXECUTE_ENDPOINT",
+                            "endpointId": "QORE_NAME_ENQUIRY",
+                            "mappingConfig": {
+                                "requestMap": {
+                                    "AccountNumber": "{{$value}}"
+                                },
+                                "responseMap": {
+                                    "destination_name": "Payload.AccountName"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "destination_name",
+                    "label": "Verified Account Name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Auto-verifying..."
+                },
+                {
+                    "id": "amount",
+                    "label": "Amount",
+                    "type": "number",
+                    "required": true,
+                    "validations": [
+                        {
+                            "type": "min",
+                            "value": "100",
+                            "errorMessage": "Minimum transfer amount is ₦100"
+                        }
+                    ]
+                },
+                {
+                    "id": "narration",
+                    "label": "Narration",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. For dinner"
+                }
+            ]
+        },
+        {
+            "name": "Inter-Bank Funds Transfer (NIP)",
+            "categorySlug": "transfers",
+            "provider_service_code": "QORE-NIP-TRF",
+            "fee_type": "flat",
+            "fee_value": 50,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "destination_bank_code",
+                    "label": "Destination Bank",
+                    "type": "destination_bank_lookup",
+                    "required": true,
+                    "events": [
+                        {
+                            "trigger": "onLoad",
+                            "action": "EXECUTE_ENDPOINT",
+                            "endpointId": "QORE_COMMERCIAL_BANKS"
+                        }
+                    ]
+                },
+                {
+                    "id": "destination_account",
+                    "label": "Destination Account Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Enter 10-digit Account Number",
+                    "validations": [
+                        {
+                            "type": "regex",
+                            "value": "^[0-9]{10}$",
+                            "errorMessage": "Account Number must be exactly 10 digits"
+                        }
+                    ],
+                    "events": [
+                        {
+                            "trigger": "onChange",
+                            "action": "EXECUTE_ENDPOINT",
+                            "endpointId": "QORE_INTERBANK_NAME_ENQUIRY",
+                            "mappingConfig": {
+                                "requestMap": {
+                                    "AccountNumber": "{{$value}}",
+                                    "BankCode": "{{destination_bank_code}}"
+                                },
+                                "responseMap": {
+                                    "destination_name": "Payload.AccountName"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "destination_name",
+                    "label": "Verified Account Name",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "amount",
+                    "label": "Amount",
+                    "type": "number",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

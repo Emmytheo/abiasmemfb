@@ -102,6 +102,11 @@ const navGroups = [
                 icon: Tag,
             },
             {
+                title: "Registry Blueprints",
+                url: "/settings/registry",
+                icon: Settings,
+            },
+            {
                 title: "Service Simulator",
                 url: "/settings/service/simulator",
                 icon: Play,

@@ -192,20 +192,23 @@ export interface SiteSyncConfig {
     productSyncEndpoint?: string | any;
     serviceSyncEndpoint?: string | any;
     customerUpdateEndpoint?: string | any;
-    accountManagementEndpoints?: {
-        freezeEndpoint?: string | any;
-        unfreezeEndpoint?: string | any;
-        checkFreezeStatusEndpoint?: string | any;
-        pndEndpoint?: string | any;
-        deactivatePndEndpoint?: string | any;
-        checkPndStatusEndpoint?: string | any;
-        lienEndpoint?: string | any;
-        unLienEndpoint?: string | any;
-        checkLienStatusEndpoint?: string | any;
-        updateNotificationPreferenceEndpoint?: string | any;
-        generateStatementEndpoint?: string | any;
-        closeAccountEndpoint?: string | any;
-        uploadDocumentEndpoint?: string | any;
+    bvnLookupEndpoint?: string | any;
+    acctMgmt?: {
+        freeze?: string | any;
+        unfreeze?: string | any;
+        freezeStatus?: string | any;
+        pnd?: string | any;
+        unpnd?: string | any;
+        pndStatus?: string | any;
+        lien?: string | any;
+        unlien?: string | any;
+        lienStatus?: string | any;
+        notifPref?: string | any;
+        stmt?: string | any;
+        close?: string | any;
+        upload?: string | any;
+        tier?: string | any;
+        txStatus?: string | any;
     };
 }
 

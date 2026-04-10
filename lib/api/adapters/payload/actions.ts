@@ -391,7 +391,7 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
             
             // Handle FREEZE orchestration
             if ('is_frozen' in data && data.is_frozen !== existing.is_frozen) {
-                const endpointId = data.is_frozen ? sync?.accountManagementEndpoints?.freezeEndpoint : sync?.accountManagementEndpoints?.unfreezeEndpoint;
+                const endpointId = data.is_frozen ? sync?.acctMgmt?.freeze : sync?.acctMgmt?.unfreeze;
                 if (endpointId) {
                     console.log(`[Sync] Triggering External ${data.is_frozen ? 'Freeze' : 'Unfreeze'} for ${existing.account_number}`);
                     await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
@@ -404,7 +404,7 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
 
             // Handle PND orchestration
             if ('pnd_enabled' in data && data.pnd_enabled !== existing.pnd_enabled) {
-                const endpointId = data.pnd_enabled ? sync?.accountManagementEndpoints?.pndEndpoint : sync?.accountManagementEndpoints?.deactivatePndEndpoint;
+                const endpointId = data.pnd_enabled ? sync?.acctMgmt?.pnd : sync?.acctMgmt?.unpnd;
                 if (endpointId) {
                     console.log(`[Sync] Triggering External PND ${data.pnd_enabled ? 'Activation' : 'Deactivation'} for ${existing.account_number}`);
                     await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
@@ -415,7 +415,7 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
 
             // Handle LIEN orchestration
             if ('lien_amount' in data && data.lien_amount !== existing.lien_amount) {
-                const endpointId = sync?.accountManagementEndpoints?.lienEndpoint;
+                const endpointId = sync?.acctMgmt?.lien;
                 if (endpointId) {
                     const diff = (data.lien_amount || 0) * 100;
                     console.log(`[Sync] Triggering External Lien update for ${existing.account_number}: ${diff} kobo`);
@@ -423,6 +423,18 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
                         AccountNo: existing.account_number,
                         Amount: String(diff),
                         ReferenceID: `LIEN_${Date.now()}`
+                    });
+                }
+            }
+
+            // Handle TIER orchestration
+            if ('tier' in data && data.tier !== existing.tier) {
+                const endpointId = sync?.acctMgmt?.tier;
+                if (endpointId) {
+                    console.log(`[Sync] Triggering External Tier Upgrade for ${existing.account_number} to ${data.tier}`);
+                    await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+                        AccountNo: existing.account_number,
+                        AccountTier: String(data.tier)
                     });
                 }
             }
@@ -454,9 +466,9 @@ export const checkExternalAccountStatus = async (accountNumber: string, statusTy
     
     let endpointId;
     switch (statusType) {
-        case 'freeze': endpointId = settings?.sync?.accountManagementEndpoints?.checkFreezeStatusEndpoint; break;
-        case 'pnd': endpointId = settings?.sync?.accountManagementEndpoints?.checkPndStatusEndpoint; break;
-        case 'lien': endpointId = settings?.sync?.accountManagementEndpoints?.checkLienStatusEndpoint; break;
+        case 'freeze': endpointId = settings?.sync?.acctMgmt?.freezeStatus; break;
+        case 'pnd': endpointId = settings?.sync?.acctMgmt?.pndStatus; break;
+        case 'lien': endpointId = settings?.sync?.acctMgmt?.lienStatus; break;
     }
 
     if (!endpointId) throw new Error(`Status configuration missing for ${statusType}`);
@@ -469,7 +481,7 @@ export const checkExternalAccountStatus = async (accountNumber: string, statusTy
 export const generateAccountStatement = async (accountNumber: string, fromDate: string, toDate: string): Promise<{ statementBase64: string, fileName: string }> => {
     const payload = await initPayload();
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
-    const endpointId = settings?.sync?.accountManagementEndpoints?.generateStatementEndpoint;
+    const endpointId = settings?.sync?.acctMgmt?.stmt;
     
     if (!endpointId) throw new Error("Statement generation endpoint is not configured.");
 
@@ -488,7 +500,7 @@ export const generateAccountStatement = async (accountNumber: string, fromDate: 
 export const uploadSupportingDocument = async (accountNumber: string, documentType: number, base64Image: string): Promise<boolean> => {
     const payload = await initPayload();
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
-    const endpointId = settings?.sync?.accountManagementEndpoints?.uploadDocumentEndpoint;
+    const endpointId = settings?.sync?.acctMgmt?.upload;
     
     if (!endpointId) throw new Error("Document upload endpoint is not configured.");
 
@@ -504,7 +516,7 @@ export const uploadSupportingDocument = async (accountNumber: string, documentTy
 export const closeExternalAccount = async (accountNumber: string, narration: string): Promise<boolean> => {
     const payload = await initPayload();
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
-    const endpointId = settings?.sync?.accountManagementEndpoints?.closeAccountEndpoint;
+    const endpointId = settings?.sync?.acctMgmt?.close;
     
     if (!endpointId) throw new Error("Account closure endpoint is not configured.");
 
@@ -519,7 +531,7 @@ export const closeExternalAccount = async (accountNumber: string, narration: str
 export const updateNotificationPreference = async (accountNumber: string, preferenceCode: number): Promise<boolean> => {
     const payload = await initPayload();
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
-    const endpointId = settings?.sync?.accountManagementEndpoints?.updateNotificationPreferenceEndpoint;
+    const endpointId = settings?.sync?.acctMgmt?.notifPref;
     
     if (!endpointId) throw new Error("Notification preference endpoint is not configured.");
 
@@ -529,6 +541,45 @@ export const updateNotificationPreference = async (accountNumber: string, prefer
     });
     
     return res?.IsSuccessful === true;
+};
+
+export const updateExternalAccountTier = async (accountNumber: string, tier: string): Promise<boolean> => {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const endpointId = settings?.sync?.acctMgmt?.tier;
+    
+    if (!endpointId) throw new Error("Account tier update endpoint is not configured.");
+
+    const res: any = await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+        AccountNo: accountNumber,
+        AccountTier: tier
+    });
+    
+    return res?.IsSuccessful === true;
+};
+
+export const queryExternalTransactionStatus = async (referenceId: string): Promise<any> => {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const endpointId = settings?.sync?.acctMgmt?.txStatus;
+    
+    if (!endpointId) throw new Error("Transaction status query endpoint is not configured.");
+
+    return executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+        TransactionReference: referenceId
+    });
+};
+
+export const verifyCustomerBVN = async (bvn: string): Promise<any> => {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const endpointId = settings?.sync?.bvnLookupEndpoint;
+    
+    if (!endpointId) throw new Error("BVN verification endpoint is not configured.");
+
+    return executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+        BVN: bvn
+    });
 };
 
 export const getAllLoans = async (): Promise<Loan[]> => {

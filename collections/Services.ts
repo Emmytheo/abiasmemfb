@@ -19,6 +19,7 @@ export const Services: CollectionConfig = {
             name: 'name',
             type: 'text',
             required: true,
+            unique: true,
             admin: { description: 'E.g., "DSTV Premium", "Intra-Bank Transfer"' }
         },
         {

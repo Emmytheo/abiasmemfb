@@ -6,16 +6,28 @@ import { RegistryBundleSDL, ProductTypeSDL, ServiceSDL } from './types';
  * importRegistryBundle: Provisions the CMS with a portable registry definition.
  * Implements "Merge" logic to preserve existing manual configurations.
  */
+/**
+ * importRegistryBundle: Provisions the CMS with a portable registry definition.
+ * Implements "Merge" logic to preserve existing manual configurations.
+ */
 export async function importRegistryBundle(bundle: RegistryBundleSDL) {
     const payload = await getPayload({ config });
     const stats = { products: 0, services: 0, errors: [] as string[] };
+    
+    // Shared cache for the duration of this import session to prevent redundant DB calls
+    const cache = {
+        classes: new Map<string, any>(),
+        categories: new Map<string, any>(),
+        serviceCategories: new Map<string, any>(),
+        workflows: new Map<string, any>()
+    };
 
     // --- Process Products ---
     for (const prod of bundle.products) {
         try {
             // 1. Ensure Hierarchy (Class -> Category)
-            const productClass = await findOrCreateProductClass(payload, prod.classSlug);
-            const productCategory = await findOrCreateProductCategory(payload, prod.categorySlug, productClass.id);
+            const productClass = await findOrCreateProductClass(payload, prod.classSlug, cache);
+            const productCategory = await findOrCreateProductCategory(payload, prod.categorySlug, productClass.id, cache);
 
             // 2. Upsert ProductType (Merge Logic)
             const existing = await payload.find({
@@ -34,8 +46,6 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
                         category: productCategory.id,
                         tagline: prod.tagline || target.tagline,
                         description: prod.description || target.description,
-                        // Merging form_schema: use SDL schema as base but keep unique manual edits if needed.
-                        // For now, we simple-merge or overwrite based on standard policy.
                         form_schema: prod.form_schema || target.form_schema,
                         financial_terms: prod.financial_terms || target.financial_terms,
                         status: prod.status || target.status,
@@ -73,9 +83,9 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
     // --- Process Services ---
     for (const svc of bundle.services) {
         try {
-            const category = await findOrCreateServiceCategory(payload, svc.categorySlug);
-            const validationWf = svc.validation_workflow_slug ? await findWorkflowBySlug(payload, svc.validation_workflow_slug) : null;
-            const executionWf = svc.execution_workflow_slug ? await findWorkflowBySlug(payload, svc.execution_workflow_slug) : null;
+            const category = await findOrCreateServiceCategory(payload, svc.categorySlug, cache);
+            const validationWf = svc.validation_workflow_slug ? await findWorkflowBySlug(payload, svc.validation_workflow_slug, cache) : null;
+            const executionWf = svc.execution_workflow_slug ? await findWorkflowBySlug(payload, svc.execution_workflow_slug, cache) : null;
 
             const existing = await payload.find({
                 collection: 'services',
@@ -185,27 +195,53 @@ export async function exportRegistryBundle(version: string = "1.0.0"): Promise<R
 
 // --- Helper Functions ---
 
-async function findOrCreateProductClass(payload: any, slug: string) {
+async function findOrCreateProductClass(payload: any, slug: string, cache: any) {
+    const key = slug.toLowerCase();
+    if (cache.classes.has(key)) return cache.classes.get(key);
+
     const existing = await payload.find({ collection: 'product-classes', where: { name: { equals: slug.charAt(0).toUpperCase() + slug.slice(1) } }, limit: 1 });
-    if (existing.docs.length > 0) return existing.docs[0];
-    return await payload.create({ collection: 'product-classes', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), status: 'active' } });
+    const result = existing.docs.length > 0 
+        ? existing.docs[0] 
+        : await payload.create({ collection: 'product-classes', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), status: 'active' } });
+    
+    cache.classes.set(key, result);
+    return result;
 }
 
-async function findOrCreateProductCategory(payload: any, slug: string, classId: string | number) {
+async function findOrCreateProductCategory(payload: any, slug: string, classId: string | number, cache: any) {
+    const key = `${classId}_${slug.toLowerCase()}`;
+    if (cache.categories.has(key)) return cache.categories.get(key);
+
     const existing = await payload.find({ collection: 'product-categories', where: { name: { equals: slug.charAt(0).toUpperCase() + slug.slice(1) } }, limit: 1 });
-    if (existing.docs.length > 0) return existing.docs[0];
-    return await payload.create({ collection: 'product-categories', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), class_id: classId, status: 'active' } });
+    const result = existing.docs.length > 0 
+        ? existing.docs[0] 
+        : await payload.create({ collection: 'product-categories', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), class_id: classId, status: 'active' } });
+    
+    cache.categories.set(key, result);
+    return result;
 }
 
-async function findOrCreateServiceCategory(payload: any, slug: string) {
+async function findOrCreateServiceCategory(payload: any, slug: string, cache: any) {
+    const key = slug.toLowerCase();
+    if (cache.serviceCategories.has(key)) return cache.serviceCategories.get(key);
+
     const existing = await payload.find({ collection: 'service-categories', where: { name: { equals: slug.charAt(0).toUpperCase() + slug.slice(1) } }, limit: 1 });
-    if (existing.docs.length > 0) return existing.docs[0];
-    return await payload.create({ collection: 'service-categories', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), status: 'active' } });
+    const result = existing.docs.length > 0 
+        ? existing.docs[0] 
+        : await payload.create({ collection: 'service-categories', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), status: 'active' } });
+    
+    cache.serviceCategories.set(key, result);
+    return result;
 }
 
-async function findWorkflowBySlug(payload: any, slug: string) {
+async function findWorkflowBySlug(payload: any, slug: string, cache: any) {
+    if (cache.workflows.has(slug)) return cache.workflows.get(slug);
+
     const res = await payload.find({ collection: 'workflows', where: { name: { contains: slug } }, limit: 1 });
-    return res.docs[0] || null;
+    const result = res.docs[0] || null;
+    
+    if (result) cache.workflows.set(slug, result);
+    return result;
 }
 
 async function ensureProviderMapping(payload: any, provider: string, externalCode: string, internalId: string | number, relationTo: string, label: string) {
@@ -226,3 +262,4 @@ async function ensureProviderMapping(payload: any, provider: string, externalCod
         });
     }
 }
+

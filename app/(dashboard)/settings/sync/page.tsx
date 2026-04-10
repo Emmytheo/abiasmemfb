@@ -212,7 +212,7 @@ export default function SyncSettingsPage() {
                                             onCheck={() => checkHealth(getEndpointId(settings.sync.accountEnquiryEndpoint))}
                                         />
                                     </div>
-                                    <div className="pt-4 mt-4 border-t">
+                                    <div className="pt-4 mt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                         <EndpointSelector 
                                             label="Deep Sync (Accounts Discovery)"
                                             value={getEndpointId(settings.sync.customerAccountsEndpoint)}
@@ -220,6 +220,14 @@ export default function SyncSettingsPage() {
                                             endpoints={endpoints}
                                             health={healthStatus[getEndpointId(settings.sync.customerAccountsEndpoint)]}
                                             onCheck={() => checkHealth(getEndpointId(settings.sync.customerAccountsEndpoint))}
+                                        />
+                                        <EndpointSelector 
+                                            label="Identity (BVN/NIN Verification)"
+                                            value={getEndpointId(settings.sync.bvnLookupEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, bvnLookupEndpoint: val}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.bvnLookupEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.bvnLookupEndpoint))}
                                         />
                                     </div>
                                 </CardContent>
@@ -290,27 +298,27 @@ export default function SyncSettingsPage() {
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                                             <EndpointSelector 
                                                 label="Freeze Account"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.freezeEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), freezeEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.freeze)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), freeze: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.freezeEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.freezeEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.freeze)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.freeze))}
                                             />
                                             <EndpointSelector 
                                                 label="Unfreeze Account"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.unfreezeEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), unfreezeEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.unfreeze)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), unfreeze: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.unfreezeEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.unfreezeEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.unfreeze)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.unfreeze))}
                                             />
                                             <EndpointSelector 
                                                 label="Check Freeze Status"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.checkFreezeStatusEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), checkFreezeStatusEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.freezeStatus)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), freezeStatus: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.checkFreezeStatusEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.checkFreezeStatusEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.freezeStatus)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.freezeStatus))}
                                             />
                                         </div>
                                     </div>
@@ -321,27 +329,27 @@ export default function SyncSettingsPage() {
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                                             <EndpointSelector 
                                                 label="Activate PND"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.pndEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), pndEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.pnd)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), pnd: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.pndEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.pndEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.pnd)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.pnd))}
                                             />
                                             <EndpointSelector 
                                                 label="Deactivate PND"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.deactivatePndEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), deactivatePndEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.unpnd)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), unpnd: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.deactivatePndEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.deactivatePndEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.unpnd)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.unpnd))}
                                             />
                                             <EndpointSelector 
                                                 label="Check PND Status"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.checkPndStatusEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), checkPndStatusEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.pndStatus)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), pndStatus: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.checkPndStatusEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.checkPndStatusEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.pndStatus)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.pndStatus))}
                                             />
                                         </div>
                                     </div>
@@ -352,27 +360,27 @@ export default function SyncSettingsPage() {
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                                             <EndpointSelector 
                                                 label="Place Lien"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.lienEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), lienEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.lien)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), lien: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.lienEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.lienEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.lien)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.lien))}
                                             />
                                             <EndpointSelector 
                                                 label="Remove Lien"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.unLienEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), unLienEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.unlien)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), unlien: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.unLienEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.unLienEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.unlien)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.unlien))}
                                             />
                                             <EndpointSelector 
                                                 label="Check Lien Status"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.checkLienStatusEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), checkLienStatusEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.lienStatus)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), lienStatus: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.checkLienStatusEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.checkLienStatusEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.lienStatus)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.lienStatus))}
                                             />
                                         </div>
                                     </div>
@@ -383,35 +391,51 @@ export default function SyncSettingsPage() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                             <EndpointSelector 
                                                 label="Generate Statement"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.generateStatementEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), generateStatementEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.stmt)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), stmt: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.generateStatementEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.generateStatementEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.stmt)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.stmt))}
                                             />
                                             <EndpointSelector 
                                                 label="Upload Documentation"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.uploadDocumentEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), uploadDocumentEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.upload)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), upload: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.uploadDocumentEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.uploadDocumentEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.upload)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.upload))}
                                             />
                                             <EndpointSelector 
                                                 label="Notification Preferences"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.updateNotificationPreferenceEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), updateNotificationPreferenceEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.notifPref)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), notifPref: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.updateNotificationPreferenceEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.updateNotificationPreferenceEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.notifPref)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.notifPref))}
                                             />
                                             <EndpointSelector 
                                                 label="Close Account"
-                                                value={getEndpointId(settings.sync.accountManagementEndpoints?.closeAccountEndpoint)}
-                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountManagementEndpoints: {...(settings.sync.accountManagementEndpoints || {}), closeAccountEndpoint: val}}})}
+                                                value={getEndpointId(settings.sync.acctMgmt?.close)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), close: val}}})}
                                                 endpoints={endpoints}
-                                                health={healthStatus[getEndpointId(settings.sync.accountManagementEndpoints?.closeAccountEndpoint)]}
-                                                onCheck={() => checkHealth(getEndpointId(settings.sync.accountManagementEndpoints?.closeAccountEndpoint))}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.close)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.close))}
+                                            />
+                                            <EndpointSelector 
+                                                label="Update Account Tier"
+                                                value={getEndpointId(settings.sync.acctMgmt?.tier)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), tier: val}}})}
+                                                endpoints={endpoints}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.tier)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.tier))}
+                                            />
+                                            <EndpointSelector 
+                                                label="Transaction Query"
+                                                value={getEndpointId(settings.sync.acctMgmt?.txStatus)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), txStatus: val}}})}
+                                                endpoints={endpoints}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.txStatus)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.txStatus))}
                                             />
                                         </div>
                                     </div>
@@ -574,12 +598,14 @@ interface EndpointSelectorProps {
 
 function EndpointSelector({ label, value, onChange, endpoints, health, onCheck }: EndpointSelectorProps) {
     return (
-        <div className="space-y-2">
-            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{label}</Label>
-            <div className="flex gap-2">
+        <div className="space-y-2 min-w-0">
+            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block truncate" title={label}>{label}</Label>
+            <div className="flex gap-2 min-w-0">
                 <Select value={value} onValueChange={onChange}>
-                    <SelectTrigger className="grow h-11 md:h-10 rounded-xl bg-background border-2 border-primary/5 focus:border-primary/20 transition-all">
-                        <SelectValue placeholder="Select endpoint..." />
+                    <SelectTrigger className="grow min-w-0 h-11 md:h-10 rounded-xl bg-background border-2 border-primary/5 focus:border-primary/20 transition-all overflow-hidden">
+                        <div className="truncate text-left w-full">
+                            <SelectValue placeholder="Select endpoint..." />
+                        </div>
                     </SelectTrigger>
                     <SelectContent>
                         {endpoints.map(ep => (
