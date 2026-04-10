@@ -289,7 +289,7 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                     <Button 
                         variant={customer.is_associated ? "secondary" : "outline"}
                         onClick={() => setIsLinkDialogOpen(true)}
-                        className="flex-1 md:flex-none gap-2"
+                        className="w-full md:w-auto md:flex-none gap-2"
                     >
                         {customer.is_associated ? (
                             <><ShieldCheck className="h-4 w-4" /> Manage Identity</>
@@ -307,7 +307,7 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                     />
 
                     <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                        <DialogContent className="sm:max-w-[500px]">
+                        <DialogContent className="w-[95vw] max-w-[500px] p-4 md:p-8 rounded-2xl">
                             <DialogHeader>
                                 <DialogTitle>Edit Customer Profile</DialogTitle>
                                 <DialogDescription>

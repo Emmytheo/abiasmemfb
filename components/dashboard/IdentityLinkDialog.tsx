@@ -210,9 +210,9 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
 
     return (
         <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
-                <div className="bg-gradient-to-br from-primary/10 via-background to-background min-h-[550px] flex flex-col">
-                    <DialogHeader className="p-8 pb-0">
+            <DialogContent className="w-full max-w-[620px] p-0 overflow-hidden sm:rounded-2xl border-none shadow-2xl h-[100dvh] sm:h-auto">
+                <div className="bg-gradient-to-br from-primary/10 via-background to-background min-h-full sm:min-h-[550px] flex flex-col">
+                    <DialogHeader className="p-4 md:p-8 pb-0">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-primary/20 rounded-xl">
@@ -237,7 +237,7 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                         </div>
                     </DialogHeader>
 
-                    <div className="flex-1 p-8 pt-4 overflow-y-auto max-h-[550px]">
+                    <div className="flex-1 p-4 md:p-8 pt-4 overflow-y-auto">
                         {/* MANAGE STEP */}
                         {step === 'manage' && (
                             <div className="space-y-6 animate-in fade-in zoom-in-95">
@@ -359,7 +359,7 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                                     <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">Pick values to survive the merge. All conflicting IDs will trigger Soft-Merge protocol.</p>
                                 </div>
 
-                                <div className="grid gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {[
                                         { label: 'First Name', key: 'firstName', cur: currentCustomer?.firstName, tgt: 'full_name' in selectedTarget ? (selectedTarget as User).full_name?.split(' ')[0] : (selectedTarget as Customer).firstName },
                                         { label: 'Last Name', key: 'lastName', cur: currentCustomer?.lastName, tgt: 'full_name' in selectedTarget ? (selectedTarget as User).full_name?.split(' ').slice(1).join(' ') : (selectedTarget as Customer).lastName },
@@ -423,8 +423,9 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                                     
                                     <div className="pt-4 border-t border-dashed space-y-1.5 text-[10px] text-muted-foreground font-medium leading-relaxed">
                                         <p>• <strong>{reconciliation.email}</strong> will become the primary identity handle.</p>
-                                        <p>• <strong>{selectedAccounts.length}</strong> financial products will be mirrored/re-pointed.</p>
-                                        <p>• <strong>Associated Transactions</strong> will be re-associated with the new identity handle (Identity Bridge Fix).</p>
+                                        <p>• <strong>{selectedAccounts.length}</strong> financial products will be migrated/transferred.</p>
+                                        <p>• <strong>Legacy Assets</strong> linked to archived records will be re-pointed automatically.</p>
+                                        <p>• <strong>Associated Transactions</strong> will be re-associated with the new identity handle.</p>
                                         <p>• Secondary records will be renamed for audit (Collision-Safe).</p>
                                     </div>
                                 </Card>

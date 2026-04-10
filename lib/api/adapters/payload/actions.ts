@@ -1010,17 +1010,18 @@ export const executeCustomerMerge = async (params: MergeParams) => {
         if (winnerSupabaseId && loserSupabaseId) {
             try {
                 // Re-point product applications (string-based user_id)
+                console.log(`[Bridge] Re-pointing product applications from ${loserSupabaseId} to ${winnerSupabaseId}`);
                 const apps = await payload.find({ collection: 'product-applications', where: { user_id: { equals: loserSupabaseId } }, limit: 1000, overrideAccess: true });
                 for (const doc of apps.docs) await payload.update({ collection: 'product-applications', id: doc.id, data: { user_id: winnerSupabaseId }, overrideAccess: true });
                 
                 // Re-point beneficiaries (relates to numeric Payload Users)
-                // We must find the Payload User record that corresponds to the winnerSupabaseId
                 const winningUsers = await payload.find({ collection: 'users', where: { supabase_id: { equals: winnerSupabaseId } }, limit: 1, overrideAccess: true });
                 const losingUsers = await payload.find({ collection: 'users', where: { supabase_id: { equals: loserSupabaseId } }, limit: 1, overrideAccess: true });
                 
                 if (winningUsers.docs.length > 0 && losingUsers.docs.length > 0) {
                     const winnerUserId = winningUsers.docs[0].id;
                     const loserUserId = losingUsers.docs[0].id;
+                    console.log(`[Bridge] Re-pointing beneficiaries from User ${loserUserId} to ${winnerUserId}`);
                     const beneficiaries = await payload.find({ collection: 'beneficiaries', where: { user: { equals: loserUserId } }, limit: 1000, overrideAccess: true });
                     for (const doc of beneficiaries.docs) await payload.update({ collection: 'beneficiaries', id: doc.id, data: { user: winnerUserId }, overrideAccess: true });
                 }
