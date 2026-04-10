@@ -84,6 +84,43 @@ export const SiteSettings: GlobalConfig = {
                     type: 'relationship',
                     relationTo: 'endpoints',
                     admin: { description: 'The API endpoint used to push reconciled demographic updates back to Qore (Core Banking).' }
+                },
+                {
+                    name: 'freezeEndpoints',
+                    type: 'group',
+                    label: 'Account Management (Freeze/PND/Lien)',
+                    fields: [
+                        {
+                            name: 'freezeEndpoint',
+                            type: 'relationship',
+                            relationTo: 'endpoints',
+                            admin: { description: 'API to Freeze an account in Qore.' }
+                        },
+                        {
+                            name: 'unfreezeEndpoint',
+                            type: 'relationship',
+                            relationTo: 'endpoints',
+                            admin: { description: 'API to Unfreeze an account in Qore.' }
+                        },
+                        {
+                            name: 'pndEndpoint',
+                            type: 'relationship',
+                            relationTo: 'endpoints',
+                            admin: { description: 'API to Activate PND in Qore.' }
+                        },
+                        {
+                            name: 'deactivatePndEndpoint',
+                            type: 'relationship',
+                            relationTo: 'endpoints',
+                            admin: { description: 'API to Deactivate PND in Qore.' }
+                        },
+                        {
+                            name: 'lienEndpoint',
+                            type: 'relationship',
+                            relationTo: 'endpoints',
+                            admin: { description: 'API to Place/Remove Lien in Qore.' }
+                        }
+                    ]
                 }
             ]
         }

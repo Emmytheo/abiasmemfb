@@ -270,6 +270,69 @@ export default function SyncSettingsPage() {
                                 </CardContent>
                             </Card>
 
+                            {/* ACCOUNT MANAGEMENT (CORE) ENDPOINTS */}
+                            <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5">
+                                <CardHeader className="bg-rose-500/[0.02] border-b p-4 md:p-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-rose-500/10 text-rose-500">
+                                            <ShieldAlert className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg">Account Management (Core)</CardTitle>
+                                            <CardDescription className="text-xs">Manage statuses (Freeze, PND, Lien) directly in core banking.</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 md:p-6 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                        <EndpointSelector 
+                                            label="Freeze Account Path"
+                                            value={getEndpointId(settings.sync.freezeEndpoints?.freezeEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, freezeEndpoints: {...(settings.sync.freezeEndpoints || {}), freezeEndpoint: val}}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.freezeEndpoints?.freezeEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.freezeEndpoints?.freezeEndpoint))}
+                                        />
+                                        <EndpointSelector 
+                                            label="Unfreeze Account Path"
+                                            value={getEndpointId(settings.sync.freezeEndpoints?.unfreezeEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, freezeEndpoints: {...(settings.sync.freezeEndpoints || {}), unfreezeEndpoint: val}}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.freezeEndpoints?.unfreezeEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.freezeEndpoints?.unfreezeEndpoint))}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 pt-4 border-t border-dashed">
+                                        <EndpointSelector 
+                                            label="Activate PND Path"
+                                            value={getEndpointId(settings.sync.freezeEndpoints?.pndEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, freezeEndpoints: {...(settings.sync.freezeEndpoints || {}), pndEndpoint: val}}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.freezeEndpoints?.pndEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.freezeEndpoints?.pndEndpoint))}
+                                        />
+                                        <EndpointSelector 
+                                            label="Deactivate PND Path"
+                                            value={getEndpointId(settings.sync.freezeEndpoints?.deactivatePndEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, freezeEndpoints: {...(settings.sync.freezeEndpoints || {}), deactivatePndEndpoint: val}}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.freezeEndpoints?.deactivatePndEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.freezeEndpoints?.deactivatePndEndpoint))}
+                                        />
+                                    </div>
+                                    <div className="pt-4 border-t">
+                                        <EndpointSelector 
+                                            label="Lien Management Path"
+                                            value={getEndpointId(settings.sync.freezeEndpoints?.lienEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, freezeEndpoints: {...(settings.sync.freezeEndpoints || {}), lienEndpoint: val}}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.freezeEndpoints?.lienEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.freezeEndpoints?.lienEndpoint))}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             {/* Automation & Seeds */}
                             <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5 overflow-hidden">
                                 <CardHeader className="bg-primary/[0.02] border-b p-4 md:p-6">

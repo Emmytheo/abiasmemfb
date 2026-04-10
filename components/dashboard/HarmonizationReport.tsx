@@ -41,17 +41,20 @@ export function HarmonizationReport() {
     const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [accounts, setAccounts] = useState<any[]>([]);
     const [search, setSearch] = useState("");
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const [custs, usrs] = await Promise.all([
+            const [custs, usrs, accs] = await Promise.all([
                 api.getAllCustomers(),
-                api.getAllUsers()
+                api.getAllUsers(),
+                (api as any).getAllAccounts?.() || Promise.resolve([])
             ]);
             setCustomers(custs);
             setUsers(usrs);
+            setAccounts(accs);
         } catch (e) {
             toast.error("Failed to load harmonization data");
         } finally {
@@ -72,6 +75,12 @@ export function HarmonizationReport() {
 
     // Archived Records: For maintenance/purging
     const archivedRecords = customers.filter(c => c.is_archived);
+
+    // Orphaned Assets: Accounts/Loans with NO customer relation or linked to archived customers
+    const orphanedAssets = accounts.filter(acc => {
+        const cust = typeof acc.customer === 'object' ? acc.customer : customers.find(c => c.id === acc.customer);
+        return !cust || cust.is_archived;
+    });
 
     const handleDelete = async (id: string) => {
         try {
@@ -250,6 +259,59 @@ export function HarmonizationReport() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Orphaned Financial Assets Section */}
+            <Card className="border-primary/5 shadow-xl shadow-primary/5 rounded-2xl overflow-hidden mt-8">
+                <CardHeader className="bg-indigo-500/[0.03] border-b p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-500/10 rounded-xl">
+                                <Link2 className="h-5 w-5 text-indigo-600" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg">Orphaned Financial Assets</CardTitle>
+                                <CardDescription className="text-xs">Financial products linked to archived or missing identities.</CardDescription>
+                            </div>
+                        </div>
+                        <Badge variant="outline" className="bg-indigo-500/5 text-indigo-600 border-indigo-500/10">{orphanedAssets.length}</Badge>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="max-h-[300px] overflow-y-auto divide-y scrollbar-hide">
+                        {orphanedAssets.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-1">
+                                <p className="text-sm font-medium">All financial assets are Professionally and securely correctly linked.</p>
+                            </div>
+                        ) : orphanedAssets.map(acc => (
+                            <div key={acc.id} className="p-4 flex items-center justify-between hover:bg-indigo-500/[0.02] transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-1.5 bg-muted rounded-lg font-mono text-[9px] font-bold">
+                                        {acc.account_number}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-xs tracking-tight">{acc.account_name}</p>
+                                        <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest leading-none mt-0.5">
+                                            {typeof acc.customer === 'object' ? `Legacy: ${acc.customer?.firstName}` : 'Orphaned Record'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-7 text-[8px] font-black uppercase tracking-widest border-primary/10 hover:bg-primary/5 hover:text-primary"
+                                    onClick={() => {
+                                        const cust = typeof acc.customer === 'object' ? acc.customer : customers.find(c => c.id === acc.customer);
+                                        if (cust) handleLinkIdentity(cust);
+                                        else toast.error("Select a primary identity to link this asset.");
+                                    }}
+                                >
+                                    Re-Point Asset
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Archived Maintenance Section */}
             <Card className="border-destructive/10 shadow-xl shadow-destructive/5 rounded-2xl overflow-hidden mt-8">

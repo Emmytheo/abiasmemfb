@@ -268,38 +268,52 @@ export const getAllAccounts = async (): Promise<Account[]> => {
 export const getUserAccounts = async (userId: string): Promise<Account[]> => {
     try {
         const payload = await initPayload();
-        // Strict Match: Exclude archived customers from fuzzy matching
+        // Strict matching: Match by user_id OR customer relation, but only for active digital identities
+        const { docs: users } = await payload.find({ collection: 'users', where: { supabase_id: { equals: userId } }, limit: 1 });
+        if (!users.length) return [];
+        
         const { docs: customers } = await payload.find({ 
             collection: 'customers', 
-            where: { 
-                and: [
-                    { is_archived: { not_equals: true } },
-                    { or: [{ supabase_id: { equals: userId } }, { email: { equals: userId } }] }
-                ]
-            }, 
-            limit: 1 
+            where: { user_id: { equals: userId } }, 
+            limit: 100 
         });
-        const customerId = customers.length > 0 ? customers[0].id : null;
+        const customerIds = customers.map(c => c.id);
+        const customerEmails = customers.map(c => c.email).filter(Boolean);
+
         const { docs } = await payload.find({
             collection: 'accounts' as any,
-            where: { or: [{ user_id: { equals: userId } }, ...(customerId ? [{ customer: { equals: customerId } }] : [])] },
+            where: { 
+                or: [
+                    { user_id: { equals: userId } }, 
+                    ...(customerIds.length > 0 ? [{ customer: { in: customerIds } }] : [])
+                ] 
+            },
             depth: 2,
             limit: 100,
             sort: '-createdAt',
             overrideAccess: true,
         });
-        return docs.map((doc: any) => ({
+
+        // Hardened filter: confirm strictly linked or matched by BVN/Email if archived
+        return docs.filter((doc: any) => {
+            if (doc.user_id === userId) return true;
+            const docCustomer = typeof doc.customer === 'object' ? doc.customer : null;
+            if (!docCustomer) return false;
+            // If the customer is archived, we MUST verify the email or BVN matches the Supabase identity profile
+            if (docCustomer.is_archived && docCustomer.email && !customerEmails.includes(docCustomer.email)) return false;
+            return true;
+        }).map((doc: any) => ({
             id: String(doc.id),
-            user_id: doc.user_id,
             account_number: doc.account_number,
-            account_type: doc.account_type,
+            account_name: doc.account_name,
             balance: (doc.balance ?? 0) / 100,
-            status: doc.status,
-            customer: doc.customer,
-            is_frozen: doc.is_frozen,
-            pnd_enabled: doc.pnd_enabled,
+            type: doc.type || 'savings',
+            status: doc.status || 'active',
+            is_frozen: doc.is_frozen || false,
+            pnd_enabled: doc.pnd_enabled || false,
             lien_amount: (doc.lien_amount ?? 0) / 100,
-            created_at: doc.createdAt,
+            is_primary: doc.is_primary || false,
+            customer: doc.customer
         })) as Account[];
     } catch (e) { return []; }
 };
@@ -331,15 +345,69 @@ export const createAccount = async (data: Omit<Account, 'id' | 'created_at' | 'u
     return { id: String(doc.id), account_number: (doc as any).account_number } as any;
 };
 
-export const updateAccount = async (id: string, data: Partial<Account>): Promise<Account | null> => {
-    try {
-        const payload = await initPayload();
-        const updateData: any = { ...data };
-        if (data.lien_amount !== undefined) updateData.lien_amount = Math.round(data.lien_amount * 100);
-        if (data.balance !== undefined) updateData.balance = Math.round(data.balance * 100);
-        const doc = await payload.update({ collection: 'accounts' as any, id, data: updateData, overrideAccess: true });
-        return { id: String(doc.id), balance: ((doc as any).balance ?? 0) / 100 } as any;
-    } catch (e) { return null; }
+export const updateAccount = async (id: string, data: Partial<Account>): Promise<Account> => {
+    const payload = await initPayload();
+    const existing = await payload.findByID({ collection: 'accounts' as any, id, depth: 1 });
+    
+    // External Parity Orchestration
+    if (existing.external_status === 'core_synced' || existing.is_mirrored) {
+        try {
+            const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+            const sync = settings?.sync;
+            
+            // Handle FREEZE orchestration
+            if ('is_frozen' in data && data.is_frozen !== existing.is_frozen) {
+                const endpointId = data.is_frozen ? sync?.freezeEndpoints?.freezeEndpoint : sync?.freezeEndpoints?.unfreezeEndpoint;
+                if (endpointId) {
+                    console.log(`[Sync] Triggering External ${data.is_frozen ? 'Freeze' : 'Unfreeze'} for ${existing.account_number}`);
+                    await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+                        AccountNo: existing.account_number,
+                        Reason: "Dashboard Action",
+                        ReferenceID: `DASH_${Date.now()}`
+                    });
+                }
+            }
+
+            // Handle PND orchestration
+            if ('pnd_enabled' in data && data.pnd_enabled !== existing.pnd_enabled) {
+                const endpointId = data.pnd_enabled ? sync?.freezeEndpoints?.pndEndpoint : sync?.freezeEndpoints?.deactivatePndEndpoint;
+                if (endpointId) {
+                    console.log(`[Sync] Triggering External PND ${data.pnd_enabled ? 'Activation' : 'Deactivation'} for ${existing.account_number}`);
+                    await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+                        AccountNo: existing.account_number
+                    });
+                }
+            }
+
+            // Handle LIEN orchestration
+            if ('lien_amount' in data && data.lien_amount !== existing.lien_amount) {
+                const endpointId = sync?.freezeEndpoints?.lienEndpoint;
+                if (endpointId) {
+                    const diff = (data.lien_amount || 0) * 100;
+                    console.log(`[Sync] Triggering External Lien update for ${existing.account_number}: ${diff} kobo`);
+                    await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+                        AccountNo: existing.account_number,
+                        Amount: String(diff),
+                        ReferenceID: `LIEN_${Date.now()}`
+                    });
+                }
+            }
+        } catch (syncError: any) {
+            console.error(`[Sync] External Management Error:`, syncError.message);
+            throw new Error(`External sync failed: ${syncError.message}`);
+        }
+    }
+
+    const doc = await payload.update({ 
+        collection: 'accounts' as any, 
+        id, 
+        data: { 
+            ...data, 
+            balance: data.balance ? Math.round(data.balance * 100) : undefined,
+            lien_amount: data.lien_amount !== undefined ? Math.round(data.lien_amount * 100) : undefined
+        } as any 
+    });
+    return { id: String(doc.id) } as any;
 };
 
 export const getAllLoans = async (): Promise<Loan[]> => {
