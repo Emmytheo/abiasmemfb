@@ -33,6 +33,33 @@ const initPayload = async () => {
     return await getPayload({ config: configPromise });
 }
 
+// Internal helper for authoritative core banking synchronization
+async function executeEndpoint(endpointId: string, inputData: Record<string, any>) {
+    const payload = await initPayload();
+    const endpoint = await payload.findByID({
+        collection: 'endpoints' as any,
+        id: endpointId,
+    });
+    if (!endpoint) throw new Error('Endpoint not found');
+
+    // Hardened API resolution
+    let url = (endpoint as any).baseUrl || '';
+    if ((endpoint as any).path) url += (endpoint as any).path;
+
+    const response = await fetch(url, {
+        method: (endpoint as any).method || 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...((endpoint as any).headers || {}),
+        },
+        body: (endpoint as any).method !== 'GET' ? JSON.stringify(inputData) : undefined,
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'External sync failed');
+    return result;
+}
+
 // ==========================================
 // USER MANAGEMENT
 // ==========================================
@@ -304,18 +331,25 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
             return true;
         }).map((doc: any) => ({
             id: String(doc.id),
+            user_id: doc.user_id || userId,
             account_number: doc.account_number,
             account_name: doc.account_name,
+            account_type: doc.account_type || 'Savings',
             balance: (doc.balance ?? 0) / 100,
-            type: doc.type || 'savings',
             status: doc.status || 'active',
             is_frozen: doc.is_frozen || false,
             pnd_enabled: doc.pnd_enabled || false,
             lien_amount: (doc.lien_amount ?? 0) / 100,
+            source: doc.external_status === 'core_synced' ? 'qore' : 'local',
             is_primary: doc.is_primary || false,
+            is_archived: doc.is_archived || false,
+            created_at: doc.createdAt || new Date().toISOString(),
             customer: doc.customer
         })) as Account[];
-    } catch (e) { return []; }
+    } catch (e) { 
+        console.error("[Payload] getUserAccounts Error:", e);
+        return []; 
+    }
 };
 
 export const getAccountById = async (id: string): Promise<Account | null> => {
