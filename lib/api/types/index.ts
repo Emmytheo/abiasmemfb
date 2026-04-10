@@ -192,6 +192,13 @@ export interface SiteSyncConfig {
     productSyncEndpoint?: string | any;
     serviceSyncEndpoint?: string | any;
     customerUpdateEndpoint?: string | any;
+    freezeEndpoints?: {
+        freezeEndpoint?: string | any;
+        unfreezeEndpoint?: string | any;
+        pndEndpoint?: string | any;
+        deactivatePndEndpoint?: string | any;
+        lienEndpoint?: string | any;
+    };
 }
 
 export interface SiteSettings {
