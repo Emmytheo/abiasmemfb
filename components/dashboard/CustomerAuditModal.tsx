@@ -85,9 +85,9 @@ export function CustomerAuditModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl rounded-3xl p-0 overflow-hidden border-zinc-200">
-        <DialogHeader className="p-6 bg-muted/30 border-b">
-          <div className="flex items-center gap-4">
+      <DialogContent className="w-[95vw] max-w-2xl rounded-3xl p-0 overflow-hidden border-zinc-200">
+        <DialogHeader className="p-4 md:p-6 bg-muted/30 border-b">
+          <div className="flex items-center gap-3 md:gap-4">
              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <User className="h-6 w-6 text-primary" />
              </div>
@@ -101,22 +101,22 @@ export function CustomerAuditModal({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="px-6 border-b bg-muted/10">
-                <TabsList className="bg-transparent h-12 w-full justify-start gap-4 p-0">
-                    <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-full text-xs font-bold uppercase tracking-tight">Overview</TabsTrigger>
-                    <TabsTrigger value="banking" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-full text-xs font-bold uppercase tracking-tight">Banking Assets</TabsTrigger>
-                    <TabsTrigger value="impact" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-full text-xs font-bold uppercase tracking-tight flex items-center gap-2">
+            <div className="px-4 md:px-6 border-b bg-muted/10 overflow-x-auto scrollbar-hide">
+                <TabsList className="bg-transparent h-12 w-max md:w-full justify-start gap-4 md:gap-6 p-0">
+                    <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-full text-xs font-bold uppercase tracking-tight whitespace-nowrap">Overview</TabsTrigger>
+                    <TabsTrigger value="banking" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-full text-xs font-bold uppercase tracking-tight whitespace-nowrap">Banking Assets</TabsTrigger>
+                    <TabsTrigger value="impact" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-full text-xs font-bold uppercase tracking-tight flex items-center gap-2 whitespace-nowrap">
                         Impact
                         {isHighRisk && <Badge variant="destructive" className="h-4 w-4 p-0 flex items-center justify-center text-[8px] animate-pulse">!</Badge>}
                     </TabsTrigger>
-                    <TabsTrigger value="purge" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-destructive rounded-none px-0 h-full text-xs font-bold uppercase tracking-tight text-destructive">Danger Zone</TabsTrigger>
+                    <TabsTrigger value="purge" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-destructive rounded-none px-0 h-full text-xs font-bold uppercase tracking-tight text-destructive whitespace-nowrap">Danger Zone</TabsTrigger>
                 </TabsList>
             </div>
 
-            <ScrollArea className="h-[400px]">
-                <div className="p-6">
+            <ScrollArea className="h-[60vh] md:h-[400px]">
+                <div className="p-4 md:p-6">
                     <TabsContent value="overview" className="mt-0 space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="p-4 rounded-2xl border bg-muted/5 space-y-1">
                                 <p className="text-[10px] font-black uppercase text-muted-foreground">Status</p>
                                 <div className="flex items-center gap-2">
@@ -176,16 +176,16 @@ export function CustomerAuditModal({
 
                         <div className="space-y-4">
                             <h4 className="text-xs font-black uppercase tracking-tight">Financial Summary</h4>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="p-4 rounded-2xl bg-muted/20 border flex flex-col items-center justify-center gap-1">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
+                                <div className="p-3 md:p-4 rounded-2xl bg-muted/20 border flex flex-col items-center justify-center gap-1">
                                     <span className="text-xl font-bold">{audit?.accounts || 0}</span>
                                     <span className="text-[10px] font-black uppercase tracking-tight opacity-50">Accounts</span>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-muted/20 border flex flex-col items-center justify-center gap-1">
+                                <div className="p-3 md:p-4 rounded-2xl bg-muted/20 border flex flex-col items-center justify-center gap-1">
                                     <span className="text-xl font-bold">{audit?.loans || 0}</span>
                                     <span className="text-[10px] font-black uppercase tracking-tight opacity-50">Loans</span>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-muted/20 border flex flex-col items-center justify-center gap-1">
+                                <div className="p-3 md:p-4 rounded-2xl bg-muted/20 border flex flex-col items-center justify-center gap-1">
                                     <span className="text-xl font-bold">{audit?.applications || 0}</span>
                                     <span className="text-[10px] font-black uppercase tracking-tight opacity-50">Apps</span>
                                 </div>
@@ -208,9 +208,9 @@ export function CustomerAuditModal({
                             ) : (
                                 <div className="space-y-2">
                                     {audit?.financialData.accounts.map(acc => (
-                                        <div key={acc.id} className="p-4 rounded-2xl border bg-muted/5 flex items-center justify-between">
+                                        <div key={acc.id} className="p-3 md:p-4 rounded-2xl border bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                                                     <CreditCard className="h-4 w-4 text-primary" />
                                                 </div>
                                                 <div>
@@ -218,7 +218,7 @@ export function CustomerAuditModal({
                                                     <p className="text-[10px] text-muted-foreground">{acc.account_type}</p>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
+                                            <div className="text-left md:text-right mt-2 md:mt-0">
                                                 <p className="text-sm font-black">₦{acc.balance.toLocaleString()}</p>
                                                 <Badge className="h-4 text-[8px] bg-emerald-500/10 text-emerald-600 border-none">{acc.status}</Badge>
                                             </div>
@@ -237,9 +237,9 @@ export function CustomerAuditModal({
                             ) : (
                                 <div className="space-y-2">
                                     {audit?.financialData.loans.map(loan => (
-                                        <div key={loan.id} className="p-4 rounded-2xl border bg-muted/5 flex items-center justify-between">
+                                        <div key={loan.id} className="p-3 md:p-4 rounded-2xl border bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
+                                                <div className="h-8 w-8 shrink-0 rounded-full bg-amber-500/10 flex items-center justify-center">
                                                     <Briefcase className="h-4 w-4 text-amber-600" />
                                                 </div>
                                                 <div>
@@ -343,12 +343,12 @@ export function CustomerAuditModal({
                 </div>
             </ScrollArea>
 
-            <DialogFooter className="p-6 bg-muted/30 border-t flex items-center gap-3">
-                <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-11 text-xs font-bold uppercase tracking-tight">Close Audit</Button>
+            <DialogFooter className="p-4 md:p-6 bg-muted/30 border-t flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3 w-full">
+                <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-11 text-xs font-bold uppercase tracking-tight w-full md:w-auto">Close Audit</Button>
                 {activeTab === "purge" ? (
                     <Button 
                         variant="destructive" 
-                        className="flex-1 rounded-xl h-11 text-xs font-bold uppercase tracking-tight gap-2"
+                        className="flex-1 rounded-xl h-11 text-xs font-bold uppercase tracking-tight gap-2 w-full md:w-auto"
                         onClick={() => onPurge(customer.id as string)}
                     >
                         <Trash2 className="h-4 w-4" /> Purge Permanently
@@ -357,7 +357,7 @@ export function CustomerAuditModal({
                     <Button 
                         variant="default" 
                         onClick={() => setActiveTab("impact")} 
-                        className="flex-1 rounded-xl h-11 text-xs font-bold uppercase tracking-tight gap-2"
+                        className="flex-1 rounded-xl h-11 text-xs font-bold uppercase tracking-tight gap-2 w-full md:w-auto"
                     >
                         Analyze Impact <ExternalLink className="h-4 w-4" />
                     </Button>

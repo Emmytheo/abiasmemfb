@@ -391,7 +391,7 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
             
             // Handle FREEZE orchestration
             if ('is_frozen' in data && data.is_frozen !== existing.is_frozen) {
-                const endpointId = data.is_frozen ? sync?.freezeEndpoints?.freezeEndpoint : sync?.freezeEndpoints?.unfreezeEndpoint;
+                const endpointId = data.is_frozen ? sync?.accountManagementEndpoints?.freezeEndpoint : sync?.accountManagementEndpoints?.unfreezeEndpoint;
                 if (endpointId) {
                     console.log(`[Sync] Triggering External ${data.is_frozen ? 'Freeze' : 'Unfreeze'} for ${existing.account_number}`);
                     await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
@@ -404,7 +404,7 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
 
             // Handle PND orchestration
             if ('pnd_enabled' in data && data.pnd_enabled !== existing.pnd_enabled) {
-                const endpointId = data.pnd_enabled ? sync?.freezeEndpoints?.pndEndpoint : sync?.freezeEndpoints?.deactivatePndEndpoint;
+                const endpointId = data.pnd_enabled ? sync?.accountManagementEndpoints?.pndEndpoint : sync?.accountManagementEndpoints?.deactivatePndEndpoint;
                 if (endpointId) {
                     console.log(`[Sync] Triggering External PND ${data.pnd_enabled ? 'Activation' : 'Deactivation'} for ${existing.account_number}`);
                     await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
@@ -415,7 +415,7 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
 
             // Handle LIEN orchestration
             if ('lien_amount' in data && data.lien_amount !== existing.lien_amount) {
-                const endpointId = sync?.freezeEndpoints?.lienEndpoint;
+                const endpointId = sync?.accountManagementEndpoints?.lienEndpoint;
                 if (endpointId) {
                     const diff = (data.lien_amount || 0) * 100;
                     console.log(`[Sync] Triggering External Lien update for ${existing.account_number}: ${diff} kobo`);
@@ -442,6 +442,93 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
         } as any 
     });
     return { id: String(doc.id) } as any;
+};
+
+// ==========================================
+// ADVANCED ACCOUNT MANAGEMENT (CORE)
+// ==========================================
+
+export const checkExternalAccountStatus = async (accountNumber: string, statusType: 'freeze' | 'pnd' | 'lien'): Promise<any> => {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    
+    let endpointId;
+    switch (statusType) {
+        case 'freeze': endpointId = settings?.sync?.accountManagementEndpoints?.checkFreezeStatusEndpoint; break;
+        case 'pnd': endpointId = settings?.sync?.accountManagementEndpoints?.checkPndStatusEndpoint; break;
+        case 'lien': endpointId = settings?.sync?.accountManagementEndpoints?.checkLienStatusEndpoint; break;
+    }
+
+    if (!endpointId) throw new Error(`Status configuration missing for ${statusType}`);
+    
+    return executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+        AccountNo: accountNumber
+    });
+};
+
+export const generateAccountStatement = async (accountNumber: string, fromDate: string, toDate: string): Promise<{ statementBase64: string, fileName: string }> => {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const endpointId = settings?.sync?.accountManagementEndpoints?.generateStatementEndpoint;
+    
+    if (!endpointId) throw new Error("Statement generation endpoint is not configured.");
+
+    const res: any = await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+        accountNumber,
+        fromDate,
+        toDate
+    });
+    
+    return {
+        statementBase64: res?.Payload?.StatementBase64 || '',
+        fileName: res?.Payload?.FileName || 'statement.pdf'
+    };
+};
+
+export const uploadSupportingDocument = async (accountNumber: string, documentType: number, base64Image: string): Promise<boolean> => {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const endpointId = settings?.sync?.accountManagementEndpoints?.uploadDocumentEndpoint;
+    
+    if (!endpointId) throw new Error("Document upload endpoint is not configured.");
+
+    const res: any = await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+        AccountNumber: accountNumber,
+        DocumentType: documentType,
+        Image: base64Image
+    });
+    
+    return res?.IsSuccessful === true;
+};
+
+export const closeExternalAccount = async (accountNumber: string, narration: string): Promise<boolean> => {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const endpointId = settings?.sync?.accountManagementEndpoints?.closeAccountEndpoint;
+    
+    if (!endpointId) throw new Error("Account closure endpoint is not configured.");
+
+    const res: any = await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+        accountNumber,
+        narration
+    });
+    
+    return res?.IsSuccessful === true;
+};
+
+export const updateNotificationPreference = async (accountNumber: string, preferenceCode: number): Promise<boolean> => {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const endpointId = settings?.sync?.accountManagementEndpoints?.updateNotificationPreferenceEndpoint;
+    
+    if (!endpointId) throw new Error("Notification preference endpoint is not configured.");
+
+    const res: any = await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+        AccountNumber: accountNumber,
+        NotificationPreference: preferenceCode
+    });
+    
+    return res?.IsSuccessful === true;
 };
 
 export const getAllLoans = async (): Promise<Loan[]> => {

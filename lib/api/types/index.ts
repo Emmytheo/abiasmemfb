@@ -192,12 +192,20 @@ export interface SiteSyncConfig {
     productSyncEndpoint?: string | any;
     serviceSyncEndpoint?: string | any;
     customerUpdateEndpoint?: string | any;
-    freezeEndpoints?: {
+    accountManagementEndpoints?: {
         freezeEndpoint?: string | any;
         unfreezeEndpoint?: string | any;
+        checkFreezeStatusEndpoint?: string | any;
         pndEndpoint?: string | any;
         deactivatePndEndpoint?: string | any;
+        checkPndStatusEndpoint?: string | any;
         lienEndpoint?: string | any;
+        unLienEndpoint?: string | any;
+        checkLienStatusEndpoint?: string | any;
+        updateNotificationPreferenceEndpoint?: string | any;
+        generateStatementEndpoint?: string | any;
+        closeAccountEndpoint?: string | any;
+        uploadDocumentEndpoint?: string | any;
     };
 }
 

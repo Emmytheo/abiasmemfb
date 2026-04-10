@@ -86,40 +86,23 @@ export const SiteSettings: GlobalConfig = {
                     admin: { description: 'The API endpoint used to push reconciled demographic updates back to Qore (Core Banking).' }
                 },
                 {
-                    name: 'freezeEndpoints',
+                    name: 'accountManagementEndpoints',
                     type: 'group',
-                    label: 'Account Management (Freeze/PND/Lien)',
+                    label: 'Account Management (Core Parity)',
                     fields: [
-                        {
-                            name: 'freezeEndpoint',
-                            type: 'relationship',
-                            relationTo: 'endpoints',
-                            admin: { description: 'API to Freeze an account in Qore.' }
-                        },
-                        {
-                            name: 'unfreezeEndpoint',
-                            type: 'relationship',
-                            relationTo: 'endpoints',
-                            admin: { description: 'API to Unfreeze an account in Qore.' }
-                        },
-                        {
-                            name: 'pndEndpoint',
-                            type: 'relationship',
-                            relationTo: 'endpoints',
-                            admin: { description: 'API to Activate PND in Qore.' }
-                        },
-                        {
-                            name: 'deactivatePndEndpoint',
-                            type: 'relationship',
-                            relationTo: 'endpoints',
-                            admin: { description: 'API to Deactivate PND in Qore.' }
-                        },
-                        {
-                            name: 'lienEndpoint',
-                            type: 'relationship',
-                            relationTo: 'endpoints',
-                            admin: { description: 'API to Place/Remove Lien in Qore.' }
-                        }
+                        { name: 'freezeEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Freeze an account.' } },
+                        { name: 'unfreezeEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Unfreeze an account.' } },
+                        { name: 'checkFreezeStatusEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Check Freeze Status.' } },
+                        { name: 'pndEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Activate PND.' } },
+                        { name: 'deactivatePndEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Deactivate PND.' } },
+                        { name: 'checkPndStatusEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Check PND Status.' } },
+                        { name: 'lienEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Place Lien.' } },
+                        { name: 'unLienEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Remove Lien.' } },
+                        { name: 'checkLienStatusEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Check Lien Status.' } },
+                        { name: 'updateNotificationPreferenceEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Update Notification Preference.' } },
+                        { name: 'generateStatementEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Generate Account Statement.' } },
+                        { name: 'closeAccountEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Close Account.' } },
+                        { name: 'uploadDocumentEndpoint', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Upload Supporting Document.' } }
                     ]
                 }
             ]
