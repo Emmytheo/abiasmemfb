@@ -60,9 +60,9 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
 
     return (
         <div className="space-y-4">
-            {fields.map((field, index) => (
+            {(fields || []).map((field, index) => (
                 <div
-                    key={field[idKey] || index}
+                    key={field[idKey] || field.id || index}
                     draggable
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={(e) => handleDragOver(e, index)}
@@ -134,7 +134,7 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
 
                         {/* Advanced Settings */}
                         <div className="border-t pt-2">
-                            <Accordion type="single" collapsible className="w-full">
+                            <Accordion type="single" collapsible className="w-full" defaultValue={(field.validations?.length || field.events?.length) ? 'advanced' : undefined}>
                                 <AccordionItem value="advanced" className="border-none">
                                     <AccordionTrigger className="py-2 hover:no-underline text-muted-foreground hover:text-primary transition-colors">
                                         <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest">

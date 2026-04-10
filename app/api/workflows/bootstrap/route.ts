@@ -50,7 +50,11 @@ export async function GET() {
         for (const file of sdlFiles) {
             const filePath = path.join(templatesDir, file)
             const sdl = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
-            
+            if (!sdl.name || (!sdl.nodes && !sdl.workflow)) {
+                console.log(`[Bootstrap] Skipping ${file} (Not a Workflow SDL)`)
+                continue;
+            }
+
             console.log(`[Bootstrap] Compiling workflow: ${sdl.name}...`)
 
             try {

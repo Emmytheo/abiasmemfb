@@ -880,6 +880,46 @@
                     "products": "Payload"
                 }
             }
+        },
+        {
+            "name": "Get Commercial Banks",
+            "description": "Retrieves the list of NIP-supported commercial banks with their bank codes for inter-bank transfers.",
+            "method": "GET",
+            "path": "/thirdpartyapiservice/apiservice/FundTransfer/CommercialBanks",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "dataPath": "CommercialBanks",
+                "outputs": {
+                    "options": "CommercialBanks"
+                }
+            }
+        },
+        {
+            "name": "Inter-Bank Name Enquiry",
+            "description": "Resolves the name of an account holder at an external commercial bank via NIP.",
+            "method": "POST",
+            "path": "/thirdpartyapiservice/apiservice/FundTransfer/InterBankNameEnquiry",
+            "authOverride": "BODY_FIELD",
+            "authBodyFieldKey": "AuthenticationCode",
+            "status": "active",
+            "bodySchema": {
+                "type": "object",
+                "properties": {
+                    "AccountNumber": { "type": "string" },
+                    "BankCode": { "type": "string" }
+                },
+                "required": ["AccountNumber", "BankCode"]
+            },
+            "responseSchema": {
+                "successPath": "IsSuccessful",
+                "outputs": {
+                    "AccountName": "AccountName",
+                    "BVN": "BVN"
+                }
+            }
         }
     ],
 

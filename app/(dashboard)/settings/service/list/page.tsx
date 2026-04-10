@@ -323,9 +323,9 @@ export default function ServicesPage() {
                 }
                 columns={[
                     { header: "Name", accessorKey: "name", cell: (item) => <span className="font-semibold">{item.name}</span> },
-                    { header: "Category", accessorKey: "category", cell: (item) => <span className="text-muted-foreground">{item.category}</span> },
-                    { header: "Fee Type", accessorKey: "fee_type", cell: (item) => <span className="capitalize">{item.fee_type}</span> },
-                    { header: "Status", accessorKey: "status", cell: (item) => <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs">{item.status}</span> },
+                    { header: "Category", accessorKey: "category", cell: (item) => <span className="text-muted-foreground">{item.category || '—'}</span> },
+                    { header: "Fee Type", accessorKey: "fee_type", cell: (item) => <span className="capitalize">{item.fee_type || '—'}</span> },
+                    { header: "Status", accessorKey: "status", cell: (item) => <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs">{item.status || '—'}</span> },
                     actionColumn
                 ]}
                 gridRenderItem={(item) => (
@@ -389,7 +389,7 @@ export default function ServicesPage() {
                                         id="edit-category"
                                         name="category"
                                         required
-                                        defaultValue={categories.find(c => c.name === selectedItem.category || c.id === selectedItem.category)?.id}
+                                        defaultValue={selectedItem.category_id || categories.find(c => c.name === selectedItem.category)?.id}
                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         {categories.map(cat => (

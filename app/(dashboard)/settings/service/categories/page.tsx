@@ -79,7 +79,7 @@ export default function ServiceCategoriesPage() {
         try {
             const updated = await api.updateServiceCategory(selectedItem.id, {
                 name: formData.get("name") as string,
-                slug: (formData.get("name") as string).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+                slug: (formData.get("slug") as string) || (formData.get("name") as string).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
                 description: formData.get("description") as string,
                 icon: formData.get("icon") as string,
                 status: formData.get("status") as 'active' | 'inactive',
@@ -243,8 +243,19 @@ export default function ServiceCategoriesPage() {
                                 <Input name="name" defaultValue={selectedItem.name} required />
                             </div>
                             <div className="space-y-2">
-                                <Label>Icon</Label>
-                                <Input name="icon" defaultValue={selectedItem.icon} />
+                                <Label>Slug <span className="text-muted-foreground font-normal">(URL identifier)</span></Label>
+                                <Input 
+                                    name="slug" 
+                                    defaultValue={selectedItem.slug} 
+                                    placeholder="e.g. transfers, bills, loans"
+                                    className="font-mono text-sm"
+                                />
+                                <p className="text-[10px] text-muted-foreground">Lowercase, hyphenated. Used for routing and sync matching.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Icon <span className="text-muted-foreground font-normal">(Lucide name)</span></Label>
+                                <Input name="icon" defaultValue={selectedItem.icon} placeholder="e.g. landmark, wifi, tag" />
+                                <p className="text-[10px] text-muted-foreground">Supported: tag, wifi, user, lightbulb, hash, landmark, creditcard, package, briefcase, listordered.</p>
                             </div>
                             <div className="space-y-2">
                                 <Label>Description</Label>

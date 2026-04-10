@@ -118,9 +118,15 @@ export async function CustomerBulkSyncExecutor(
             const phone = qoreCust.PhoneNumber || qoreCust.PhoneNo;
 
             // 3. Upsert Customer into Payload
+            // Support Identity Harmonization: Check if qoreID is primary OR if it was merged into an active profile
             const existingCustomers = await payload.find({
                 collection: 'customers',
-                where: { qore_customer_id: { equals: qoreCustomerID } },
+                where: { 
+                    or: [
+                        { qore_customer_id: { equals: qoreCustomerID } },
+                        { 'legacy_qore_ids.qore_id': { equals: qoreCustomerID } }
+                    ]
+                },
                 limit: 1
             });
 
@@ -188,8 +194,10 @@ export async function CustomerBulkSyncExecutor(
                 '30': 'Fixed Deposit'
             };
 
+            const nubanSeed = qoreAcc.NUBAN || qoreAcc.NubanAccountNo || qoreAcc.Nuban_Account_No || accNo;
+
             const accountData = {
-                account_number: accNo,
+                account_number: nubanSeed,
                 account_type: accountTypeMap[qoreAcc.AccountType] || 'Savings',
                 balance: Math.round(parseFloat(qoreAcc.AvailableBalance || '0') * 100),
                 status: qoreAcc.Status === 'Active' ? 'active' : 'frozen',
@@ -236,18 +244,19 @@ export async function CustomerBulkSyncExecutor(
                         log(`Discovered ${accountList.length - 1} additional accounts linked to customer.`);
 
                         for (const otherAcc of accountList) {
-                            const otherAccNo = otherAcc.AccountNo || otherAcc.accountNumber;
-                            if (otherAccNo === accNo) continue;
+                            // Extract precise NUBAN over generic internal Tracker ID
+                            const otherAccNuban = otherAcc.NUBAN || otherAcc.NubanAccountNo || otherAcc.Nuban_Account_No || otherAcc.AccountNo || otherAcc.accountNumber;
+                            if (otherAccNuban === nubanSeed || otherAccNuban === accNo) continue;
 
-                            log(`Syncing secondary account: ${otherAccNo}...`);
+                            log(`Syncing secondary account: ${otherAccNuban}...`);
                             const existingOther = await payload.find({
                                 collection: 'accounts',
-                                where: { account_number: { equals: otherAccNo } },
+                                where: { account_number: { equals: otherAccNuban } },
                                 limit: 1
                             });
 
                             const otherData = {
-                                account_number: otherAccNo,
+                                account_number: otherAccNuban,
                                 account_type: accountTypeMap[otherAcc.AccountType] || 'Savings',
                                 balance: Math.round(parseFloat(otherAcc.AvailableBalance || '0') * 100),
                                 status: otherAcc.Status === 'Active' ? 'active' : 'frozen',

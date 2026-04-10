@@ -153,9 +153,64 @@ export const Customers: CollectionConfig = {
             ],
             defaultValue: 'none',
             admin: { position: 'sidebar' }
+        },
+        {
+            name: 'legacy_qore_ids',
+            type: 'array',
+            admin: {
+                description: 'Qore Customer IDs that have been merged into this primary profile. Preserves external asset links.',
+                position: 'sidebar'
+            },
+            fields: [
+                {
+                    name: 'qore_id',
+                    type: 'text',
+                    required: true,
+                }
+            ]
         }
     ],
     hooks: {
+        afterChange: [
+            async ({ doc, req, operation }) => {
+                if (operation === 'update' && req.user && req.user.collection === 'users') {
+                    // Update originated from UI by admin. Push to Qore.
+                    try {
+                        const settings = await req.payload.findGlobal({ slug: 'site-settings' as any });
+                        const syncConfig = (settings as any).sync || {};
+                        const updateEndpointId = typeof syncConfig.customerUpdateEndpoint === 'object' ? syncConfig.customerUpdateEndpoint?.id : syncConfig.customerUpdateEndpoint;
+                        
+                        if (updateEndpointId && doc.qore_customer_id) {
+                            const endpoint = await req.payload.findByID({ collection: 'endpoints' as any, id: updateEndpointId });
+                            if (endpoint) {
+                                const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver');
+                                const resolved = await resolveEndpoint(endpoint as any, {
+                                    body: {
+                                        CustomerID: doc.qore_customer_id,
+                                        LastName: doc.firstName,
+                                        OtherNames: doc.lastName,
+                                        PhoneNo: doc.phone_number,
+                                        Email: doc.email,
+                                        Address: doc.address || ''
+                                    }
+                                });
+                                
+                                console.log(`[Two-Way Sync] Pushing update for customer ${doc.qore_customer_id} to Qore...`);
+                                const res = await fetch(resolved.url, {
+                                    method: resolved.method,
+                                    headers: resolved.headers,
+                                    body: JSON.stringify(resolved.body)
+                                });
+                                if (!res.ok) console.error(`[Two-Way Sync] Failed pushing update: ${res.status} ${res.statusText}`);
+                            }
+                        }
+                    } catch (e: any) {
+                         console.error('Two-way sync boundary Error:', e.message);
+                    }
+                }
+                return doc;
+            }
+        ],
         beforeChange: [
             async ({ data, req, operation }) => {
                 // Automated Identity Discovery

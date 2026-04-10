@@ -1005,8 +1005,16 @@ export const getTransactionsByCategory = async (category: Transaction['category'
 
 export const getServiceCategories = async (): Promise<ServiceCategory[]> => {
     const payload = await initPayload();
-    const { docs } = await payload.find({ collection: 'service-categories' as any, where: { status: { equals: 'active' } }, limit: 100 });
-    return docs.map((doc: any) => ({ id: String(doc.id), name: doc.name || 'Service', slug: doc.slug || 'category', status: doc.status || 'active' })) as any;
+    const { docs } = await payload.find({ collection: 'service-categories' as any, limit: 100 });
+    return docs.map((doc: any) => ({
+        id: String(doc.id),
+        name: doc.name,
+        slug: doc.slug || '',
+        icon: doc.icon || '',
+        description: doc.description || '',
+        status: doc.status || 'active',
+        created_at: doc.createdAt,
+    })) as any;
 };
 
 export const getServicesByCategory = async (categorySlug: string): Promise<Service[]> => {
@@ -1020,7 +1028,20 @@ export const getServicesByCategory = async (categorySlug: string): Promise<Servi
 export const getAllServices = async (): Promise<Service[]> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'services' as any, depth: 1, limit: 500 });
-    return docs.map((doc: any) => ({ id: String(doc.id), name: doc.name })) as any;
+    return docs.map((doc: any) => ({
+        id: String(doc.id),
+        name: doc.name,
+        status: doc.status,
+        fee_type: doc.fee_type,
+        fee_value: doc.fee_value,
+        form_schema: doc.form_schema || [],
+        provider_service_code: doc.provider_service_code,
+        // Resolve category — Payload returns the full object at depth:1
+        category: typeof doc.category === 'object' ? doc.category?.name : doc.category,
+        category_id: typeof doc.category === 'object' ? String(doc.category?.id) : String(doc.category),
+        validation_workflow: doc.validation_workflow,
+        execution_workflow: doc.execution_workflow,
+    })) as any;
 };
 
 export const createServiceCategory = async (data: Omit<ServiceCategory, 'id' | 'created_at'>): Promise<ServiceCategory> => {
@@ -1049,7 +1070,28 @@ export const createService = async (data: Omit<Service, 'id' | 'created_at'>): P
 
 export const updateService = async (id: string, data: Partial<Service>): Promise<Service> => {
     const payload = await initPayload();
-    const doc = await payload.update({ collection: 'services' as any, id, data: data as any });
+    
+    // Parse numeric IDs if necessary for Postgres adapter
+    const cleanId = (val: any) => val && !isNaN(Number(val)) ? Number(val) : val;
+    
+    const payloadData: any = { ...data };
+    if (payloadData.category) payloadData.category = cleanId(payloadData.category);
+    if (payloadData.validation_workflow) payloadData.validation_workflow = cleanId(payloadData.validation_workflow);
+    if (payloadData.execution_workflow) payloadData.execution_workflow = cleanId(payloadData.execution_workflow);
+    
+    if (Array.isArray(payloadData.form_schema)) {
+        payloadData.form_schema = payloadData.form_schema.map((field: any) => {
+            if (Array.isArray(field.events)) {
+                field.events = field.events.map((ev: any) => ({
+                    ...ev,
+                    endpointId: typeof ev.endpointId === 'object' && ev.endpointId ? cleanId(ev.endpointId.id) : cleanId(ev.endpointId)
+                }));
+            }
+            return field;
+        });
+    }
+
+    const doc = await payload.update({ collection: 'services' as any, id, data: payloadData });
     return { id: String(doc.id), name: (doc as any).name } as any;
 };
 
@@ -1210,6 +1252,22 @@ export const executeCustomerMerge = async (params: MergeParams) => {
                 merger_status: 'archived',
             } as any
         });
+
+        // Harmonization Fix: Secure the Loser's Qore ID into the Winner's legacy array so future syncs respect the merge.
+        if (loser.qore_customer_id) {
+            const winner = await payload.findByID({ collection: 'customers', id: winnerId });
+            const existingLegacy = winner.legacy_qore_ids || [];
+            if (!existingLegacy.find((l: any) => l.qore_id === loser.qore_customer_id)) {
+                await payload.update({
+                    collection: 'customers',
+                    id: winnerId,
+                    data: {
+                        legacy_qore_ids: [...existingLegacy, { qore_id: loser.qore_customer_id }]
+                    } as any
+                });
+                console.log(`[Harmonization] Locked Legacy Qore ID ${loser.qore_customer_id} into primary profile ${winnerId}`);
+            }
+        }
 
         const collections = ['accounts', 'loans', 'transactions'];
         for (const col of collections) {

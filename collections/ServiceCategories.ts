@@ -24,7 +24,7 @@ export const ServiceCategories: CollectionConfig = {
         {
             name: 'slug',
             type: 'text',
-            required: true,
+            required: false,
             unique: true,
             index: true,
             admin: {

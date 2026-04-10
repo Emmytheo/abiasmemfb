@@ -13,13 +13,14 @@ import { RegistryBundleSDL, ProductTypeSDL, ServiceSDL } from './types';
 export async function importRegistryBundle(bundle: RegistryBundleSDL) {
     const payload = await getPayload({ config });
     const stats = { products: 0, services: 0, errors: [] as string[] };
-    
+
     // Shared cache for the duration of this import session to prevent redundant DB calls
     const cache = {
         classes: new Map<string, any>(),
         categories: new Map<string, any>(),
         serviceCategories: new Map<string, any>(),
-        workflows: new Map<string, any>()
+        workflows: new Map<string, any>(),
+        endpoints: new Map<string, any>(), // Cache for endpoint lookups
     };
 
     // --- Process Products ---
@@ -86,24 +87,27 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
             const category = await findOrCreateServiceCategory(payload, svc.categorySlug, cache);
             const validationWf = svc.validation_workflow_slug ? await findWorkflowBySlug(payload, svc.validation_workflow_slug, cache) : null;
             const executionWf = svc.execution_workflow_slug ? await findWorkflowBySlug(payload, svc.execution_workflow_slug, cache) : null;
+            const normalizedSchema = await normalizeFormSchema(payload, svc.form_schema || [], cache);
 
             const existing = await payload.find({
                 collection: 'services',
                 where: { name: { equals: svc.name } },
-                limit: 1
+                limit: 1,
+                pagination: false
             });
 
             if (existing.docs.length > 0) {
+                const target = existing.docs[0];
                 await payload.update({
                     collection: 'services',
-                    id: existing.docs[0].id,
+                    id: target.id,
                     data: {
                         category: category.id,
                         validation_workflow: validationWf?.id || undefined,
                         execution_workflow: executionWf?.id || undefined,
-                        form_schema: svc.form_schema || existing.docs[0].form_schema,
-                        fee_type: svc.fee_type || existing.docs[0].fee_type,
-                        fee_value: svc.fee_value ?? existing.docs[0].fee_value
+                        form_schema: normalizedSchema.length > 0 ? normalizedSchema : (target.form_schema || []),
+                        fee_type: svc.fee_type || target.fee_type,
+                        fee_value: svc.fee_value ?? target.fee_value
                     }
                 });
             } else {
@@ -114,7 +118,7 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
                         category: category.id,
                         validation_workflow: validationWf?.id,
                         execution_workflow: executionWf?.id,
-                        form_schema: svc.form_schema || [],
+                        form_schema: normalizedSchema,
                         fee_type: svc.fee_type || 'none',
                         fee_value: svc.fee_value || 0,
                         status: svc.status || 'active'
@@ -195,15 +199,99 @@ export async function exportRegistryBundle(version: string = "1.0.0"): Promise<R
 
 // --- Helper Functions ---
 
+/**
+ * Normalizes SDL form_schema items to Payload array field format.
+ * SDL uses 'id' as the variable key and plain string endpointIds.
+ * Payload array uses 'name' as the variable key and relationship IDs for endpoints.
+ */
+async function normalizeFormSchema(payload: any, schema: any[], cache: any): Promise<any[]> {
+    return Promise.all(schema.map(async (field) => {
+        // Map SDL 'id' -> Payload 'name' (fall back to existing name if already correct)
+        const fieldName = field.name || field.id || `field_${Math.random().toString(36).substr(2, 6)}`;
+
+        // Normalize events: resolve string endpointId to a Payload document ID
+        const events = await Promise.all((field.events || []).map(async (ev: any) => {
+            let resolvedEndpointId = ev.endpointId;
+
+            if (ev.endpointId && typeof ev.endpointId === 'string') {
+                const cacheKey = `ep_${ev.endpointId}`;
+                if (cache.endpoints.has(cacheKey)) {
+                    resolvedEndpointId = cache.endpoints.get(cacheKey);
+                } else {
+                    // Try to find endpoint by its name
+                    const res = await payload.find({
+                        collection: 'endpoints',
+                        where: { name: { equals: ev.endpointId } },
+                        limit: 1,
+                        pagination: false
+                    });
+                    if (res.docs.length > 0) {
+                        resolvedEndpointId = res.docs[0].id;
+                        cache.endpoints.set(cacheKey, resolvedEndpointId);
+                    }
+                    // If not found, store null to avoid repeated lookups
+                    else {
+                        cache.endpoints.set(cacheKey, null);
+                        resolvedEndpointId = null;
+                    }
+                }
+            }
+
+            return {
+                trigger: ev.trigger,
+                action: ev.action,
+                endpointId: resolvedEndpointId || undefined,
+                mappingConfig: ev.mappingConfig || undefined,
+            };
+        }));
+
+        return {
+            name: fieldName,
+            label: field.label,
+            type: field.type || 'text',
+            required: field.required ?? false,
+            placeholder: field.placeholder || undefined,
+            options: Array.isArray(field.options) ? field.options.join(', ') : field.options || undefined,
+            triggers_validation: false,
+            validations: (field.validations || []).map((v: any) => ({
+                type: v.type,
+                value: String(v.value ?? ''),
+                errorMessage: v.errorMessage || '',
+            })),
+            events,
+        };
+    }));
+}
+
+/**
+ * Normalizes a slug/name to a comparable title-case string.
+ * e.g., "funds_transfer" -> "Funds Transfer", "transfers" -> "Transfers"
+ */
+function slugToName(slug: string): string {
+    return slug
+        .replace(/[_-]/g, ' ')
+        .split(' ')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+}
+
 async function findOrCreateProductClass(payload: any, slug: string, cache: any) {
     const key = slug.toLowerCase();
     if (cache.classes.has(key)) return cache.classes.get(key);
 
-    const existing = await payload.find({ collection: 'product-classes', where: { name: { equals: slug.charAt(0).toUpperCase() + slug.slice(1) } }, limit: 1 });
-    const result = existing.docs.length > 0 
-        ? existing.docs[0] 
-        : await payload.create({ collection: 'product-classes', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), status: 'active' } });
-    
+    const targetName = slugToName(slug);
+
+    // Smart Match: exact name first
+    let existing = await payload.find({ collection: 'product-classes', where: { name: { equals: targetName } }, limit: 1 });
+    // Fuzzy fallback: name contains the slug keyword
+    if (existing.docs.length === 0) {
+        existing = await payload.find({ collection: 'product-classes', where: { name: { contains: slug.toLowerCase() } }, limit: 1 });
+    }
+
+    const result = existing.docs.length > 0
+        ? existing.docs[0]
+        : await payload.create({ collection: 'product-classes', data: { name: targetName, status: 'active' } });
+
     cache.classes.set(key, result);
     return result;
 }
@@ -212,11 +300,22 @@ async function findOrCreateProductCategory(payload: any, slug: string, classId: 
     const key = `${classId}_${slug.toLowerCase()}`;
     if (cache.categories.has(key)) return cache.categories.get(key);
 
-    const existing = await payload.find({ collection: 'product-categories', where: { name: { equals: slug.charAt(0).toUpperCase() + slug.slice(1) } }, limit: 1 });
-    const result = existing.docs.length > 0 
-        ? existing.docs[0] 
-        : await payload.create({ collection: 'product-categories', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), class_id: classId, status: 'active' } });
-    
+    const targetName = slugToName(slug);
+    const slugKeyword = slug.toLowerCase().replace(/[_-]/g, ' ');
+
+    // Smart Match: exact name first, then fuzzy
+    let existing = await payload.find({ collection: 'product-categories', where: { name: { equals: targetName } }, limit: 1 });
+    if (existing.docs.length === 0) {
+        existing = await payload.find({ collection: 'product-categories', where: { name: { contains: slugKeyword } }, limit: 1 });
+    }
+
+    const result = existing.docs.length > 0
+        ? existing.docs[0]
+        : await payload.create({
+            collection: 'product-categories',
+            data: { name: targetName, class_id: classId, status: 'active' }
+        });
+
     cache.categories.set(key, result);
     return result;
 }
@@ -225,11 +324,22 @@ async function findOrCreateServiceCategory(payload: any, slug: string, cache: an
     const key = slug.toLowerCase();
     if (cache.serviceCategories.has(key)) return cache.serviceCategories.get(key);
 
-    const existing = await payload.find({ collection: 'service-categories', where: { name: { equals: slug.charAt(0).toUpperCase() + slug.slice(1) } }, limit: 1 });
-    const result = existing.docs.length > 0 
-        ? existing.docs[0] 
-        : await payload.create({ collection: 'service-categories', data: { name: slug.charAt(0).toUpperCase() + slug.slice(1), status: 'active' } });
-    
+    const targetName = slugToName(slug);
+    const slugKeyword = slug.toLowerCase().replace(/[_-]/g, ' ');
+
+    // Smart Match: exact name first, then fuzzy
+    let existing = await payload.find({ collection: 'service-categories', where: { name: { equals: targetName } }, limit: 1 });
+    if (existing.docs.length === 0) {
+        existing = await payload.find({ collection: 'service-categories', where: { name: { contains: slugKeyword } }, limit: 1 });
+    }
+
+    const result = existing.docs.length > 0
+        ? existing.docs[0]
+        : await payload.create({
+            collection: 'service-categories',
+            data: { name: targetName, status: 'active' }
+        });
+
     cache.serviceCategories.set(key, result);
     return result;
 }
@@ -239,7 +349,7 @@ async function findWorkflowBySlug(payload: any, slug: string, cache: any) {
 
     const res = await payload.find({ collection: 'workflows', where: { name: { contains: slug } }, limit: 1 });
     const result = res.docs[0] || null;
-    
+
     if (result) cache.workflows.set(slug, result);
     return result;
 }
@@ -247,18 +357,18 @@ async function findWorkflowBySlug(payload: any, slug: string, cache: any) {
 async function ensureProviderMapping(payload: any, provider: string, externalCode: string, internalId: string | number, relationTo: string, label: string) {
     const mapping = await payload.find({ collection: 'provider-mappings', where: { and: [{ externalCode: { equals: externalCode } }, { provider: { equals: provider } }] }, limit: 1 });
     if (mapping.docs.length === 0) {
-        await payload.create({ 
-            collection: 'provider-mappings', 
-            data: { 
+        await payload.create({
+            collection: 'provider-mappings',
+            data: {
                 internalName: `${label} Mapping`,
-                provider, 
-                externalCode, 
+                provider,
+                externalCode,
                 relatedEntity: {
                     relationTo,
                     value: internalId
                 },
-                status: 'active' 
-            } 
+                status: 'active'
+            }
         });
     }
 }

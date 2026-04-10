@@ -418,14 +418,19 @@ export interface ServiceFormSchema {
 export interface Service {
     id: string;
     name: string;
-    category: string; // ServiceCategory ID
-    provider?: string; // ServiceProviders ID
+    /** Resolved display name of the category (from depth:1 population) */
+    category: string;
+    /** Raw category ID — use this when sending updates to the API */
+    category_id?: string;
+    provider?: string;
     provider_service_code?: string;
-    validation_workflow?: string; // Workflows ID
-    execution_workflow?: string; // Workflows ID
+    /** Can be a workflow ID string or a populated workflow object */
+    validation_workflow?: string | { id: string; name: string };
+    /** Can be a workflow ID string or a populated workflow object */
+    execution_workflow?: string | { id: string; name: string };
     fee_type: 'none' | 'flat' | 'percentage' | 'tiered';
     fee_value?: number;
     form_schema: ServiceFormSchema[];
     status: 'active' | 'inactive';
-    created_at: string;
+    created_at?: string;
 }

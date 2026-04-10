@@ -1,4 +1,8 @@
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { importRegistryBundle } from '@/lib/registry/sdl';
+import fs from 'fs';
+import path from 'path';
 
 export async function GET() {
     try {
@@ -15,7 +19,7 @@ export async function GET() {
             return NextResponse.json({ error: "Forbidden: Requires Administrator Privileges" }, { status: 403 });
         }
 
-        const payload = await getPayload({ config });
+
         const templatesDir = path.join(process.cwd(), 'lib/workflow/templates');
         
         if (!fs.existsSync(templatesDir)) {
