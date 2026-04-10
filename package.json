@@ -1,11 +1,12 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "generate:importmap": "node --conditions=module --import tsx/esm node_modules/payload/dist/bin.js generate:importmap"
+    "generate:importmap": "node --conditions=module --import tsx/esm node_modules/payload/dist/bin.js generate:importmap",
+    "schema:push": "node --conditions=module --import tsx/esm node_modules/payload/dist/bin.js schema:push --force"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

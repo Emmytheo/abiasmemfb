@@ -97,12 +97,12 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
 
                 const linkedAccounts = allAccounts.filter(acc => 
                     (typeof acc.customer === 'object' ? acc.customer?.id === id : acc.customer === id) ||
-                    (!cust.is_archived && (acc.user_id === cust.email || acc.user_id === cust.supabase_id))
+                    (acc.user_id === cust.email || acc.user_id === cust.supabase_id)
                 );
                 
                 const linkedLoans = allLoans.filter(loan => 
                     (typeof loan.customer === 'object' ? loan.customer?.id === id : loan.customer === id) ||
-                    (!cust.is_archived && (loan.user_id === cust.email || loan.user_id === cust.supabase_id))
+                    (loan.user_id === cust.email || loan.user_id === cust.supabase_id)
                 );
 
                 setAccounts(linkedAccounts);

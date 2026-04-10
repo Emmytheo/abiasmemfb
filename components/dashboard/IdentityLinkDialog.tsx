@@ -424,6 +424,7 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                                     <div className="pt-4 border-t border-dashed space-y-1.5 text-[10px] text-muted-foreground font-medium leading-relaxed">
                                         <p>• <strong>{reconciliation.email}</strong> will become the primary identity handle.</p>
                                         <p>• <strong>{selectedAccounts.length}</strong> financial products will be mirrored/re-pointed.</p>
+                                        <p>• <strong>Associated Transactions</strong> will be re-associated with the new identity handle (Identity Bridge Fix).</p>
                                         <p>• Secondary records will be renamed for audit (Collision-Safe).</p>
                                     </div>
                                 </Card>
