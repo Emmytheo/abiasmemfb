@@ -108,4 +108,5 @@ export const PayloadAdapter: ApiAdapter = {
     mergeCustomers: (...args) => actions.mergeCustomers(...args),
     getQoreAccounts: (...args) => actions.getQoreAccounts(...args),
     unlinkCustomer: (...args) => actions.unlinkCustomer(...args),
+    repointAccount: (...args) => actions.repointAccount(...args),
 };

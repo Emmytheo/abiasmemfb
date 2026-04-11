@@ -1512,7 +1512,8 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
 
         // 2. Mirror/Unify loop
         for (const qoreAccount of accounts) {
-            const accountNo = qoreAccount.AccountNumber || qoreAccount.accountNumber;
+            // Canonical Key: NUBAN > accountNumber (lowercase) > AccountNumber (PascalCase) > AccountNo
+            const accountNo = qoreAccount.NUBAN || qoreAccount.accountNumber || qoreAccount.AccountNumber || qoreAccount.AccountNo;
             if (!accountNo) continue;
             
             const existing = legacyAccounts.docs.find((a: any) => a.account_number === accountNo);
@@ -1521,20 +1522,24 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
             const productTypeId = await syncProductMetadata(payload, qoreAccount);
 
             // Normalize Account Type (Qore often returns 'SavingsOrCurrent')
-            let normalizedType: string = qoreAccount.AccountType || qoreAccount.accountType || 'Savings';
+            let normalizedType: string = qoreAccount.accountType || qoreAccount.AccountType || 'Savings';
             if (normalizedType.includes('Savings')) normalizedType = 'Savings';
             else if (normalizedType.includes('Current')) normalizedType = 'Current';
             else if (normalizedType.includes('Deposit')) normalizedType = 'Fixed Deposit';
             else normalizedType = 'Savings';
 
+            // Strip commas from balance strings (Qore returns "1,743,786.58" not "1743786.58")
+            const rawBalance = qoreAccount.availableBalance || qoreAccount.AvailableBalance || '0';
+            const balanceKobo = Math.round(parseFloat(String(rawBalance).replace(/,/g, '')) * 100);
+
             const accountData: any = {
                 customer: Number(winnerId),
                 // CRITICAL: Dashboard access (AccountDetailsPage:46) requires the user_id to match Supabase UUID
-                user_id: winnerSupabaseId || qoreAccount.Email || qoreAccount.CustomerID, 
+                user_id: winnerSupabaseId || qoreAccount.email || qoreAccount.customerID, 
                 account_number: accountNo,
                 account_type: normalizedType,
-                balance: Math.round(parseFloat((qoreAccount.AvailableBalance || qoreAccount.availableBalance || '0').replace(/,/g, '')) * 100),
-                status: (qoreAccount.Status || qoreAccount.accountStatus || 'active').toLowerCase(),
+                balance: isNaN(balanceKobo) ? 0 : balanceKobo,
+                status: (qoreAccount.accountStatus || qoreAccount.Status || 'active').toLowerCase(),
                 source: 'qore',
                 product_type: productTypeId,
             };
@@ -1633,7 +1638,8 @@ export const refreshCustomerLedger = async (customerId: string): Promise<{ succe
 
         // 1. Fetch ALL current account numbers from Qore
         const qoreAccounts = await getQoreAccounts(customerId);
-        const accountNumbers = qoreAccounts.map((a: any) => a.AccountNumber || a.accountNumber).filter(Boolean);
+        // NUBAN > accountNumber(lowercase) > AccountNumber(PascalCase)
+        const accountNumbers = qoreAccounts.map((a: any) => a.NUBAN || a.accountNumber || a.AccountNumber || a.AccountNo).filter(Boolean);
 
         if (!accountNumbers.length) {
             return { success: true, message: 'No accounts found in Qore to sync.' };
@@ -1657,6 +1663,27 @@ export const unlinkCustomer = async (id: string): Promise<Customer> => {
     const payload = await initPayload();
     const doc = await payload.update({ collection: 'customers', id, data: { supabase_id: null, is_associated: false, merger_status: 'none' } as any, overrideAccess: true });
     return { id: String(doc.id), email: (doc as any).email } as any;
+};
+
+export const repointAccount = async (accountId: string, winnerId: string, winnerSupabaseId: string | null): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        await payload.update({
+            collection: 'accounts',
+            id: accountId,
+            data: {
+                customer: Number(winnerId),
+                ...(winnerSupabaseId ? { user_id: winnerSupabaseId } : {}),
+                source: 'qore',
+            },
+            overrideAccess: true
+        });
+        console.log(`[Repoint] Account ${accountId} re-pointed to customer ${winnerId}`);
+        return true;
+    } catch (e: any) {
+        console.error('[Repoint] Failed:', e.message);
+        throw e;
+    }
 };
 
 export const processAccountFunding = async (targetAccountId: string, amountNaira: number, reference?: string): Promise<{ success: boolean; data?: any; error?: string }> => {

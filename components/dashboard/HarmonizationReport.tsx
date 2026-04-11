@@ -291,7 +291,7 @@ export function HarmonizationReport() {
                                     <div>
                                         <p className="font-bold text-xs tracking-tight">{acc.account_name}</p>
                                         <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest leading-none mt-0.5">
-                                            {typeof acc.customer === 'object' ? `Legacy: ${acc.customer?.firstName}` : 'Orphaned Record'}
+                                            {typeof acc.customer === 'object' ? `Archived: ${acc.customer?.firstName} ${acc.customer?.lastName}` : 'Orphaned Record'}
                                         </p>
                                     </div>
                                 </div>
@@ -299,10 +299,31 @@ export function HarmonizationReport() {
                                     variant="outline" 
                                     size="sm" 
                                     className="h-7 text-[8px] font-black uppercase tracking-widest border-primary/10 hover:bg-primary/5 hover:text-primary"
-                                    onClick={() => {
-                                        const cust = typeof acc.customer === 'object' ? acc.customer : customers.find(c => c.id === acc.customer);
-                                        if (cust) handleLinkIdentity(cust);
-                                        else toast.error("Select a primary identity to link this asset.");
+                                    onClick={async () => {
+                                        // Find all active (non-archived) customers to choose from
+                                        const activeCusts = customers.filter(c => !c.is_archived && c.qore_customer_id);
+                                        if (activeCusts.length === 0) {
+                                            toast.error("No active banking profiles found to repoint this asset to.");
+                                            return;
+                                        }
+                                        // Quick repoint: pick winner by matching the legacy_qore_ids on active customers
+                                        // OR fall back to showing a picker
+                                        const archivedCustomerId = typeof acc.customer === 'object' ? acc.customer?.id : acc.customer;
+                                        const winner = activeCusts.find(c =>
+                                            (c as any).legacy_qore_ids?.some((l: any) => {
+                                                const archivedCust = customers.find(x => x.id === archivedCustomerId);
+                                                return l.qore_id === archivedCust?.qore_customer_id;
+                                            })
+                                        );
+
+                                        const targetCustomer = winner || activeCusts[0];
+                                        try {
+                                            await (api as any).repointAccount(acc.id, targetCustomer.id, targetCustomer.supabase_id);
+                                            toast.success(`Account ${acc.account_number} re-pointed to ${targetCustomer.firstName} ${targetCustomer.lastName}`);
+                                            loadData();
+                                        } catch (e: any) {
+                                            toast.error("Repoint failed: " + e.message);
+                                        }
                                     }}
                                 >
                                     Re-Point Asset

@@ -128,12 +128,19 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                 targetAccounts = await api.getQoreAccounts(target.id);
             }
             
-            const combined = [...accounts, ...targetAccounts].filter((v, i, a) => a.findIndex(t => t.AccountNo === v.AccountNo) === i);
+            // NUBAN is the canonical key. Fall back: NUBAN > accountNumber(lowercase) > AccountNo
+            const getAccountKey = (a: any) => a.NUBAN || a.accountNumber || a.AccountNo || a.AccountNumber;
+            
+            // Deduplicate combined discovered accounts using the canonical key
+            const combined = [...accounts, ...targetAccounts].filter(
+                (v, i, arr) => arr.findIndex(t => getAccountKey(t) === getAccountKey(v)) === i
+            );
             setQoreAccounts(combined);
             
+            // Pre-select any accounts not yet locally mapped
             const missing = combined
-                .map((q: any) => q.AccountNo)
-                .filter((no: string) => !existingAccounts.some(e => e.account_number === no));
+                .map((q: any) => getAccountKey(q))
+                .filter((no: string) => no && !existingAccounts.some(e => e.account_number === no));
             setSelectedAccounts(missing);
         } catch (e) {
             console.error("Discovery failed", e);
@@ -390,12 +397,18 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between"><h3 className="text-lg font-black tracking-tight">Product Mirroring</h3>{loadingFinancials && <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />}</div>
                                 <div className="space-y-2">
-                                    {qoreAccounts.map(qAcc => (
-                                        <div key={qAcc.AccountNo} onClick={() => setSelectedAccounts(prev => prev.includes(qAcc.AccountNo) ? prev.filter(a => a !== qAcc.AccountNo) : [...prev, qAcc.AccountNo])} className={cn("flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer", selectedAccounts.includes(qAcc.AccountNo) ? "bg-primary/5 border-primary" : "bg-background border-muted-foreground/10")}>
-                                            <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center text-accent-foreground"><CreditCard className="h-5 w-5" /></div><div><p className="font-bold text-sm">{qAcc.AccountNo}</p><p className="text-[10px] uppercase font-black text-muted-foreground">₦{parseFloat(qAcc.AvailableBalance).toLocaleString()}</p></div></div>
-                                            {selectedAccounts.includes(qAcc.AccountNo) && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    {qoreAccounts.map((qAcc, idx) => {
+                                        // Resolve canonical key: NUBAN is preferred over legacy internal account number
+                                        const canonicalNo = qAcc.NUBAN || qAcc.accountNumber || qAcc.AccountNo || qAcc.AccountNumber;
+                                        const rawBalance = qAcc.availableBalance || qAcc.AvailableBalance || '0';
+                                        const balance = parseFloat(String(rawBalance).replace(/,/g, ''));
+                                        return (
+                                        <div key={canonicalNo || idx} onClick={() => setSelectedAccounts(prev => prev.includes(canonicalNo) ? prev.filter(a => a !== canonicalNo) : [...prev, canonicalNo])} className={cn("flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer", selectedAccounts.includes(canonicalNo) ? "bg-primary/5 border-primary" : "bg-background border-muted-foreground/10")}>
+                                            <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center text-accent-foreground"><CreditCard className="h-5 w-5" /></div><div><p className="font-bold text-sm">{canonicalNo}</p><p className="text-[10px] uppercase font-black text-muted-foreground">₦{isNaN(balance) ? '0.00' : balance.toLocaleString()}</p></div></div>
+                                            {selectedAccounts.includes(canonicalNo) && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 <Button onClick={nextStep} className="w-full h-12 rounded-xl font-black uppercase mt-4">Review Consolidation</Button>
                             </div>
