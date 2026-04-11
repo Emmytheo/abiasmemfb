@@ -32,6 +32,8 @@ export default function ClientDashboard() {
     const [applications, setApplications] = useState<ProductApplication[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [customer, setCustomer] = useState<Customer | null>(null);
     const [timeframe, setTimeframe] = useState<'6M' | '1Y' | 'ALL'>('6M');
     const [isMounted, setIsMounted] = useState(false);
     const [showBalance, setShowBalance] = useState(true);
@@ -54,14 +56,16 @@ export default function ClientDashboard() {
                     created_at: supaUser.created_at || new Date().toISOString(),
                 };
 
-                const [accountsData, loansData, txsData, appsData, catsData] = await Promise.all([
+                const [accountsData, loansData, txsData, appsData, catsData, customerProfile] = await Promise.all([
                     api.getUserAccounts(currentUser.id),
                     api.getUserLoans(currentUser.id),
                     api.getUserTransactions(currentUser.id), // Fetch only user transactions
                     api.getUserApplications(currentUser.id),
-                    api.getServiceCategories()
+                    api.getServiceCategories(),
+                    api.getCustomerBySupabaseId(currentUser.id)
                 ]);
                 setUser(currentUser);
+                setCustomer(customerProfile);
                 setCategories(catsData);
                 setAccounts(accountsData);
                 setLoans(loansData);
@@ -233,7 +237,16 @@ export default function ClientDashboard() {
                         <div className="space-y-3">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">KYC Status</span>
-                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 uppercase text-[10px]">Active</Badge>
+                                <Badge 
+                                    variant="outline" 
+                                    className={`uppercase text-[10px] ${
+                                        customer?.kyc_status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                                        customer?.kyc_status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                        'bg-slate-50 text-slate-700 border-slate-200'
+                                    }`}
+                                >
+                                    {customer?.kyc_status || 'Unlinked'}
+                                </Badge>
                             </div>
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">BVN Verified</span>
@@ -242,8 +255,38 @@ export default function ClientDashboard() {
                         </div>
                     </div>
                     <div className="flex gap-2 mt-6">
-                        <Button variant="ghost" size="sm" className="flex-1 text-[10px] font-black bg-background/50 hover:bg-background h-8" onClick={() => toast.info("Syncing with core banking...")}>
-                            <RefreshCw className="h-3 w-3 mr-1.5" /> SYNC
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="flex-1 text-[10px] font-black bg-background/50 hover:bg-background h-8" 
+                            disabled={isSyncing}
+                            onClick={async () => {
+                                setIsSyncing(true);
+                                const tId = toast.loading("Syncing with core banking...");
+                                try {
+                                    const res = await api.syncBankingIdentity(user!.id);
+                                    if (res.success) {
+                                        toast.success(res.message, { id: tId });
+                                        // Refresh all data
+                                        const [newAccs, newLoans, newProfile] = await Promise.all([
+                                            api.getUserAccounts(user!.id),
+                                            api.getUserLoans(user!.id),
+                                            api.getCustomerBySupabaseId(user!.id)
+                                        ]);
+                                        setAccounts(newAccs);
+                                        setLoans(newLoans);
+                                        setCustomer(newProfile);
+                                    } else {
+                                        toast.error(res.message, { id: tId });
+                                    }
+                                } catch (e) {
+                                    toast.error("Network synchronization failed.", { id: tId });
+                                } finally {
+                                    setIsSyncing(false);
+                                }
+                            }}
+                        >
+                            <RefreshCw className={`h-3 w-3 mr-1.5 ${isSyncing ? 'animate-spin' : ''}`} /> {isSyncing ? 'SYNCING...' : 'SYNC'}
                         </Button>
                         <Button variant="default" size="sm" className="flex-1 text-[10px] font-black h-8 shadow-none" asChild>
                             <Link href="/client-dashboard/profile">MANAGE</Link>

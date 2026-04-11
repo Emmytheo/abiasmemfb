@@ -9,7 +9,9 @@ export const PayloadAdapter: ApiAdapter = {
     // Customers
     getAllCustomers: () => actions.getAllCustomers(),
     getCustomerById: (id) => actions.getCustomerById(id),
+    getCustomerBySupabaseId: (id) => actions.getCustomerBySupabaseId(id),
     restoreCustomerIdentity: (customerId, supabaseId, email) => actions.restoreCustomerIdentity(customerId, supabaseId, email),
+    syncBankingIdentity: (userId) => actions.syncBankingIdentity(userId),
     updateCustomer: (id, data) => actions.updateCustomer(id, data),
     getCustomerAudit: (...args) => actions.getCustomerAudit(...args),
     deleteCustomer: (...args) => actions.deleteCustomer(...args),

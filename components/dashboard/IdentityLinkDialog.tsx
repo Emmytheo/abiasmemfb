@@ -181,6 +181,22 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
         }
     };
 
+    const handleUnlink = async () => {
+        if (!customerId) return;
+        setLoading(true);
+        try {
+            await api.unlinkCustomer(customerId);
+            toast.success("Identity Bridge Severed");
+            onSuccess();
+            reset();
+            onClose();
+        } catch (e: any) {
+            toast.error("Failed to decouple identity.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSurgicalRepoint = async (user: User) => {
         if (!customerId) return;
         setLoading(true);
@@ -222,17 +238,17 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
 
     return (
         <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="w-full max-w-[620px] p-0 overflow-hidden sm:rounded-2xl border-none shadow-2xl h-[100dvh] sm:h-auto">
+            <DialogContent className="w-full max-w-[620px] p-0 overflow-hidden sm:rounded-2xl border-none shadow-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col">
                 <div className="bg-gradient-to-br from-primary/10 via-background to-background min-h-full sm:min-h-[550px] flex flex-col">
                     <DialogHeader className="p-4 md:p-8 pb-0">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-primary/20 rounded-xl">
-                                    <ShieldCheck className="h-6 w-6 text-primary" />
+                                    <ShieldCheck className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                                 </div>
                                 <div>
-                                    <DialogTitle className="text-2xl font-black tracking-tight leading-none mb-1">Identity Bridge</DialogTitle>
-                                    <p className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold">
+                                    <DialogTitle className="text-xl md:text-2xl font-black tracking-tight leading-none mb-1">Identity Bridge</DialogTitle>
+                                    <p className="text-[9px] md:text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                                         {step === 'select' && "1. Bi-directional Discovery"}
                                         {step === 'reconcile-profile' && "2. Profile Reconciliation"}
                                         {step === 'reconcile-financials' && "3. Financial Mirroring"}
@@ -273,8 +289,17 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
 
                                     {!confirmUnlink ? (
                                         <div className="w-full space-y-3">
-                                            <Button variant="outline" className="w-full h-12 rounded-xl font-black uppercase tracking-widest gap-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary" onClick={() => setStep('select')}>
-                                                <ArrowLeftRight className="h-4 w-4" /> Reconcile with Banking Record
+                                            <Button variant="outline" className="w-full h-12 rounded-xl font-black uppercase tracking-widest gap-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary" onClick={() => {
+                                                setSearchMode('supabase');
+                                                setStep('select');
+                                            }}>
+                                                <UserIcon className="h-4 w-4" /> Change Digital Identity
+                                            </Button>
+                                            <Button variant="outline" className="w-full h-12 rounded-xl font-black uppercase tracking-widest gap-2 hover:bg-secondary/10 border-muted-foreground/20" onClick={() => {
+                                                setSearchMode('banking');
+                                                setStep('select');
+                                            }}>
+                                                <ArrowLeftRight className="h-4 w-4" /> Reconcile with different Banking Record
                                             </Button>
                                             <Button variant="ghost" className="w-full h-12 rounded-xl font-black uppercase tracking-widest gap-2 text-destructive hover:bg-destructive/10" onClick={() => setConfirmUnlink(true)}>
                                                 <Trash2 className="h-4 w-4" /> Sever Identity Bridge
@@ -389,14 +414,14 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                                     ].map(field => (
                                         <div key={field.key} className="space-y-1.5">
                                             <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">{field.label}</label>
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                                 <button onClick={() => setReconciliation(p => ({ ...p, [field.key]: field.cur || '' }))} className={cn("p-2.5 rounded-xl border text-left transition-all", reconciliation[field.key as keyof typeof reconciliation] === field.cur ? "bg-primary/10 border-primary shadow-sm" : "bg-background border-muted-foreground/10 opacity-60")}>
                                                     <div className="flex items-center justify-between mb-0.5"><span className="text-[7px] font-black uppercase text-primary/60">Currently Viewed</span>{reconciliation[field.key as keyof typeof reconciliation] === field.cur && <CheckCircle2 className="h-3 w-3 text-primary" />}</div>
-                                                    <p className="text-xs font-bold truncate">{field.cur || 'Empty'}</p>
+                                                    <p className="text-xs font-bold truncate shrink-0">{field.cur || 'Empty'}</p>
                                                 </button>
                                                 <button onClick={() => setReconciliation(p => ({ ...p, [field.key]: field.tgt || '' }))} className={cn("p-2.5 rounded-xl border text-left transition-all", reconciliation[field.key as keyof typeof reconciliation] === field.tgt ? "bg-secondary/20 border-secondary shadow-sm" : "bg-background border-muted-foreground/10 opacity-60")}>
                                                     <div className="flex items-center justify-between mb-0.5"><span className="text-[7px] font-black uppercase text-secondary-foreground/60">Selected Record</span>{reconciliation[field.key as keyof typeof reconciliation] === field.tgt && <CheckCircle2 className="h-3 w-3 text-secondary-foreground" />}</div>
-                                                    <p className="text-xs font-bold truncate">{field.tgt || 'Empty'}</p>
+                                                    <p className="text-xs font-bold truncate shrink-0">{field.tgt || 'Empty'}</p>
                                                 </button>
                                             </div>
                                         </div>

@@ -166,6 +166,56 @@ export const getCustomerById = async (id: string): Promise<Customer | null> => {
     }
 };
 
+export const getCustomerBySupabaseId = async (supabaseId: string): Promise<Customer | null> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({ 
+            collection: 'customers' as any, 
+            where: { supabase_id: { equals: supabaseId } },
+            limit: 1, 
+            overrideAccess: true 
+        });
+        if (!docs.length) return null;
+        const doc = docs[0];
+        return {
+            id: String(doc.id),
+            firstName: doc.firstName,
+            lastName: doc.lastName,
+            email: doc.email,
+            phone_number: doc.phone_number,
+            bvn: doc.bvn,
+            qore_customer_id: doc.qore_customer_id,
+            supabase_id: doc.supabase_id,
+            kyc_status: doc.kyc_status,
+            risk_tier: doc.risk_tier,
+            is_associated: doc.is_associated,
+            is_test_account: doc.is_test_account,
+            is_archived: doc.is_archived || false,
+            merger_status: doc.merger_status as any,
+            address: doc.address,
+            metadata: doc.metadata,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        } as Customer;
+    } catch (e) {
+        console.error('Payload getCustomerBySupabaseId Error:', e);
+        return null;
+    }
+};
+
+export const syncBankingIdentity = async (userId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+        const customer = await getCustomerBySupabaseId(userId);
+        if (!customer) return { success: false, message: 'Banking profile not found for this identity.' };
+        if (!customer.qore_customer_id) return { success: false, message: 'Identity found, but not yet linked to a core banking record. Please contact branch.' };
+        
+        await refreshCustomerLedger(customer.id);
+        return { success: true, message: 'Banking ledger synchronized successfully.' };
+    } catch (e: any) {
+        return { success: false, message: e.message || 'Synchronization failed.' };
+    }
+};
+
 export const restoreCustomerIdentity = async (customerId: string, supabaseId: string, email: string): Promise<boolean> => {
     try {
         const payload = await initPayload();
@@ -298,11 +348,10 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
         const payload = await initPayload();
         // Strict matching: Match by user_id OR customer relation, but only for active digital identities
         const { docs: users } = await payload.find({ collection: 'users', where: { supabase_id: { equals: userId } }, limit: 1 });
-        if (!users.length) return [];
         
         const { docs: customers } = await payload.find({ 
             collection: 'customers', 
-            where: { user_id: { equals: userId } }, 
+            where: { supabase_id: { equals: userId } }, 
             limit: 100 
         });
         const customerIds = customers.map(c => c.id);
@@ -1304,6 +1353,11 @@ export const executeCustomerMerge = async (params: MergeParams) => {
                     if (winnerSupabaseId) {
                         updateData.user_id = winnerSupabaseId;
                     }
+
+                    // Ensure migrated banking products are active/visible
+                    if (col === 'accounts' || col === 'loans') {
+                        updateData.is_archived = false;
+                    }
                     
                     try {
                         await payload.update({ 
@@ -1359,6 +1413,25 @@ export const executeCustomerMerge = async (params: MergeParams) => {
         archivedIds.push(loserId);
     }
     const finalSupabaseId = supabaseId || (targetCustomer?.supabase_id || primary.supabase_id);
+
+    // Shadow User Assurance: Ensure the digital identity exists in the Payload 'users' collection
+    if (finalSupabaseId) {
+        const shadowUsers = await payload.find({ collection: 'users', where: { supabase_id: { equals: finalSupabaseId } }, limit: 1, overrideAccess: true });
+        if (shadowUsers.docs.length === 0) {
+            console.log(`[Bridge] Creating missing shadow user record for ${finalSupabaseId}`);
+            await payload.create({ 
+                collection: 'users', 
+                data: { 
+                    supabase_id: finalSupabaseId, 
+                    email: profileData?.email || primary.email,
+                    name: profileData ? `${profileData.firstName} ${profileData.lastName}` : `${primary.firstName} ${primary.lastName}`,
+                    role: 'admin' // In this system, Payload users are treated as admin shadow records
+                },
+                overrideAccess: true 
+            });
+        }
+    }
+
     await payload.update({ collection: 'customers', id: winnerId, data: { ...profileData, supabase_id: finalSupabaseId, is_associated: !!finalSupabaseId, merger_status: 'primary', active: true, is_archived: false } as any, overrideAccess: true });
     return { success: true, mergedRecords: archivedIds.length, archivedIds };
 };

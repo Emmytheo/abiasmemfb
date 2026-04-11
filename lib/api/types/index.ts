@@ -72,7 +72,7 @@ export interface FieldValidation {
 
 export interface FieldEvent {
     trigger: 'onChange' | 'onBlur' | 'onLoad';
-    action: 'EXECUTE_ENDPOINT' | 'SET_VALUE';
+    action: 'EXECUTE_ENDPOINT' | 'SET_VALUE' | 'SET_VALUES';
     endpointId?: string;
     mappingConfig?: Record<string, any>;
 }
@@ -284,7 +284,9 @@ export interface ApiAdapter {
     // Customers
     getAllCustomers: () => Promise<Customer[]>;
     getCustomerById: (id: string) => Promise<Customer | null>;
+    getCustomerBySupabaseId: (supabaseId: string) => Promise<Customer | null>;
     restoreCustomerIdentity: (customerId: string, supabaseId: string, email: string) => Promise<boolean>;
+    syncBankingIdentity: (userId: string) => Promise<{ success: boolean; message: string }>;
     repointAccount: (accountId: string, winnerId: string, winnerSupabaseId: string | null) => Promise<boolean>;
     repointDigitalIdentity: (customerId: string, supabaseId: string) => Promise<boolean>;
     updateCustomer: (id: string, data: Partial<Customer>) => Promise<Customer>;
@@ -408,7 +410,7 @@ export interface ServiceFormSchema {
     id: string;
     name: string; // Internal variable name
     label: string; // UI label
-    type: 'text' | 'number' | 'email' | 'select' | 'destination_bank_lookup';
+    type: 'text' | 'number' | 'email' | 'select' | 'destination_bank_lookup' | 'beneficiary_select';
     required: boolean;
     placeholder?: string;
     options?: string; // Comma-separated options for 'select'

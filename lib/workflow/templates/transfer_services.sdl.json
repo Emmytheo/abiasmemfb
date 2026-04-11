@@ -1,6 +1,6 @@
 {
-    "version": "1.0.0",
-    "products": [],
+    "version": "1.1.0",
+    "description": "Harmonized Transfer Services with Event-Driven Beneficiary Selection",
     "services": [
         {
             "name": "Intra-Bank Funds Transfer",
@@ -11,55 +11,34 @@
             "status": "active",
             "form_schema": [
                 {
-                    "id": "source_account",
-                    "label": "Source Account",
-                    "type": "select",
-                    "required": true,
-                    "description": "Select the account to debit",
+                    "id": "beneficiary_id",
+                    "name": "beneficiary_id",
+                    "label": "Select Saved Beneficiary",
+                    "type": "beneficiary_select",
+                    "required": false,
                     "events": [
                         {
-                            "trigger": "onLoad",
-                            "action": "EXECUTE_ENDPOINT",
-                            "endpointId": "Get Accounts By Customer",
+                            "trigger": "onChange",
+                            "action": "SET_VALUES",
                             "mappingConfig": {
-                                "responseMap": {
-                                    "options": "Payload[*].AccountNumber"
-                                }
+                                "destination_account": "{{$value.account_number}}",
+                                "destination_name": "{{$value.account_name}}"
                             }
                         }
                     ]
                 },
                 {
                     "id": "destination_account",
-                    "label": "Destination Account Number",
+                    "name": "destination_account",
+                    "label": "Target Account Number",
                     "type": "text",
                     "required": true,
                     "placeholder": "Enter 10-digit Abia MFB Account",
-                    "validations": [
-                        {
-                            "type": "regex",
-                            "value": "^[0-9]{10}$",
-                            "errorMessage": "Account Number must be exactly 10 digits"
-                        }
-                    ],
-                    "events": [
-                        {
-                            "trigger": "onChange",
-                            "action": "EXECUTE_ENDPOINT",
-                            "endpointId": "Account Enquiry",
-                            "mappingConfig": {
-                                "requestMap": {
-                                    "AccountNumber": "{{$value}}"
-                                },
-                                "responseMap": {
-                                    "destination_name": "Payload.AccountName"
-                                }
-                            }
-                        }
-                    ]
+                    "triggers_validation": true
                 },
                 {
                     "id": "destination_name",
+                    "name": "destination_name",
                     "label": "Verified Account Name",
                     "type": "text",
                     "required": true,
@@ -67,23 +46,18 @@
                 },
                 {
                     "id": "amount",
-                    "label": "Amount",
+                    "name": "amount",
+                    "label": "Transfer Amount",
                     "type": "number",
-                    "required": true,
-                    "validations": [
-                        {
-                            "type": "min",
-                            "value": "100",
-                            "errorMessage": "Minimum transfer amount is ₦100"
-                        }
-                    ]
+                    "required": true
                 },
                 {
                     "id": "narration",
-                    "label": "Narration",
+                    "name": "narration",
+                    "label": "Transaction Narration",
                     "type": "text",
                     "required": true,
-                    "placeholder": "e.g. For dinner"
+                    "placeholder": "e.g. Lunch with the team"
                 }
             ]
         },
@@ -96,57 +70,124 @@
             "status": "active",
             "form_schema": [
                 {
-                    "id": "destination_bank_code",
-                    "label": "Destination Bank",
-                    "type": "destination_bank_lookup",
-                    "required": true,
+                    "id": "beneficiary_id",
+                    "name": "beneficiary_id",
+                    "label": "Select Saved Beneficiary",
+                    "type": "beneficiary_select",
+                    "required": false,
                     "events": [
                         {
-                            "trigger": "onLoad",
-                            "action": "EXECUTE_ENDPOINT",
-                            "endpointId": "Get Commercial Banks"
+                            "trigger": "onChange",
+                            "action": "SET_VALUES",
+                            "mappingConfig": {
+                                "destination_account": "{{$value.account_number}}",
+                                "destination_bank_code": "{{$value.bank_code}}",
+                                "destination_name": "{{$value.account_name}}"
+                            }
                         }
                     ]
                 },
                 {
+                    "id": "destination_bank_code",
+                    "name": "destination_bank_code",
+                    "label": "Destination Bank",
+                    "type": "destination_bank_lookup",
+                    "required": true
+                },
+                {
                     "id": "destination_account",
-                    "label": "Destination Account Number",
+                    "name": "destination_account",
+                    "label": "Target Account Number",
                     "type": "text",
                     "required": true,
                     "placeholder": "Enter 10-digit Account Number",
-                    "validations": [
-                        {
-                            "type": "regex",
-                            "value": "^[0-9]{10}$",
-                            "errorMessage": "Account Number must be exactly 10 digits"
-                        }
-                    ],
+                    "triggers_validation": true
+                },
+                {
+                    "id": "destination_name",
+                    "name": "destination_name",
+                    "label": "Verified Account Name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Auto-verified name"
+                },
+                {
+                    "id": "amount",
+                    "name": "amount",
+                    "label": "Transfer Amount",
+                    "type": "number",
+                    "required": true
+                },
+                {
+                    "id": "narration",
+                    "name": "narration",
+                    "label": "Transaction Narration",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. Supplier payment"
+                }
+            ]
+        },
+        {
+            "name": "International Wire Transfer (SWIFT)",
+            "categorySlug": "transfers",
+            "provider_service_code": "QORE-SWIFT-TRF",
+            "fee_type": "percentage",
+            "fee_value": 0.5,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "beneficiary_id",
+                    "name": "beneficiary_id",
+                    "label": "Select Saved Beneficiary",
+                    "type": "beneficiary_select",
+                    "required": false,
                     "events": [
                         {
                             "trigger": "onChange",
-                            "action": "EXECUTE_ENDPOINT",
-                            "endpointId": "Inter-Bank Name Enquiry",
+                            "action": "SET_VALUES",
                             "mappingConfig": {
-                                "requestMap": {
-                                    "AccountNumber": "{{$value}}",
-                                    "BankCode": "{{destination_bank_code}}"
-                                },
-                                "responseMap": {
-                                    "destination_name": "Payload.AccountName"
-                                }
+                                "destination_account": "{{$value.account_number}}",
+                                "swift_code": "{{$value.swift_code}}",
+                                "destination_name": "{{$value.account_name}}",
+                                "country": "{{$value.country}}"
                             }
                         }
                     ]
                 },
                 {
                     "id": "destination_name",
-                    "label": "Verified Account Name",
+                    "name": "destination_name",
+                    "label": "Beneficiary Full Name",
                     "type": "text",
                     "required": true
                 },
                 {
+                    "id": "destination_account",
+                    "name": "destination_account",
+                    "label": "IBAN / Account Number",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "swift_code",
+                    "name": "swift_code",
+                    "label": "SWIFT / BIC Code",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "country",
+                    "name": "country",
+                    "label": "Destination Country",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. US, GB, DE"
+                },
+                {
                     "id": "amount",
-                    "label": "Amount",
+                    "name": "amount",
+                    "label": "Amount (USD/GBP/EUR)",
                     "type": "number",
                     "required": true
                 }

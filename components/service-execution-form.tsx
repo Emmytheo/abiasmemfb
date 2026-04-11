@@ -27,16 +27,24 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
     const [accounts, setAccounts] = useState<any[]>([]);
     const [sourceAccountId, setSourceAccountId] = useState<string>('');
     const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+    const [beneficiaries, setBeneficiaries] = useState<any[]>([]);
+    const [isLoadingBeneficiaries, setIsLoadingBeneficiaries] = useState(false);
+    const [lockedFields, setLockedFields] = useState<Set<string>>(new Set());
 
     React.useEffect(() => {
         if (!service) return;
         setIsLoadingAccounts(true);
-        async function fetchAccounts() {
+        setIsLoadingBeneficiaries(true);
+        async function fetchData() {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                const userAccounts = await api.getUserAccounts(user.id);
+                const [userAccounts, userBens] = await Promise.all([
+                    api.getUserAccounts(user.id),
+                    api.getUserBeneficiaries(user.id)
+                ]);
                 setAccounts(userAccounts);
+                setBeneficiaries(userBens);
                 if (userAccounts.length > 0) {
                     const defaultAccountId = String(userAccounts[0].id);
                     setSourceAccountId(defaultAccountId);
@@ -44,8 +52,9 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                 }
             }
             setIsLoadingAccounts(false);
+            setIsLoadingBeneficiaries(false);
         }
-        fetchAccounts();
+        fetchData();
     }, [service]);
 
     React.useEffect(() => {
@@ -97,15 +106,46 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
         );
     }
 
-    const handleInputChange = async (name: string, value: string) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
+    const handleInputChange = async (name: string, value: string, extraData?: any) => {
+        // If the value is an object (from a picker), we update the main field value to the ID or primary key
+        const displayValue = typeof value === 'object' ? (value as any).id || value : value;
+        setFormData(prev => ({ ...prev, [name]: displayValue }));
+
+        // Event Handling logic
+        const fieldSchema = service?.form_schema.find(f => f.name === name);
+        if (fieldSchema?.events) {
+            for (const event of fieldSchema.events) {
+                if (event.trigger === 'onChange') {
+                    if (event.action === 'SET_VALUES' && event.mappingConfig) {
+                        const newLocked = new Set(lockedFields);
+                        const updates: Record<string, string> = {};
+                        // Process the mapping config
+                        for (const [targetField, template] of Object.entries(event.mappingConfig)) {
+                            // Basic template resolution: {{$value.prop}}
+                            let resolvedValue = template;
+                            if (typeof template === 'string' && template.includes('{{$value.')) {
+                                const prop = template.replace('{{$value.', '').replace('}}', '');
+                                resolvedValue = extraData ? extraData[prop] : (typeof value === 'object' ? (value as any)[prop] : value);
+                            } else if (template === '{{$value}}') {
+                                resolvedValue = displayValue;
+                            }
+                            updates[targetField] = String(resolvedValue);
+                            // Locking requirement: "locked for now" when pre-filled by a beneficiary
+                            newLocked.add(targetField);
+                        }
+                        setFormData(prev => ({ ...prev, ...updates }));
+                        setLockedFields(newLocked);
+                    }
+                }
+            }
+        }
 
         // Auto-resolve account name when account number is filled in
-        const isAccountNumberField = name === 'destinationAccount' || name === 'iban';
-        const bankCode = name === 'bankCode' ? value : (formData['bankCode'] || '');
-        if (isAccountNumberField && value.replace(/\s/g, '').length >= 10) {
+        const isAccountNumberField = name === 'destinationAccount' || name === 'iban' || name === 'destination_account';
+        const bankCode = name === 'bankCode' || name === 'destination_bank_code' ? value : (formData['bankCode'] || formData['destination_bank_code'] || '');
+        if (isAccountNumberField && value.replace(/\s/g, '').length >= 10 && !lockedFields.has('accountName') && !lockedFields.has('resolvedName')) {
             // Require bank to be selected first (essential for real NIP lookup)
-            const hasBankField = service?.form_schema.some(f => f.name === 'bankCode');
+            const hasBankField = service?.form_schema.some(f => f.name === 'bankCode' || f.name === 'destination_bank_code');
             if (hasBankField && !bankCode) {
                 toast.warning('Please select the destination bank before verifying the account number.');
                 setIsValidating(false);
@@ -127,6 +167,7 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                             ...prev,
                             resolvedName: data.accountName,
                             accountName: data.accountName,
+                            destination_name: data.accountName,
                         }));
                         setValidationData(prev => ({ ...prev, [name]: data.accountName }));
                         toast.success(`Account verified: ${data.accountName}`);
@@ -143,7 +184,6 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
         }
 
         // Handle other on-the-fly validation triggers
-        const fieldSchema = service?.form_schema.find(f => f.name === name);
         if (fieldSchema?.triggers_validation && value.length > 3) {
             setIsValidating(true);
             try {
@@ -232,6 +272,53 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
             );
         }
 
+        if (field.type === 'beneficiary_select') {
+            const benType = service.name.toLowerCase().includes('intra') ? 'internal' : (service.name.toLowerCase().includes('inter') ? 'interbank' : 'international');
+            
+            const filteredBens = beneficiaries.filter(b => {
+                if (benType === 'internal') return b.bank_code === 'abia_mfb' || !b.bank_code;
+                if (benType === 'interbank') return b.bank_code && b.bank_code !== 'abia_mfb' && !b.is_international;
+                if (benType === 'international') return b.is_international;
+                return true;
+            });
+
+            return (
+                <div key={field.name} className="space-y-2">
+                    <label htmlFor={id} className="text-sm font-medium flex justify-between">
+                        <span>{field.label} {field.required && <span className="text-destructive">*</span>}</span>
+                        {formData[field.name] && (
+                            <button 
+                                type="button" 
+                                className="text-[10px] text-primary hover:underline font-bold uppercase"
+                                onClick={() => {
+                                    setFormData(prev => ({ ...prev, [field.name]: '' }));
+                                    setLockedFields(new Set());
+                                }}
+                            >
+                                Change
+                            </button>
+                        )}
+                    </label>
+                    <select
+                        id={id}
+                        value={formData[field.name] || ""}
+                        onChange={(e) => {
+                            const ben = filteredBens.find(b => b.id === e.target.value);
+                            handleInputChange(field.name, e.target.value, ben);
+                        }}
+                        className="w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer border-primary/30"
+                        disabled={isValidating || isSubmitting}
+                    >
+                        <option value="">-- Select Saved Beneficiary --</option>
+                        {filteredBens.map(b => (
+                            <option key={b.id} value={b.id}>{b.account_name} ({b.account_number})</option>
+                        ))}
+                        <option value="new">+ Enter New Account Details</option>
+                    </select>
+                </div>
+            );
+        }
+
         if (field.type === 'select' || field.type === 'destination_bank_lookup') {
             // Parse options: supports both JSON [{label,value}] arrays and legacy comma strings
             let parsedOptions: { label: string; value: string }[] = [];
@@ -312,7 +399,8 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                             placeholder={field.placeholder || ""}
                             value={formData[field.name] || ""}
                             onChange={(e) => handleInputChange(field.name, e.target.value)}
-                            disabled={isValidating || isSubmitting}
+                            disabled={isValidating || isSubmitting || lockedFields.has(field.name)}
+                            className={lockedFields.has(field.name) ? "bg-muted cursor-not-allowed border-dashed" : ""}
                         />
                         {field.triggers_validation && isValidating && (
                             <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
