@@ -5,30 +5,17 @@ import { Input } from '@/components/ui/input'
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { runWorkflow, executeEndpointAction } from '@/app/(dashboard)/workflows/[id]/edit/actions'
+import { FormField, FieldEvent } from '@/lib/api/types'
 
-export type FormFieldSchema = {
-    id: string
-    label: string
-    type: 'text' | 'number' | 'email' | 'select' | 'destination_bank_lookup' | 'file'
-    required?: boolean
-    placeholder?: string
-    options?: any
-    description?: string
-    // Legacy Service Fields
-    triggers_validation?: boolean 
-    // New Product Type Fields
-    validations?: Array<{
-        type: 'regex' | 'min' | 'max' | 'api_lookup'
-        value?: string
-        errorMessage?: string
-    }>
-    events?: Array<{
-        trigger: 'onChange' | 'onBlur' | 'onLoad'
-        action: 'EXECUTE_ENDPOINT' | 'SET_VALUE'
-        endpointId?: string | { id: string }
-        mappingConfig?: Record<string, string>
-    }>
+// Re-export for compatibility or use locally
+export type FormFieldSchema = FormField & {
+    // Legacy mapping for fields that haven't transitioned to 'id'
+    name?: string;
+    triggers_validation?: boolean;
 }
+
+// FormFieldSchema is now just an alias for the central FormField type
+// with optional legacy field support if needed.
 
 export interface UniversalDynamicFormProps {
     fields: FormFieldSchema[]
