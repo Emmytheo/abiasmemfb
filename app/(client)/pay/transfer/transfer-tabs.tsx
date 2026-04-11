@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Globe2, Wallet, Building2 } from 'lucide-react'
 import { ServiceExecutionForm } from '@/components/service-execution-form'
 import { Service } from '@/lib/api/types'
+import { api } from '@/lib/api'
 
 interface TransferTabsProps {
     interbankService: Service | null
@@ -21,12 +22,31 @@ export function TransferTabs({ interbankService, internationalService, intrabank
     const beneficiaryId = searchParams.get('beneficiary') || undefined
 
     const [activeTab, setActiveTab] = useState(tabParam || 'interbank')
+    const [isResolving, setIsResolving] = useState(false)
 
     useEffect(() => {
         if (tabParam) {
             setActiveTab(tabParam)
+        } else if (beneficiaryId) {
+            // No tab specified, but we have a beneficiary. Resolve the correct tab contextually.
+            const resolveTargetTab = async () => {
+                setIsResolving(true)
+                try {
+                    const ben = await api.getBeneficiaryById(beneficiaryId)
+                    if (ben) {
+                        if (ben.is_international) setActiveTab('international')
+                        else if (ben.bank_code === 'abia_mfb' || !ben.bank_code) setActiveTab('internal')
+                        else setActiveTab('interbank')
+                    }
+                } catch (e) {
+                    console.error('Failed to resolve beneficiary tab:', e)
+                } finally {
+                    setIsResolving(false)
+                }
+            }
+            resolveTargetTab()
         }
-    }, [tabParam])
+    }, [tabParam, beneficiaryId])
 
     const handleTabChange = (val: string) => {
         setActiveTab(val)
@@ -53,7 +73,10 @@ export function TransferTabs({ interbankService, internationalService, intrabank
 
             <TabsContent value="internal">
                 {intrabankService ? (
-                    <ServiceExecutionForm service={intrabankService} />
+                    <ServiceExecutionForm 
+                        service={intrabankService} 
+                        prefillBeneficiaryId={beneficiaryId} 
+                    />
                 ) : (
                     <div className="text-center py-8 text-muted-foreground">
                         <Wallet className="mx-auto mb-4 opacity-50" size={48} />
@@ -65,7 +88,10 @@ export function TransferTabs({ interbankService, internationalService, intrabank
 
             <TabsContent value="interbank">
                 {interbankService ? (
-                    <ServiceExecutionForm service={interbankService} prefillBeneficiaryId={beneficiaryId} />
+                    <ServiceExecutionForm 
+                        service={interbankService} 
+                        prefillBeneficiaryId={beneficiaryId} 
+                    />
                 ) : (
                     <div className="text-center py-8 text-muted-foreground">
                         <Building2 className="mx-auto mb-4 opacity-50" size={48} />
@@ -76,7 +102,10 @@ export function TransferTabs({ interbankService, internationalService, intrabank
 
             <TabsContent value="international">
                 {internationalService ? (
-                    <ServiceExecutionForm service={internationalService} prefillBeneficiaryId={beneficiaryId} />
+                    <ServiceExecutionForm 
+                        service={internationalService} 
+                        prefillBeneficiaryId={beneficiaryId} 
+                    />
                 ) : (
                     <div className="text-center py-8 text-muted-foreground">
                         <Globe2 className="mx-auto mb-4 opacity-50" size={48} />

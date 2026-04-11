@@ -306,6 +306,7 @@ export interface ApiAdapter {
 
     // Beneficiaries
     getUserBeneficiaries: (userId: string) => Promise<Beneficiary[]>;
+    getBeneficiaryById: (id: string) => Promise<Beneficiary | null>;
     saveBeneficiary: (data: Omit<Beneficiary, 'id' | 'created_at' | 'updated_at'>) => Promise<Beneficiary>;
     deleteBeneficiary: (id: string, userId: string) => Promise<boolean>;
 

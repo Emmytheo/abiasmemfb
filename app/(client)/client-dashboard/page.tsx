@@ -19,7 +19,7 @@ import {
     UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { api, Account, Loan, Transaction, User, ProductApplication, ServiceCategory } from "@/lib/api";
+import { api, Account, Loan, Transaction, User, ProductApplication, ServiceCategory, Customer } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";

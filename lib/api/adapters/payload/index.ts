@@ -29,6 +29,7 @@ export const PayloadAdapter: ApiAdapter = {
 
     // Beneficiaries
     getUserBeneficiaries: (...args) => actions.getUserBeneficiaries(...args),
+    getBeneficiaryById: (...args) => actions.getBeneficiaryById(...args),
     saveBeneficiary: (...args) => actions.saveBeneficiary(...args),
     deleteBeneficiary: (...args) => actions.deleteBeneficiary(...args),
 

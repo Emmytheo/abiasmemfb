@@ -5,18 +5,19 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Wifi, ShieldCheck, Loader2 } from "lucide-react";
+import { ArrowRight, Wifi, ShieldCheck, Loader2, CheckCircle2, Building2, Globe, Search, UserCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { Service, ServiceFormSchema } from "@/lib/api/types";
+import { Service, ServiceFormSchema, Customer, Beneficiary } from "@/lib/api/types";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
-
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
 interface ServiceExecutionFormProps {
     service: Service | null;
     prefillBeneficiaryId?: string;
 }
-
-import { createClient } from "@/lib/supabase/client";
 
 export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceExecutionFormProps) {
     const router = useRouter();
@@ -27,9 +28,12 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
     const [accounts, setAccounts] = useState<any[]>([]);
     const [sourceAccountId, setSourceAccountId] = useState<string>('');
     const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
-    const [beneficiaries, setBeneficiaries] = useState<any[]>([]);
+    const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
     const [isLoadingBeneficiaries, setIsLoadingBeneficiaries] = useState(false);
     const [lockedFields, setLockedFields] = useState<Set<string>>(new Set());
+    const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
 
     React.useEffect(() => {
         if (!service) return;
@@ -56,6 +60,20 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
         }
         fetchData();
     }, [service]);
+
+    React.useEffect(() => {
+        if (prefillBeneficiaryId && beneficiaries.length > 0) {
+            const ben = beneficiaries.find(b => b.id === prefillBeneficiaryId);
+            if (ben) {
+                handleInputChange('beneficiary_id', prefillBeneficiaryId, ben);
+            } else {
+                // If not in standard list, fetch specifically
+                api.getBeneficiaryById(prefillBeneficiaryId).then(b => {
+                    if (b) handleInputChange('beneficiary_id', prefillBeneficiaryId, b);
+                });
+            }
+        }
+    }, [prefillBeneficiaryId, beneficiaries]);
 
     React.useEffect(() => {
         if (!prefillBeneficiaryId || !service) return;
@@ -119,6 +137,13 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                     if (event.action === 'SET_VALUES' && event.mappingConfig) {
                         const newLocked = new Set(lockedFields);
                         const updates: Record<string, string> = {};
+                        
+                        // If it's a beneficiary_select, track the chosen object for the UI
+                        if (name === 'beneficiary_id' && extraData) {
+                            setSelectedBeneficiary(extraData);
+                            setIsPickerOpen(false); // Auto-close as requested
+                        }
+
                         // Process the mapping config
                         for (const [targetField, template] of Object.entries(event.mappingConfig)) {
                             // Basic template resolution: {{$value.prop}}
@@ -276,45 +301,149 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
             const benType = service.name.toLowerCase().includes('intra') ? 'internal' : (service.name.toLowerCase().includes('inter') ? 'interbank' : 'international');
             
             const filteredBens = beneficiaries.filter(b => {
+                const matchesSearch = !searchQuery || 
+                    (b.account_name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    (b.account_number?.includes(searchQuery));
+                
+                if (!matchesSearch) return false;
                 if (benType === 'internal') return b.bank_code === 'abia_mfb' || !b.bank_code;
                 if (benType === 'interbank') return b.bank_code && b.bank_code !== 'abia_mfb' && !b.is_international;
                 if (benType === 'international') return b.is_international;
                 return true;
             });
 
-            return (
-                <div key={field.name} className="space-y-2">
-                    <label htmlFor={id} className="text-sm font-medium flex justify-between">
-                        <span>{field.label} {field.required && <span className="text-destructive">*</span>}</span>
-                        {formData[field.name] && (
-                            <button 
-                                type="button" 
-                                className="text-[10px] text-primary hover:underline font-bold uppercase"
+            if (selectedBeneficiary) {
+                return (
+                    <div key={field.name} className="p-4 rounded-xl border bg-primary/5 border-primary/20 space-y-3 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <CheckCircle2 size={48} className="text-primary" />
+                        </div>
+                        <div className="flex justify-between items-start">
+                            <div className="flex gap-3">
+                                <Avatar className="h-10 w-10 border-2 border-primary/20">
+                                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                        {selectedBeneficiary.account_name?.substring(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <h4 className="text-sm font-bold flex items-center gap-1.5">
+                                        {selectedBeneficiary.account_name}
+                                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 uppercase font-black tracking-tighter bg-primary/10 text-primary border-none">
+                                            Recipient
+                                        </Badge>
+                                    </h4>
+                                    <p className="text-[11px] text-muted-foreground font-medium">
+                                        {selectedBeneficiary.bank_name} • {selectedBeneficiary.account_number}
+                                    </p>
+                                </div>
+                            </div>
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-7 text-[10px] font-black uppercase text-primary hover:bg-primary/10"
                                 onClick={() => {
-                                    setFormData(prev => ({ ...prev, [field.name]: '' }));
+                                    setSelectedBeneficiary(null);
                                     setLockedFields(new Set());
+                                    // Also clear form data for the mapped fields
+                                    const fieldSchema = service?.form_schema.find(f => f.name === field.name);
+                                    const event = fieldSchema?.events?.find(e => e.trigger === 'onChange' && e.action === 'SET_VALUES');
+                                    if (event?.mappingConfig) {
+                                        const clears: Record<string, string> = {};
+                                        Object.keys(event.mappingConfig).forEach(k => clears[k] = '');
+                                        setFormData(prev => ({ ...prev, ...clears, [field.name]: '' }));
+                                    }
                                 }}
                             >
                                 Change
-                            </button>
-                        )}
+                            </Button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div key={field.name} className="space-y-2">
+                    <label className="text-sm font-medium flex justify-between">
+                        <span>{field.label} {field.required && <span className="text-destructive">*</span>}</span>
                     </label>
-                    <select
-                        id={id}
-                        value={formData[field.name] || ""}
-                        onChange={(e) => {
-                            const ben = filteredBens.find(b => b.id === e.target.value);
-                            handleInputChange(field.name, e.target.value, ben);
-                        }}
-                        className="w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer border-primary/30"
-                        disabled={isValidating || isSubmitting}
-                    >
-                        <option value="">-- Select Saved Beneficiary --</option>
-                        {filteredBens.map(b => (
-                            <option key={b.id} value={b.id}>{b.account_name} ({b.account_number})</option>
-                        ))}
-                        <option value="new">+ Enter New Account Details</option>
-                    </select>
+                    <Sheet open={isPickerOpen} onOpenChange={setIsPickerOpen}>
+                        <SheetTrigger asChild>
+                            <Button 
+                                variant="outline" 
+                                className="w-full h-12 justify-start gap-3 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 text-muted-foreground font-normal transition-all"
+                            >
+                                <Search className="h-4 w-4 text-primary" />
+                                <span>Search saved beneficiaries...</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-3xl overflow-hidden border-t-2 border-primary/10">
+                            <SheetHeader className="px-6 py-4 border-b bg-muted/5">
+                                <SheetTitle className="text-lg font-black flex items-center gap-2">
+                                    <UserCircle2 className="h-5 w-5 text-primary" />
+                                    Select Beneficiary
+                                </SheetTitle>
+                                <div className="relative mt-2">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Search name, bank or account..." 
+                                        className="pl-9 h-11 bg-background border-primary/20 rounded-full"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
+                            </SheetHeader>
+                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                                {filteredBens.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4">
+                                        <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                                            <Search className="h-6 w-6 text-muted-foreground/50" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm">No beneficiaries found</p>
+                                            <p className="text-xs text-muted-foreground">Try a different search or enter details manually.</p>
+                                        </div>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="rounded-full h-8 px-6 text-[11px] font-bold"
+                                            onClick={() => setIsPickerOpen(false)}
+                                        >
+                                            Enter Manually
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {filteredBens.map(b => (
+                                            <button
+                                                key={b.id}
+                                                type="button"
+                                                className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/5 active:bg-primary/10 transition-colors text-left border border-transparent hover:border-primary/10 group"
+                                                onClick={() => {
+                                                    handleInputChange(field.name, b.id || '', b);
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-10 w-10 border group-hover:border-primary/30 transition-colors">
+                                                        <AvatarFallback className="bg-muted text-muted-foreground font-bold text-xs uppercase">
+                                                            {b.account_name?.substring(0, 2)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <p className="text-sm font-bold truncate max-w-[200px]">{b.account_name}</p>
+                                                        <p className="text-[11px] text-muted-foreground truncate">
+                                                            {b.bank_name} • {b.account_number}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {b.is_international ? <Globe className="h-4 w-4 text-primary" /> : <Building2 className="h-4 w-4 text-primary" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
             );
         }

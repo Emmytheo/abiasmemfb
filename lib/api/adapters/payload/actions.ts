@@ -1827,3 +1827,26 @@ export const processAccountFunding = async (targetAccountId: string, amountNaira
         return { success, data: env.outputs };
     } catch (err: any) { return { success: false, error: err.message }; }
 };
+
+export const getBeneficiaryById = async (id: string): Promise<Beneficiary | null> => {
+    try {
+        const payload = await initPayload();
+        const doc: any = await payload.findByID({ collection: 'beneficiaries' as any, id, overrideAccess: true });
+        if (!doc) return null;
+        return {
+            id: String(doc.id),
+            account_name: doc.account_name,
+            account_number: doc.account_number,
+            bank_name: doc.bank_name,
+            bank_code: doc.bank_code,
+            is_international: doc.is_international,
+            swift_code: doc.swift_code,
+            country: doc.country,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        } as Beneficiary;
+    } catch (e) {
+        console.error('Payload getBeneficiaryById Error:', e);
+        return null;
+    }
+};
