@@ -285,6 +285,8 @@ export interface ApiAdapter {
     getAllCustomers: () => Promise<Customer[]>;
     getCustomerById: (id: string) => Promise<Customer | null>;
     restoreCustomerIdentity: (customerId: string, supabaseId: string, email: string) => Promise<boolean>;
+    repointAccount: (accountId: string, winnerId: string, winnerSupabaseId: string | null) => Promise<boolean>;
+    repointDigitalIdentity: (customerId: string, supabaseId: string) => Promise<boolean>;
     updateCustomer: (id: string, data: Partial<Customer>) => Promise<Customer>;
     getCustomerAudit: (id: string) => Promise<CustomerAudit>;
     deleteCustomer: (id: string) => Promise<boolean>;

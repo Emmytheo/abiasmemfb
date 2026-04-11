@@ -109,4 +109,5 @@ export const PayloadAdapter: ApiAdapter = {
     getQoreAccounts: (...args) => actions.getQoreAccounts(...args),
     unlinkCustomer: (...args) => actions.unlinkCustomer(...args),
     repointAccount: (...args) => actions.repointAccount(...args),
+    repointDigitalIdentity: (...args) => actions.repointDigitalIdentity(...args),
 };

@@ -55,6 +55,10 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [confirmUnlink, setConfirmUnlink] = useState(false);
 
+    const getIdentityOwner = (userId: string) => {
+        return customers.find(c => c.supabase_id === userId);
+    };
+
     useEffect(() => {
         if (isOpen && customerId) {
             reset();
@@ -177,17 +181,18 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
         }
     };
 
-    const handleUnlink = async () => {
+    const handleSurgicalRepoint = async (user: User) => {
         if (!customerId) return;
         setLoading(true);
         try {
-            await api.unlinkCustomer(customerId);
-            toast.success("Identity Bridge Severed");
-            onSuccess();
-            reset();
-            onClose();
+            const success = await api.repointDigitalIdentity(customerId, user.id);
+            if (success) {
+                toast.success("Identity & Assets Transferred!");
+                onSuccess();
+                onClose();
+            }
         } catch (e: any) {
-            toast.error("Failed to decouple identity.");
+            toast.error(e.message || "Surgical transfer failed.");
         } finally {
             setLoading(false);
         }
@@ -330,9 +335,18 @@ export function IdentityLinkDialog({ customerId, isOpen, onClose, onSuccess, isL
                                                         <div>
                                                             <p className="font-bold text-sm tracking-tight">{user.full_name || 'Anonymous'}</p>
                                                             <p className="text-[10px] text-muted-foreground uppercase font-black">{user.email}</p>
+                                                            {getIdentityOwner(user.id) && (
+                                                                <p className="text-[9px] text-amber-600 font-black uppercase mt-1 flex items-center gap-1">
+                                                                    <AlertTriangle className="h-2 w-2" /> Linked to {getIdentityOwner(user.id)?.firstName}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <Button size="sm" onClick={() => startReconciliation(user)} variant="secondary" className="rounded-lg h-8 px-4 font-black uppercase text-[10px]">Select</Button>
+                                                    {getIdentityOwner(user.id) ? (
+                                                        <Button size="sm" onClick={() => handleSurgicalRepoint(user)} variant="outline" className="rounded-lg h-8 px-4 font-black uppercase text-[10px] border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100">Transfer</Button>
+                                                    ) : (
+                                                        <Button size="sm" onClick={() => startReconciliation(user)} variant="secondary" className="rounded-lg h-8 px-4 font-black uppercase text-[10px]">Select</Button>
+                                                    )}
                                                 </div>
                                             ))
                                         ) : (

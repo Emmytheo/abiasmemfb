@@ -287,6 +287,7 @@ export const getAllAccounts = async (): Promise<Account[]> => {
             is_frozen: doc.is_frozen,
             pnd_enabled: doc.pnd_enabled,
             lien_amount: (doc.lien_amount ?? 0) / 100,
+            source: doc.source || 'local',
             created_at: doc.createdAt,
         })) as Account[];
     } catch (e) { return []; }
@@ -340,7 +341,7 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
             is_frozen: doc.is_frozen || false,
             pnd_enabled: doc.pnd_enabled || false,
             lien_amount: (doc.lien_amount ?? 0) / 100,
-            source: doc.external_status === 'core_synced' ? 'qore' : 'local',
+            source: doc.source || 'local',
             is_primary: doc.is_primary || false,
             is_archived: doc.is_archived || false,
             created_at: doc.createdAt || new Date().toISOString(),
@@ -368,6 +369,7 @@ export const getAccountById = async (id: string): Promise<Account | null> => {
             is_frozen: (doc as any).is_frozen,
             pnd_enabled: (doc as any).pnd_enabled,
             lien_amount: ((doc as any).lien_amount ?? 0) / 100,
+            source: (doc as any).source || 'local',
             created_at: doc.createdAt,
         } as Account;
     } catch (e) { return null; }
@@ -1220,12 +1222,29 @@ export interface MergeParams {
 export const executeCustomerMerge = async (params: MergeParams) => {
     const { primaryCustomerId, targetId, isCustomerToCustomer, profileData, selectedAccountNumbers = [], keepTargetAsPrimary = false } = params;
     const payload = await initPayload();
-    const winnerId = keepTargetAsPrimary && isCustomerToCustomer ? targetId : primaryCustomerId;
-    const loserId = keepTargetAsPrimary && isCustomerToCustomer ? primaryCustomerId : (isCustomerToCustomer ? targetId : null);
+    const winnerId = (keepTargetAsPrimary && isCustomerToCustomer) ? targetId : primaryCustomerId;
+    let loserId = (keepTargetAsPrimary && isCustomerToCustomer) ? primaryCustomerId : (isCustomerToCustomer ? targetId : null);
     const supabaseId = isCustomerToCustomer ? null : targetId;
+
+    // Discovery: If linking a digital ID, find if someone else already owns it
+    if (!isCustomerToCustomer && targetId) {
+        const owners = await payload.find({ 
+            collection: 'customers', 
+            where: { supabase_id: { equals: targetId } }, 
+            limit: 1, 
+            overrideAccess: true 
+        });
+        if (owners.docs.length > 0 && String(owners.docs[0].id) !== String(winnerId)) {
+            loserId = String(owners.docs[0].id);
+            console.log(`[Bridge] Auto-detected identity owner for ${targetId}: ${loserId}. Upgrading to Merge/Transfer.`);
+        }
+    }
+
     const primary = await payload.findByID({ collection: 'customers', id: primaryCustomerId });
     let targetCustomer = null;
     if (isCustomerToCustomer) targetCustomer = await payload.findByID({ collection: 'customers', id: targetId });
+    else if (loserId) targetCustomer = await payload.findByID({ collection: 'customers', id: loserId });
+
     const archivedIds: string[] = [];
     let winnerSupabaseId = (targetCustomer?.supabase_id || primary.supabase_id);
     if (keepTargetAsPrimary && !isCustomerToCustomer) winnerSupabaseId = targetId;
@@ -1280,8 +1299,8 @@ export const executeCustomerMerge = async (params: MergeParams) => {
                 });
                 
                 for (const doc of records.docs) {
-                    const updateData: any = { customer: String(winnerId) };
-                    // transactions does not have a user_id field, but accounts and loans do.
+                    const updateData: any = { customer: Number(winnerId) };
+                    // Both accounts, loans, and transactions use user_id to link to the Supabase identity
                     if (winnerSupabaseId) {
                         updateData.user_id = winnerSupabaseId;
                     }
@@ -1305,26 +1324,36 @@ export const executeCustomerMerge = async (params: MergeParams) => {
             }
         }
 
-        if (winnerSupabaseId && loserSupabaseId) {
+        // 5. Digital Identity Consolidation (Product Applications, Beneficiaries, etc.)
+        const winnerOldSupabaseId = (primary.supabase_id && primary.supabase_id !== winnerSupabaseId) ? primary.supabase_id : null;
+        const identitiesToMigrate = [loserSupabaseId, winnerOldSupabaseId].filter(Boolean) as string[];
+
+        for (const sourceSupabaseId of identitiesToMigrate) {
+            if (sourceSupabaseId === winnerSupabaseId) continue;
             try {
+                console.log(`[Bridge] Consolidating digital assets from ${sourceSupabaseId} to ${winnerSupabaseId}`);
+                
                 // Re-point product applications (string-based user_id)
-                console.log(`[Bridge] Re-pointing product applications from ${loserSupabaseId} to ${winnerSupabaseId}`);
-                const apps = await payload.find({ collection: 'product-applications', where: { user_id: { equals: loserSupabaseId } }, limit: 1000, overrideAccess: true });
+                const apps = await payload.find({ collection: 'product-applications', where: { user_id: { equals: sourceSupabaseId } }, limit: 1000, overrideAccess: true });
                 for (const doc of apps.docs) await payload.update({ collection: 'product-applications', id: doc.id, data: { user_id: winnerSupabaseId }, overrideAccess: true });
                 
+                // Re-point transactions that might only have user_id but not customer link (rare but possible)
+                const orphanTxs = await payload.find({ collection: 'transactions', where: { user_id: { equals: sourceSupabaseId } }, limit: 1000, overrideAccess: true });
+                for (const doc of orphanTxs.docs) await payload.update({ collection: 'transactions', id: doc.id, data: { user_id: winnerSupabaseId, customer: Number(winnerId) }, overrideAccess: true });
+
                 // Re-point beneficiaries (relates to numeric Payload Users)
                 const winningUsers = await payload.find({ collection: 'users', where: { supabase_id: { equals: winnerSupabaseId } }, limit: 1, overrideAccess: true });
-                const losingUsers = await payload.find({ collection: 'users', where: { supabase_id: { equals: loserSupabaseId } }, limit: 1, overrideAccess: true });
+                const losingUsers = await payload.find({ collection: 'users', where: { supabase_id: { equals: sourceSupabaseId } }, limit: 1, overrideAccess: true });
                 
                 if (winningUsers.docs.length > 0 && losingUsers.docs.length > 0) {
                     const winnerUserId = winningUsers.docs[0].id;
                     const loserUserId = losingUsers.docs[0].id;
-                    console.log(`[Bridge] Re-pointing beneficiaries from User ${loserUserId} to ${winnerUserId}`);
+                    console.log(`[Bridge] Re-pointing beneficiaries from Shadow User ${loserUserId} to ${winnerUserId}`);
                     const beneficiaries = await payload.find({ collection: 'beneficiaries', where: { user: { equals: loserUserId } }, limit: 1000, overrideAccess: true });
                     for (const doc of beneficiaries.docs) await payload.update({ collection: 'beneficiaries', id: doc.id, data: { user: winnerUserId }, overrideAccess: true });
                 }
             } catch (e: any) {
-                console.warn(`Bridge Digital Asset Re-pointing Warning:`, e.message);
+                console.warn(`Bridge Digital Asset Consolidation Warning (${sourceSupabaseId}):`, e.message);
             }
         }
         archivedIds.push(loserId);
@@ -1569,14 +1598,14 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
         }
 
         // 4. Handle "Preservation" for legacy accounts NOT in the synced set
-        const syncedAccountNumbers = accounts.map(a => a.AccountNumber || a.accountNumber).filter(Boolean);
+        const syncedAccountNumbers = accounts.map(a => a.NUBAN || a.accountNumber || a.AccountNumber || a.AccountNo).filter(Boolean);
         for (const legacy of legacyAccounts.docs) {
             if (!syncedAccountNumbers.includes(legacy.account_number)) {
                 await payload.update({
                     collection: 'accounts',
                     id: legacy.id,
                     data: {
-                        customer: String(winnerId),
+                        customer: Number(winnerId),
                         user_id: winnerSupabaseId || legacy.user_id,
                         source: 'local'
                     },
@@ -1599,7 +1628,10 @@ export const mergeCustomers = async (params: { primaryCustomerId: string; supaba
     // Perform Account Mirroring & Unification
     // Note: mergeCustomers passes account numbers, so we fetch objects first
     const qoreAccounts = await getQoreAccounts(winnerId);
-    const selectedAccounts = qoreAccounts.filter(a => params.selectedAccountNumbers.includes(a.AccountNumber || a.accountNumber));
+    const selectedAccounts = qoreAccounts.filter(a => {
+        const canonicalNo = a.NUBAN || a.accountNumber || a.AccountNumber || a.AccountNo;
+        return params.selectedAccountNumbers.includes(canonicalNo);
+    });
     
     await mirrorSelectedAccounts(winnerId, result.success ? (params.isCustomerToCustomer ? null : params.supabaseUserId) : null, selectedAccounts, params.isCustomerToCustomer ? params.supabaseUserId : undefined);
     
@@ -1682,6 +1714,34 @@ export const repointAccount = async (accountId: string, winnerId: string, winner
         return true;
     } catch (e: any) {
         console.error('[Repoint] Failed:', e.message);
+        throw e;
+    }
+};
+
+export const repointDigitalIdentity = async (customerId: string, supabaseId: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        const customer = await payload.findByID({ collection: 'customers', id: customerId });
+        if (!customer) throw new Error('Customer not found');
+
+        console.log(`[Surgical-Bridge] Re-pointing identity ${supabaseId} to customer ${customerId}`);
+        
+        // We leverage the enhanced executeCustomerMerge which now auto-detects losers
+        const result = await executeCustomerMerge({
+            primaryCustomerId: customerId,
+            targetId: supabaseId,
+            isCustomerToCustomer: false,
+            profileData: {
+                firstName: customer.firstName,
+                lastName: customer.lastName,
+                email: customer.email,
+                phone_number: customer.phone_number
+            }
+        });
+
+        return result.success;
+    } catch (e: any) {
+        console.error('[Surgical-Bridge] Failed:', e.message);
         throw e;
     }
 };
