@@ -633,6 +633,140 @@ export const verifyCustomerBVN = async (bvn: string): Promise<any> => {
     });
 };
 
+export const verifyIdentity = verifyCustomerBVN;
+
+export const createCoreBankingProfile = async (data: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone_number: string;
+    bvn: string;
+    dob: string;
+    gender: number;
+    address: string;
+    productTypeId: string;
+}): Promise<any> => {
+    const payload = await initPayload();
+    
+    // 1. Resolve Product Mapping
+    const { docs: mappings } = await payload.find({
+        collection: 'provider-mappings' as any,
+        where: { relatedEntity: { equals: data.productTypeId } },
+        limit: 1,
+        overrideAccess: true
+    });
+
+    if (!mappings.length) {
+        throw new Error(`Integration mapping missing for Product Type: ${data.productTypeId}`);
+    }
+
+    const productCode = mappings[0].externalCode;
+    if (!productCode) {
+        throw new Error(`External Code (ProductCode) missing in mapping for Product Type: ${data.productTypeId}`);
+    }
+
+    // 2. Prepare External Provisioning Payload
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const createAccountEndpointId = settings?.sync?.acctMgmt?.create; // Need to ensure this exists in SiteSettings.ts
+
+    if (!createAccountEndpointId) {
+        throw new Error("Core account creation endpoint is not configured in Site Settings.");
+    }
+
+    const trackingRef = `ONB_${Date.now()}`;
+    const provisioningData = {
+        TransactionTrackingRef: trackingRef,
+        AccountOpeningTrackingRef: trackingRef,
+        ProductCode: productCode,
+        LastName: data.lastName,
+        OtherNames: data.firstName,
+        PhoneNo: data.phone_number,
+        Gender: data.gender,
+        DateOfBirth: data.dob, // Ensure ISO format: 1990-01-01T00:00:00Z
+        Address: data.address,
+        BVN: data.bvn,
+        Email: data.email
+    };
+
+    // 3. Execute Provisioning
+    const qoreRes = await executeEndpoint(
+        typeof createAccountEndpointId === 'object' ? createAccountEndpointId.id : createAccountEndpointId,
+        provisioningData
+    );
+
+    if (!qoreRes.IsSuccessful) {
+        throw new Error(qoreRes.Message || "Core banking provisioning failed.");
+    }
+
+    const { CustomerID, AccountNumber } = qoreRes.Payload;
+
+    // 4. Update/Create Payload Customer
+    const customer = await getCustomerBySupabaseId(data.userId);
+    let customerDocId: string;
+
+    if (customer) {
+        customerDocId = customer.id;
+        await payload.update({
+            collection: 'customers' as any,
+            id: customerDocId,
+            data: {
+                qore_customer_id: CustomerID,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                phone_number: data.phone_number,
+                bvn: data.bvn,
+                address: data.address,
+                kyc_status: 'active',
+                is_associated: true
+            } as any
+        });
+    } else {
+        const newCustomer = await payload.create({
+            collection: 'customers' as any,
+            data: {
+                supabase_id: data.userId,
+                email: data.email,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                phone_number: data.phone_number,
+                bvn: data.bvn,
+                qore_customer_id: CustomerID,
+                kyc_status: 'active',
+                risk_tier: 'low',
+                is_associated: true,
+                is_archived: false,
+                is_test_account: false
+            } as any
+        });
+        customerDocId = String(newCustomer.id);
+    }
+
+    // 5. Create Local Account Record
+    const account = await payload.create({
+        collection: 'accounts' as any,
+        data: {
+            user_id: data.userId,
+            account_number: AccountNumber,
+            account_name: `${data.firstName} ${data.lastName}`,
+            account_type: 'Savings', // Should ideally be derived from ProductType
+            balance: 0,
+            status: 'active',
+            customer: customerDocId,
+            source: 'qore',
+            is_primary: true,
+            is_archived: false,
+            external_status: 'core_synced'
+        } as any
+    });
+
+    return {
+        customerId: CustomerID,
+        accountNumber: AccountNumber,
+        localAccountId: account.id
+    };
+};
+
 export const getAllLoans = async (): Promise<Loan[]> => {
     try {
         const payload = await initPayload();

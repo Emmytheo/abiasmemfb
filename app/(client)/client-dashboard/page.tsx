@@ -185,6 +185,33 @@ export default function ClientDashboard() {
 
 
             </header>
+            
+            {/* Onboarding / Welcome Banner */}
+            {!loading && accounts.length === 1 && accounts[0].balance === 0 && (
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-6 md:p-8 text-primary-foreground shadow-2xl">
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="space-y-2 text-center md:text-left">
+                            <h4 className="text-2xl md:text-3xl font-black tracking-tight flex items-center justify-center md:justify-start gap-2">
+                                Welcome to the Family! <SparklesIcon className="h-6 w-6" />
+                            </h4>
+                            <p className="text-primary-foreground/80 font-medium max-w-xl">
+                                Your premium account is active. Fund your account with at least ₦1,000 today to activate your virtual card and start earning 5% p.a. interest.
+                            </p>
+                        </div>
+                        <div className="flex gap-3 shrink-0">
+                            <Button variant="secondary" className="px-8 font-bold shadow-lg h-12" asChild>
+                                <Link href="/client-dashboard/fund">Fund Now</Link>
+                            </Button>
+                            <Button variant="ghost" className="text-primary-foreground hover:bg-white/10 font-bold h-12">
+                                Skip for now
+                            </Button>
+                        </div>
+                    </div>
+                    {/* Decorative background elements */}
+                    <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+                    <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 h-32 w-32 rounded-full bg-black/10 blur-2xl" />
+                </div>
+            )}
 
             {/* Top Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -494,6 +521,29 @@ export default function ClientDashboard() {
             </footer>
         </div>
     );
+}
+
+function SparklesIcon(props: any) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+            <path d="M5 3v4" />
+            <path d="M19 17v4" />
+            <path d="M3 5h4" />
+            <path d="M17 19h4" />
+        </svg>
+    )
 }
 
 function WalletIcon(props: any) {

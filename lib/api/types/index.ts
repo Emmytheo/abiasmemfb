@@ -292,6 +292,8 @@ export interface ApiAdapter {
     updateCustomer: (id: string, data: Partial<Customer>) => Promise<Customer>;
     getCustomerAudit: (id: string) => Promise<CustomerAudit>;
     deleteCustomer: (id: string) => Promise<boolean>;
+    verifyIdentity: (bvn: string) => Promise<any>;
+    createCoreBankingProfile: (data: any) => Promise<any>;
 
     // Products (Accounts, Loans)
     getAllAccounts: () => Promise<Account[]>;

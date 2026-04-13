@@ -26,6 +26,26 @@ export const DummyAdapter: ApiAdapter = {
         await delay(400);
         return MOCK_CUSTOMERS.find(c => c.id === id) || null;
     },
+    
+    getCustomerBySupabaseId: async (supabaseId) => {
+        await delay(400);
+        return MOCK_CUSTOMERS.find(c => c.supabase_id === supabaseId) || null;
+    },
+
+    syncBankingIdentity: async (userId) => {
+        await delay(1000);
+        return { success: true, message: "Banking identity synced successfully" };
+    },
+
+    repointAccount: async () => {
+        await delay(500);
+        return true;
+    },
+
+    repointDigitalIdentity: async () => {
+        await delay(500);
+        return true;
+    },
 
     updateCustomer: async (id, data) => {
         await delay(600);
@@ -59,6 +79,16 @@ export const DummyAdapter: ApiAdapter = {
     deleteCustomer: async (id) => {
         await delay(500);
         return true;
+    },
+
+    verifyIdentity: async (bvn) => {
+        await delay(800);
+        return { IsSuccessful: true, Payload: { BVN: bvn, FirstName: "John", LastName: "Doe" } };
+    },
+
+    createCoreBankingProfile: async (data) => {
+        await delay(1500);
+        return { customerId: "C123", accountNumber: "0123456789", localAccountId: "acc_123" };
     },
 
     // Products
@@ -367,6 +397,11 @@ export const DummyAdapter: ApiAdapter = {
     getUserBeneficiaries: async (userId) => {
         await delay(400);
         return [];
+    },
+
+    getBeneficiaryById: async (id) => {
+        await delay(300);
+        return null;
     },
 
     saveBeneficiary: async (data) => {

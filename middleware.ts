@@ -56,6 +56,9 @@ function isPayloadRoute(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-url', request.nextUrl.href);
+    requestHeaders.set('x-pathname', pathname);
 
     // Always allow public routes, static assets, and API routes (except auth API)
     if (
@@ -123,7 +126,11 @@ export async function middleware(request: NextRequest) {
     }
 
     // All other authenticated routes are allowed
-    return supabaseResponse;
+    return NextResponse.next({
+        request: {
+            headers: requestHeaders,
+        },
+    });
 }
 
 export const config = {

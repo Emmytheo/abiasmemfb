@@ -110,7 +110,8 @@ export const SiteSettings: GlobalConfig = {
                         { name: 'close', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Close Account.' } },
                         { name: 'upload', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Upload Supporting Document.' } },
                         { name: 'tier', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Update Account KYC Tier.' } },
-                        { name: 'txStatus', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Query Transaction Status.' } }
+                        { name: 'txStatus', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Query Transaction Status.' } },
+                        { name: 'create', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Create Account Quick (Onboarding).' } }
                     ]
                 }
             ]

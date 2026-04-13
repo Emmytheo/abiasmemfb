@@ -19,6 +19,18 @@ export const SupabaseAdapter: ApiAdapter = {
     getCustomerById: async (id) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+    getCustomerBySupabaseId: async (supabaseId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    syncBankingIdentity: async (userId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    repointAccount: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    repointDigitalIdentity: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
     restoreCustomerIdentity: async () => {
         throw new Error("Supabase Adapter not fully implemented");
     },
@@ -29,6 +41,12 @@ export const SupabaseAdapter: ApiAdapter = {
         throw new Error("Supabase Adapter not fully implemented");
     },
     deleteCustomer: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    verifyIdentity: async (bvn) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    createCoreBankingProfile: async (data) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
 
@@ -56,6 +74,9 @@ export const SupabaseAdapter: ApiAdapter = {
 
     // Beneficiaries
     getUserBeneficiaries: async (userId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getBeneficiaryById: async (id) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
     saveBeneficiary: async (data) => {
