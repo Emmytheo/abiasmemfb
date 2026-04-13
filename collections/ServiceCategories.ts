@@ -14,6 +14,19 @@ export const ServiceCategories: CollectionConfig = {
         update: ({ req }) => req.user?.role === 'admin',
         delete: ({ req }) => req.user?.role === 'admin',
     },
+    hooks: {
+        beforeValidate: [
+            ({ data }) => {
+                if (data?.name && !data.slug) {
+                    return {
+                        ...data,
+                        slug: data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '')
+                    }
+                }
+                return data;
+            }
+        ]
+    },
     fields: [
         {
             name: 'name',
@@ -24,11 +37,11 @@ export const ServiceCategories: CollectionConfig = {
         {
             name: 'slug',
             type: 'text',
-            required: false,
+            required: true, // Now required for stability
             unique: true,
             index: true,
             admin: {
-                description: 'Used for dynamic URL routing. E.g., "bills", "transfers". Must be URL-safe lowercase.',
+                description: 'Permanent identifier for this category. Used for deep-links and service mapping. Changing this might break existing portal links.',
             },
         },
         {

@@ -301,11 +301,23 @@ async function findOrCreateProductCategory(payload: any, slug: string, classId: 
     if (cache.categories.has(key)) return cache.categories.get(key);
 
     const targetName = slugToName(slug);
-    const slugKeyword = slug.toLowerCase().replace(/[_-]/g, ' ');
+    const targetSlug = slug.toLowerCase();
 
-    // Smart Match: exact name first, then fuzzy
-    let existing = await payload.find({ collection: 'product-categories', where: { name: { equals: targetName } }, limit: 1 });
+    // 1. Primary Match: Match by exact Slug
+    let existing = await payload.find({ 
+        collection: 'product-categories', 
+        where: { slug: { equals: targetSlug } }, 
+        limit: 1 
+    });
+
+    // 2. Secondary Match: Exact Name fallback
     if (existing.docs.length === 0) {
+        existing = await payload.find({ collection: 'product-categories', where: { name: { equals: targetName } }, limit: 1 });
+    }
+
+    // 3. Fuzzy Match: Name contains the slug keyword
+    if (existing.docs.length === 0) {
+        const slugKeyword = slug.toLowerCase().replace(/[_-]/g, ' ');
         existing = await payload.find({ collection: 'product-categories', where: { name: { contains: slugKeyword } }, limit: 1 });
     }
 
@@ -313,7 +325,12 @@ async function findOrCreateProductCategory(payload: any, slug: string, classId: 
         ? existing.docs[0]
         : await payload.create({
             collection: 'product-categories',
-            data: { name: targetName, class_id: classId, status: 'active' }
+            data: { 
+                name: targetName, 
+                slug: targetSlug,
+                class_id: classId, 
+                status: 'active' 
+            }
         });
 
     cache.categories.set(key, result);
@@ -325,11 +342,23 @@ async function findOrCreateServiceCategory(payload: any, slug: string, cache: an
     if (cache.serviceCategories.has(key)) return cache.serviceCategories.get(key);
 
     const targetName = slugToName(slug);
-    const slugKeyword = slug.toLowerCase().replace(/[_-]/g, ' ');
+    const targetSlug = slug.toLowerCase();
 
-    // Smart Match: exact name first, then fuzzy
-    let existing = await payload.find({ collection: 'service-categories', where: { name: { equals: targetName } }, limit: 1 });
+    // 1. Primary Match: Match by exact Slug
+    let existing = await payload.find({ 
+        collection: 'service-categories', 
+        where: { slug: { equals: targetSlug } }, 
+        limit: 1 
+    });
+
+    // 2. Secondary Match: Exact Name fallback
     if (existing.docs.length === 0) {
+        existing = await payload.find({ collection: 'service-categories', where: { name: { equals: targetName } }, limit: 1 });
+    }
+
+    // 3. Fuzzy Match: Name contains the slug keyword
+    if (existing.docs.length === 0) {
+        const slugKeyword = slug.toLowerCase().replace(/[_-]/g, ' ');
         existing = await payload.find({ collection: 'service-categories', where: { name: { contains: slugKeyword } }, limit: 1 });
     }
 
@@ -337,7 +366,11 @@ async function findOrCreateServiceCategory(payload: any, slug: string, cache: an
         ? existing.docs[0]
         : await payload.create({
             collection: 'service-categories',
-            data: { name: targetName, status: 'active' }
+            data: { 
+                name: targetName, 
+                slug: targetSlug,
+                status: 'active' 
+            }
         });
 
     cache.serviceCategories.set(key, result);
