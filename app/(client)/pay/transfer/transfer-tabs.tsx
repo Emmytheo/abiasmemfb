@@ -9,14 +9,13 @@ import { Service } from '@/lib/api/types'
 import { api } from '@/lib/api'
 
 interface TransferTabsProps {
-    interbankService: Service | null
-    internationalService: Service | null
-    intrabankService: Service | null
+    services: Service[]
 }
 
-export function TransferTabs({ interbankService, internationalService, intrabankService }: TransferTabsProps) {
+export function TransferTabs({ services }: TransferTabsProps) {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const pathname = useSearchParams().get('x-pathname') || '/pay/transfer' // Fallback for safety
 
     const tabParam = searchParams.get('tab') as string
     const beneficiaryId = searchParams.get('beneficiary') || undefined
@@ -24,11 +23,15 @@ export function TransferTabs({ interbankService, internationalService, intrabank
     const [activeTab, setActiveTab] = useState(tabParam || 'interbank')
     const [isResolving, setIsResolving] = useState(false)
 
+    // Resolve services based on new service_intent metadata instead of names
+    const intrabankService = services.find(s => s.service_intent === 'transfer_intra') 
+    const interbankService = services.find(s => s.service_intent === 'transfer_interbank')
+    const internationalService = services.find(s => s.service_intent === 'transfer_international')
+
     useEffect(() => {
         if (tabParam) {
             setActiveTab(tabParam)
         } else if (beneficiaryId) {
-            // No tab specified, but we have a beneficiary. Resolve the correct tab contextually.
             const resolveTargetTab = async () => {
                 setIsResolving(true)
                 try {
@@ -50,8 +53,10 @@ export function TransferTabs({ interbankService, internationalService, intrabank
 
     const handleTabChange = (val: string) => {
         setActiveTab(val)
-        // Clear params if user manually switches tabs so forms don't randomly pre-fill
-        router.replace('/pay/transfer', { scroll: false })
+        // Keep active tab in URL without full refresh
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('tab', val)
+        router.replace(`?${params.toString()}`, { scroll: false })
     }
 
     return (
@@ -78,10 +83,10 @@ export function TransferTabs({ interbankService, internationalService, intrabank
                         prefillBeneficiaryId={beneficiaryId} 
                     />
                 ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                        <Wallet className="mx-auto mb-4 opacity-50" size={48} />
-                        <p>Internal transfers are instant and free.</p>
-                        <p className="text-xs mt-2">Configure 'intrabank-transfer' service in CMS to enable.</p>
+                    <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-accent/5">
+                        <Wallet className="mx-auto mb-4 opacity-50 text-primary" size={48} />
+                        <h3 className="font-bold text-lg text-foreground">Intra-bank Not Configured</h3>
+                        <p className="max-w-xs mx-auto text-sm">Assign the 'transfer_intra' intent to a service in the CMS to enable this tab.</p>
                     </div>
                 )}
             </TabsContent>
@@ -93,9 +98,10 @@ export function TransferTabs({ interbankService, internationalService, intrabank
                         prefillBeneficiaryId={beneficiaryId} 
                     />
                 ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                        <Building2 className="mx-auto mb-4 opacity-50" size={48} />
-                        <p>Interbank transfers are not configured.</p>
+                    <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-accent/5">
+                        <Building2 className="mx-auto mb-4 opacity-50 text-primary" size={48} />
+                        <h3 className="font-bold text-lg text-foreground">Inter-bank Not Configured</h3>
+                        <p className="max-w-xs mx-auto text-sm">Assign the 'transfer_interbank' intent to a service in the CMS to enable this tab.</p>
                     </div>
                 )}
             </TabsContent>
@@ -107,9 +113,10 @@ export function TransferTabs({ interbankService, internationalService, intrabank
                         prefillBeneficiaryId={beneficiaryId} 
                     />
                 ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                        <Globe2 className="mx-auto mb-4 opacity-50" size={48} />
-                        <p>International transfer service not configured.</p>
+                    <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-accent/5">
+                        <Globe2 className="mx-auto mb-4 opacity-50 text-primary" size={48} />
+                        <h3 className="font-bold text-lg text-foreground">International Not Configured</h3>
+                        <p className="max-w-xs mx-auto text-sm">Assign the 'transfer_international' intent to a service in the CMS to enable this tab.</p>
                     </div>
                 )}
             </TabsContent>

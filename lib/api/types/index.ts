@@ -406,6 +406,7 @@ export interface ServiceCategory {
     description?: string;
     icon?: string;
     status: 'active' | 'inactive';
+    ui_layout: 'default' | 'transfer_tabs';
     created_at: string;
 }
 
@@ -439,5 +440,6 @@ export interface Service {
     fee_value?: number;
     form_schema: ServiceFormSchema[];
     status: 'active' | 'inactive';
+    service_intent: 'none' | 'transfer_intra' | 'transfer_interbank' | 'transfer_international';
     created_at?: string;
 }

@@ -134,90 +134,86 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
         if (fieldSchema?.events) {
             for (const event of fieldSchema.events) {
                 if (event.trigger === 'onChange') {
-                    if (event.action === 'SET_VALUES' && event.mappingConfig) {
-                        const newLocked = new Set(lockedFields);
-                        const updates: Record<string, string> = {};
-                        
-                        // If it's a beneficiary_select, track the chosen object for the UI
-                        if (name === 'beneficiary_id' && extraData) {
-                            setSelectedBeneficiary(extraData);
-                            setIsPickerOpen(false); // Auto-close as requested
-                        }
-
-                        // Process the mapping config
-                        for (const [targetField, template] of Object.entries(event.mappingConfig)) {
-                            // Basic template resolution: {{$value.prop}}
-                            let resolvedValue = template;
-                            if (typeof template === 'string' && template.includes('{{$value.')) {
-                                const prop = template.replace('{{$value.', '').replace('}}', '');
-                                resolvedValue = extraData ? extraData[prop] : (typeof value === 'object' ? (value as any)[prop] : value);
-                            } else if (template === '{{$value}}') {
-                                resolvedValue = displayValue;
-                            }
-                            updates[targetField] = String(resolvedValue);
-                            // Locking requirement: "locked for now" when pre-filled by a beneficiary
-                            newLocked.add(targetField);
-                        }
-                        setFormData(prev => ({ ...prev, ...updates }));
-                        setLockedFields(newLocked);
-                    }
+                    await executeEvent(event, displayValue, extraData);
                 }
             }
         }
+    };
 
-        // Auto-resolve account name when account number is filled in
-        const isAccountNumberField = name === 'destinationAccount' || name === 'iban' || name === 'destination_account';
-        const bankCode = name === 'bankCode' || name === 'destination_bank_code' ? value : (formData['bankCode'] || formData['destination_bank_code'] || '');
-        if (isAccountNumberField && value.replace(/\s/g, '').length >= 10 && !lockedFields.has('accountName') && !lockedFields.has('resolvedName')) {
-            // Require bank to be selected first (essential for real NIP lookup)
-            const hasBankField = service?.form_schema.some(f => f.name === 'bankCode' || f.name === 'destination_bank_code');
-            if (hasBankField && !bankCode) {
-                toast.warning('Please select the destination bank before verifying the account number.');
-                setIsValidating(false);
-                return;
+    const handleBlur = async (name: string) => {
+        const value = formData[name] || '';
+        const fieldSchema = service?.form_schema.find(f => f.name === name);
+        if (fieldSchema?.events) {
+            for (const event of fieldSchema.events) {
+                if (event.trigger === 'onBlur') {
+                    await executeEvent(event, value);
+                }
             }
+        }
+    };
+
+    const executeEvent = async (event: any, value: string, extraData?: any) => {
+        if (event.action === 'SET_VALUES' && event.mappingConfig) {
+            const newLocked = new Set(lockedFields);
+            const updates: Record<string, string> = {};
+            
+            // If it's a beneficiary_select, track the chosen object for the UI
+            if (extraData && extraData.account_name) {
+                setSelectedBeneficiary(extraData);
+                setIsPickerOpen(false); 
+            }
+
+            // Process the mapping config
+            for (const [targetField, template] of Object.entries(event.mappingConfig)) {
+                let resolvedValue = template;
+                if (typeof template === 'string' && template.includes('{{$value.')) {
+                    const prop = template.replace('{{$value.', '').replace('}}', '');
+                    resolvedValue = extraData ? extraData[prop] : (typeof value === 'object' ? (value as any)[prop] : value);
+                } else if (template === '{{$value}}') {
+                    resolvedValue = value;
+                }
+                updates[targetField] = String(resolvedValue || '');
+                newLocked.add(targetField);
+            }
+            setFormData(prev => ({ ...prev, ...updates }));
+            setLockedFields(newLocked);
+        } else if (event.action === 'EXECUTE_ENDPOINT' && event.endpointId) {
             setIsValidating(true);
             try {
-                const params = new URLSearchParams({
-                    accountNumber: value.trim(),
-                    bankCode,
-                    providerSlug: formData['nipProviderId'] || bankCode,
+                // Ensure we use the latest form data for the payload
+                const currentData = { ...formData, [event.fieldName || '']: value }; 
+                const res = await fetch('/api/endpoints/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpointId: typeof event.endpointId === 'object' ? event.endpointId.id : event.endpointId,
+                        dynamicPayload: currentData
+                    })
                 });
-                const res = await fetch(`/api/account-lookup?${params}`);
+
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.accountName) {
-                        // Populate whichever name field exists in the schema
-                        setFormData(prev => ({
-                            ...prev,
-                            resolvedName: data.accountName,
-                            accountName: data.accountName,
-                            destination_name: data.accountName,
-                        }));
-                        setValidationData(prev => ({ ...prev, [name]: data.accountName }));
-                        toast.success(`Account verified: ${data.accountName}`);
+                    if (event.mappingConfig) {
+                        const updates: Record<string, string> = {};
+                        for (const [targetField, template] of Object.entries(event.mappingConfig)) {
+                            let resolvedValue = template;
+                            // Support nested path resolution via {{$response.path.to.prop}}
+                            if (typeof template === 'string' && template.includes('{{$response.')) {
+                                const path = template.replace('{{$response.', '').replace('}}', '');
+                                resolvedValue = path.split('.').reduce((acc, part) => acc && acc[part], data);
+                            }
+                            updates[targetField] = String(resolvedValue || '');
+                        }
+                        setFormData(prev => ({ ...prev, ...updates }));
                     }
+                    toast.success('Information resolved successfully');
                 } else {
-                    toast.error('Could not verify account number. Please check and retry.');
+                    const err = await res.json();
+                    toast.error(err.error || 'Failed to verify information');
                 }
             } catch (error) {
-                console.error('Account lookup error:', error);
-            } finally {
-                setIsValidating(false);
-            }
-            return;
-        }
-
-        // Handle other on-the-fly validation triggers
-        if (fieldSchema?.triggers_validation && value.length > 3) {
-            setIsValidating(true);
-            try {
-                const res = await api.validateServiceWorkflow(service!.id, { ...formData, [name]: value });
-                if (res.valid) {
-                    setValidationData(prev => ({ ...prev, [name]: 'Verified' }));
-                }
-            } catch (error) {
-                console.error('Validation error:', error);
+                console.error('Event execution error:', error);
+                toast.error('Network error during verification');
             } finally {
                 setIsValidating(false);
             }
@@ -528,6 +524,7 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                             placeholder={field.placeholder || ""}
                             value={formData[field.name] || ""}
                             onChange={(e) => handleInputChange(field.name, e.target.value)}
+                            onBlur={() => handleBlur(field.name)}
                             disabled={isValidating || isSubmitting || lockedFields.has(field.name)}
                             className={lockedFields.has(field.name) ? "bg-muted cursor-not-allowed border-dashed" : ""}
                         />

@@ -167,6 +167,22 @@ export const Services: CollectionConfig = {
                 { label: 'Inactive', value: 'inactive' },
             ],
         },
+        {
+            name: 'service_intent',
+            type: 'select',
+            required: true,
+            defaultValue: 'none',
+            options: [
+                { label: 'Generic / None', value: 'none' },
+                { label: 'Intra-bank Transfer', value: 'transfer_intra' },
+                { label: 'Inter-bank Transfer', value: 'transfer_interbank' },
+                { label: 'International Transfer', value: 'transfer_international' },
+            ],
+            admin: {
+                description: 'Used by the UI to place this service in specialized layouts (like Transfer Tabs).',
+                position: 'sidebar'
+            }
+        }
     ],
     timestamps: true,
 }

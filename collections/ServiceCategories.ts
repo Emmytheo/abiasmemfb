@@ -68,6 +68,19 @@ export const ServiceCategories: CollectionConfig = {
                 description: 'If inactive, all services in this category disappear from the Client Portal.',
             },
         },
+        {
+            name: 'ui_layout',
+            type: 'select',
+            required: true,
+            defaultValue: 'default',
+            options: [
+                { label: 'Default Grid', value: 'default' },
+                { label: 'Tabbed Transfers', value: 'transfer_tabs' },
+            ],
+            admin: {
+                description: 'Specialized layout for this category. "Tabbed Transfers" will use a premium multi-tab experience.',
+            },
+        },
     ],
     timestamps: true,
 }

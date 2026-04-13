@@ -1,5 +1,5 @@
 import { getPayload } from 'payload';
-import config from '../../payload.config.ts'; 
+import config from '../../payload.config'; 
 
 /**
  * Registry Mapping Repair Utility
