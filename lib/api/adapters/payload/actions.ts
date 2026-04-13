@@ -25,12 +25,12 @@ import configPromise from '@payload-config';
 import { lexicalToHtml } from '@/lib/utils/lexical-to-html';
 import { executeWorkflow } from '@/lib/workflow/executeWorkflow';
 import { FundAccountExecutor } from '@/lib/workflow/executor/FundAccountExecutor';
+import { resolveEndpoint } from '@/lib/workflow/utils/apiResolver';
+
+import { getPayloadClient } from '@/lib/payload';
 
 const initPayload = async () => {
-    if (!process.env.DATABASE_URI) {
-        throw new Error('CRITICAL ERROR: DATABASE_URI is missing from your .env.local file.');
-    }
-    return await getPayload({ config: configPromise });
+    return await getPayloadClient();
 }
 
 // Internal helper for authoritative core banking synchronization
@@ -39,24 +39,29 @@ async function executeEndpoint(endpointId: string, inputData: Record<string, any
     const endpoint = await payload.findByID({
         collection: 'endpoints' as any,
         id: endpointId,
+        depth: 2, // Crucial: Hydrate Provider and Secret for resolution
     });
     if (!endpoint) throw new Error('Endpoint not found');
 
-    // Hardened API resolution
-    let url = (endpoint as any).baseUrl || '';
-    if ((endpoint as any).path) url += (endpoint as any).path;
+    // 1. Resolve absolute URL, headers and body using the unified logic
+    const resolved = await resolveEndpoint(endpoint, {
+        body: inputData
+    });
 
-    const response = await fetch(url, {
-        method: (endpoint as any).method || 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...((endpoint as any).headers || {}),
-        },
-        body: (endpoint as any).method !== 'GET' ? JSON.stringify(inputData) : undefined,
+    // 2. Execute fetch with absolute URL
+    console.log(`[Adapter][Execute] Calling ${resolved.method} ${resolved.url}`);
+    
+    const response = await fetch(resolved.url, {
+        method: resolved.method,
+        headers: resolved.headers,
+        body: resolved.method !== 'GET' ? JSON.stringify(resolved.body) : undefined,
     });
 
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || 'External sync failed');
+    if (!response.ok) {
+        console.error(`[Adapter][Execute] Failed:`, result);
+        throw new Error(result.message || result.Message || 'External sync failed');
+    }
     return result;
 }
 
@@ -354,8 +359,8 @@ export const getUserAccounts = async (userId: string): Promise<Account[]> => {
             where: { supabase_id: { equals: userId } }, 
             limit: 100 
         });
-        const customerIds = customers.map(c => c.id);
-        const customerEmails = customers.map(c => c.email).filter(Boolean);
+        const customerIds = customers.map((c: any) => c.id);
+        const customerEmails = customers.map((c: any) => c.email).filter(Boolean);
 
         const { docs } = await payload.find({
             collection: 'accounts' as any,

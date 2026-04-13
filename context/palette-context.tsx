@@ -43,8 +43,14 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
 
 export function usePalette() {
     const context = useContext(PaletteContext)
+    
+    // Defensive check for SSR. If context is missing, return a dummy but safe object
+    // to prevent crashing the entire application during initial server render.
     if (!context) {
-        throw new Error("usePalette must be used within a PaletteProvider")
+        return {
+            palette: "nature" as Palette,
+            setPalette: () => {}
+        }
     }
     return context
 }

@@ -283,10 +283,78 @@ export const DummyAdapter: ApiAdapter = {
     // Service Integrations
     getServiceCategories: async () => {
         await delay(300);
-        return [];
+        return [
+            {
+                id: 'cat_transfers',
+                name: 'Transfers',
+                slug: 'transfers',
+                description: 'Send money to any bank account.',
+                icon: 'landmark',
+                status: 'active',
+                ui_layout: 'transfer_tabs',
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 'cat_bills',
+                name: 'Pay Bills',
+                slug: 'bills',
+                description: 'Utility, Internet, and Cable TV.',
+                icon: 'zap',
+                status: 'active',
+                ui_layout: 'default',
+                created_at: new Date().toISOString()
+            }
+        ];
     },
     getServicesByCategory: async (categorySlug) => {
         await delay(300);
+        if (categorySlug === 'transfers') {
+            return [
+                {
+                    id: 'svc_intra',
+                    name: 'Transfer to Abia MFB',
+                    category: 'cat_transfers',
+                    provider_service_code: 'INTRA',
+                    service_intent: 'transfer_intra',
+                    fee_type: 'none',
+                    fee_value: 0,
+                    status: 'active',
+                    form_schema: [
+                        { name: 'beneficiary_id', label: 'Select Beneficiary', type: 'beneficiary_select', required: true, 
+                          events: [{ trigger: 'onChange', action: 'SET_VALUES', mappingConfig: { destinationAccount: '{{$value.account_number}}', resolvedName: '{{$value.account_name}}' } }] 
+                        },
+                        { name: 'destinationAccount', label: 'Account Number', type: 'number', required: true, 
+                          events: [{ trigger: 'onBlur', action: 'EXECUTE_ENDPOINT', endpointId: 'enquiry', mappingConfig: { resolvedName: '{{$response.account_name}}' } }] 
+                        },
+                        { name: 'resolvedName', label: 'Account Name', type: 'text', required: true, placeholder: 'Will be resolved automatically' },
+                        { name: 'amount', label: 'Amount', type: 'number', required: true },
+                        { name: 'narration', label: 'Narration / Description', type: 'text', required: false }
+                    ]
+                },
+                {
+                    id: 'svc_inter',
+                    name: 'Transfer to Other Banks',
+                    category: 'cat_transfers',
+                    provider_service_code: 'INTER',
+                    service_intent: 'transfer_interbank',
+                    fee_type: 'flat',
+                    fee_value: 10,
+                    status: 'active',
+                    form_schema: [
+                        { name: 'beneficiary_id', label: 'Select Beneficiary', type: 'beneficiary_select', required: true, 
+                          events: [{ trigger: 'onChange', action: 'SET_VALUES', mappingConfig: { destinationAccount: '{{$value.account_number}}', resolvedName: '{{$value.account_name}}', bankCode: '{{$value.bank_code}}' } }] 
+                        },
+                        { name: 'bankCode', label: 'Destination Bank', type: 'destination_bank_lookup', required: true },
+                        { name: 'destinationAccount', label: 'Account Number', type: 'number', required: true, 
+                          events: [{ trigger: 'onBlur', action: 'EXECUTE_ENDPOINT', endpointId: 'enquiry', mappingConfig: { resolvedName: '{{$response.account_name}}' } }] 
+                        },
+                        { name: 'resolvedName', label: 'Account Name', type: 'text', required: true, placeholder: 'Will be resolved automatically' },
+                        { name: 'amount', label: 'Amount', type: 'number', required: true },
+                        { name: 'narration', label: 'Narration', type: 'text' }
+                    ]
+                }
+            ] as any[];
+        }
         return [];
     },
     getAllServices: async () => {

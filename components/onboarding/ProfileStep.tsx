@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowRight } from "lucide-react";
 
-const profileSchema = z.z.object({
+const profileSchema = z.object({
     firstName: z.string().min(2, "First name is too short"),
     lastName: z.string().min(2, "Last name is too short"),
     phone_number: z.string().min(10, "Invalid phone number"),

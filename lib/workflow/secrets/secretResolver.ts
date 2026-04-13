@@ -1,6 +1,5 @@
 'use server'
-import { getPayload } from 'payload'
-import config from '@payload-config'
+import { getPayloadClient } from '@/lib/payload'
 import { decryptSecret } from './encryption'
 
 /**
@@ -8,7 +7,7 @@ import { decryptSecret } from './encryption'
  * Returns the decrypted plaintext value — only available server-side.
  */
 export async function resolveSecret(secretId: string): Promise<string> {
-    const payload = await getPayload({ config })
+    const payload = await getPayloadClient()
     const secret = await payload.findByID({
         collection: 'secrets',
         id: secretId,

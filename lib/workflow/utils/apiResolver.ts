@@ -113,6 +113,11 @@ export async function resolveEndpoint(endpoint: any, customParams: Record<string
     const headers: Record<string, string> = {
         'Accept': 'application/json'
     }
+
+    // Default to JSON for payloads
+    if (endpoint.method && endpoint.method !== 'GET') {
+        headers['Content-Type'] = 'application/json';
+    }
     if (Array.isArray(endpoint.headers)) {
         endpoint.headers.forEach((h: any) => {
             if (h.key && h.value) headers[h.key] = h.value

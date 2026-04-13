@@ -12,7 +12,7 @@ import { ArrowLeft, ArrowRight, Loader2, ShieldCheck, AlertCircle } from "lucide
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const identitySchema = z.z.object({
+const identitySchema = z.object({
     bvn: z.string().length(11, "BVN must be exactly 11 digits"),
 });
 

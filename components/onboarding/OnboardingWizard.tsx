@@ -22,14 +22,14 @@ export function OnboardingWizard({ user, products, initialCustomerData }: Onboar
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         userId: user.id,
-        firstName: user.user_metadata?.full_name?.split(' ')[0] || "",
-        lastName: user.user_metadata?.full_name?.split(' ')[1] || "",
+        firstName: initialCustomerData?.firstName || user.user_metadata?.full_name?.split(' ')[0] || "",
+        lastName: initialCustomerData?.lastName || user.user_metadata?.full_name?.split(' ')[1] || "",
         email: user.email || "",
-        phone_number: "",
-        dob: "",
-        gender: 0,
-        address: "",
-        bvn: "",
+        phone_number: initialCustomerData?.phone_number || "",
+        dob: initialCustomerData?.dob || "",
+        gender: initialCustomerData?.gender || 0,
+        address: initialCustomerData?.address || "",
+        bvn: initialCustomerData?.bvn || "",
         productTypeId: "",
     });
 

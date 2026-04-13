@@ -1,15 +1,14 @@
 import 'server-only'
 import parser from 'cron-parser'
 const { parseExpression } = parser as any
-import { getPayload } from 'payload'
-import config from '@payload-config'
+import { getPayloadClient } from '@/lib/payload'
 import { clearTimer, setTimer } from './cronRegistry'
 import { executeWorkflow } from '../executeWorkflow'
 import type { ScheduledJob, ScheduleType } from '../types'
 
 export async function rescheduleAll() {
     console.log('[Scheduler] Initializing global schedule registry...')
-    const payload = await getPayload({ config })
+    const payload = await getPayloadClient()
 
     // Find all ACTIVE schedules
     const jobsRes = await payload.find({
@@ -73,7 +72,7 @@ export function scheduleJob(job: ScheduledJob) {
 }
 
 async function fireJobRoutine(jobId: string) {
-    const payload = await getPayload({ config })
+    const payload = await getPayloadClient()
     const doc = await payload.findByID({ collection: 'scheduled-jobs', id: jobId }).catch(() => null)
 
     if (!doc) {
@@ -154,7 +153,7 @@ async function fireJobRoutine(jobId: string) {
 }
 
 async function pauseJob(jobId: string, status: string) {
-    const payload = await getPayload({ config })
+    const payload = await getPayloadClient()
     await payload.update({
         collection: 'scheduled-jobs',
         id: jobId,
