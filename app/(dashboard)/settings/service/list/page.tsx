@@ -99,6 +99,7 @@ export default function ServicesPage() {
                 fee_value: Number(formData.get("fee_value")) || 0,
                 form_schema: newServiceSchema,
                 status: "active",
+                service_intent: formData.get("service_intent") as any || 'none',
             });
 
             // To update UI instantly we need the Category Name, but API returns Category ID.
@@ -146,6 +147,7 @@ export default function ServicesPage() {
                 fee_value: Number(formData.get("fee_value")) || 0,
                 form_schema: selectedItem.form_schema,
                 status: formData.get("status") as 'active' | 'inactive',
+                service_intent: formData.get("service_intent") as any,
             });
             toast.success("Service updated successfully.");
             setIsViewOpen(false);
@@ -295,9 +297,26 @@ export default function ServicesPage() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="provider_service_code">Provider Internal Code (Optional)</Label>
-                                    <Input id="provider_service_code" name="provider_service_code" placeholder="e.g. NGP-ELEC-01" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="provider_service_code">Provider Internal Code (Optional)</Label>
+                                        <Input id="provider_service_code" name="provider_service_code" placeholder="e.g. NGP-ELEC-01" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="service_intent">Service Intent (Special Layouts)</Label>
+                                        <select
+                                            id="service_intent"
+                                            name="service_intent"
+                                            required
+                                            defaultValue="none"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="none">None / Generic</option>
+                                            <option value="transfer_intra">Intra-bank Transfer</option>
+                                            <option value="transfer_interbank">Inter-bank Transfer</option>
+                                            <option value="transfer_international">International Transfer</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4 pt-4">
@@ -325,6 +344,7 @@ export default function ServicesPage() {
                     { header: "Name", accessorKey: "name", cell: (item) => <span className="font-semibold">{item.name}</span> },
                     { header: "Category", accessorKey: "category", cell: (item) => <span className="text-muted-foreground">{item.category || '—'}</span> },
                     { header: "Fee Type", accessorKey: "fee_type", cell: (item) => <span className="capitalize">{item.fee_type || '—'}</span> },
+                    { header: "Intent", accessorKey: "service_intent", cell: (item) => <span className="capitalize text-[10px] font-bold px-2 py-0.5 rounded border bg-muted">{item.service_intent || 'none'}</span> },
                     { header: "Status", accessorKey: "status", cell: (item) => <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs">{item.status || '—'}</span> },
                     actionColumn
                 ]}
@@ -453,9 +473,26 @@ export default function ServicesPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-provider_service_code">Provider Internal Code (Optional)</Label>
-                                <Input id="edit-provider_service_code" name="provider_service_code" defaultValue={selectedItem.provider_service_code} />
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-provider_service_code">Provider Internal Code (Optional)</Label>
+                                    <Input id="edit-provider_service_code" name="provider_service_code" defaultValue={selectedItem.provider_service_code} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-service_intent">Service Intent</Label>
+                                    <select
+                                        id="edit-service_intent"
+                                        name="service_intent"
+                                        required
+                                        defaultValue={selectedItem.service_intent}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="none">None / Generic</option>
+                                        <option value="transfer_intra">Intra-bank Transfer</option>
+                                        <option value="transfer_interbank">Inter-bank Transfer</option>
+                                        <option value="transfer_international">International Transfer</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div className="space-y-4 pt-4 border-t">

@@ -62,6 +62,7 @@ export default function ServiceCategoriesPage() {
                 description: formData.get("description") as string,
                 icon: formData.get("icon") as string,
                 status: "active",
+                ui_layout: formData.get("ui_layout") as 'default' | 'transfer_tabs' || 'default',
             });
             setData([...data, newCat]);
             setIsCreateOpen(false);
@@ -83,6 +84,7 @@ export default function ServiceCategoriesPage() {
                 description: formData.get("description") as string,
                 icon: formData.get("icon") as string,
                 status: formData.get("status") as 'active' | 'inactive',
+                ui_layout: formData.get("ui_layout") as 'default' | 'transfer_tabs',
             });
             setData(data.map(item => item.id === updated.id ? updated : item));
             setIsViewOpen(false);
@@ -179,6 +181,19 @@ export default function ServiceCategoriesPage() {
                                         placeholder="Brief description of the service category"
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="ui_layout">UI Layout</Label>
+                                    <select
+                                        id="ui_layout"
+                                        name="ui_layout"
+                                        defaultValue="default"
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="default">Default Grid</option>
+                                        <option value="transfer_tabs">Tabbed Transfers (Premium)</option>
+                                    </select>
+                                    <p className="text-[10px] text-muted-foreground italic">Use "Tabbed Transfers" for the Transfers category to enable the multi-tab UX.</p>
+                                </div>
                                 <div className="pt-4 flex justify-end gap-2">
                                     <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
                                     <Button type="submit">Create</Button>
@@ -191,6 +206,7 @@ export default function ServiceCategoriesPage() {
                     { header: "Name", accessorKey: "name", cell: (item) => <span className="font-semibold">{item.name}</span> },
                     { header: "Slug", accessorKey: "slug", cell: (item) => <span className="text-muted-foreground font-mono text-xs">{item.slug}</span> },
                     { header: "Icon", accessorKey: "icon", cell: (item) => <span className="capitalize">{item.icon || '—'}</span> },
+                    { header: "Layout", accessorKey: "ui_layout", cell: (item) => <span className="capitalize text-[10px] font-bold px-2 py-0.5 rounded border bg-muted">{item.ui_layout}</span> },
                     { header: "Status", accessorKey: "status", cell: (item) => <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs">{item.status}</span> },
                     actionColumn
                 ]}
@@ -264,6 +280,18 @@ export default function ServiceCategoriesPage() {
                                     defaultValue={selectedItem.description}
                                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ui_layout">UI Layout</Label>
+                                <select
+                                    id="ui_layout"
+                                    name="ui_layout"
+                                    defaultValue={selectedItem.ui_layout}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="default">Default Grid</option>
+                                    <option value="transfer_tabs">Tabbed Transfers (Premium)</option>
+                                </select>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="status">Status</Label>

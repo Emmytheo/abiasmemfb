@@ -280,9 +280,9 @@ export async function CustomerBulkSyncExecutor(
                                     data: otherData
                                 });
                                 results.accountsCreated++;
-                                log(`DISCOVERED & MAPPED: ${otherAccNo}`, 'success');
+                                log(`DISCOVERED & MAPPED: ${otherAccNuban}`, 'success');
                             }
-                            processedAccountNumbers.push(otherAccNo);
+                            processedAccountNumbers.push(otherAccNuban);
                         }
                     }
                 } catch (deepErr) {
