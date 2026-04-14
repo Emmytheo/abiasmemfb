@@ -57,9 +57,21 @@ export function IdentityStep({ data, onUpdate, onNext, onBack }: IdentityStepPro
         }
     };
 
-    const handleContinue = () => {
-        onUpdate({ bvn: verificationResult.BVN || verificationResult.bvn });
-        onNext();
+    const handleContinue = async () => {
+        try {
+            const bvn = verificationResult.BVN || verificationResult.bvn;
+            await api.saveOnboardingDraft({
+                userId: data.userId,
+                bvn: bvn,
+                firstName: verificationResult.FirstName || verificationResult.firstName,
+                lastName: verificationResult.LastName || verificationResult.lastName,
+            });
+            onUpdate({ bvn });
+            onNext();
+        } catch (error) {
+            console.error("Failed to save draft:", error);
+            onNext();
+        }
     };
 
     return (

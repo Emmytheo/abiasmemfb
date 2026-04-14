@@ -34,7 +34,11 @@ const initPayload = async () => {
 }
 
 // Internal helper for authoritative core banking synchronization
-async function executeEndpoint(endpointId: string, inputData: Record<string, any>) {
+async function executeEndpoint(
+    endpointId: string, 
+    inputData: Record<string, any>, 
+    overrides: Record<string, any> = {}
+) {
     const payload = await initPayload();
     const endpoint = await payload.findByID({
         collection: 'endpoints' as any,
@@ -45,7 +49,8 @@ async function executeEndpoint(endpointId: string, inputData: Record<string, any
 
     // 1. Resolve absolute URL, headers and body using the unified logic
     const resolved = await resolveEndpoint(endpoint, {
-        body: inputData
+        body: inputData,
+        overrides: overrides
     });
 
     // 2. Execute fetch with absolute URL
@@ -205,6 +210,46 @@ export const getCustomerBySupabaseId = async (supabaseId: string): Promise<Custo
     } catch (e) {
         console.error('Payload getCustomerBySupabaseId Error:', e);
         return null;
+    }
+};
+
+export const saveOnboardingDraft = async (data: Partial<Customer> & { userId: string }): Promise<Customer> => {
+    try {
+        const payload = await initPayload();
+        const existing = await getCustomerBySupabaseId(data.userId);
+
+        if (existing) {
+            return await updateCustomer(existing.id, {
+                ...data,
+                kyc_status: existing.kyc_status === 'active' ? 'active' : 'pending'
+            });
+        }
+
+        const newDoc = await payload.create({
+            collection: 'customers' as any,
+            data: {
+                ...data,
+                supabase_id: data.userId,
+                kyc_status: 'pending',
+                risk_tier: 'low',
+                is_associated: false,
+                is_archived: false,
+                is_test_account: false,
+            } as any,
+            overrideAccess: true,
+        });
+
+        return {
+            id: String(newDoc.id),
+            firstName: (newDoc as any).firstName,
+            lastName: (newDoc as any).lastName,
+            email: (newDoc as any).email,
+            phone_number: (newDoc as any).phone_number,
+            kyc_status: (newDoc as any).kyc_status,
+        } as Customer;
+    } catch (e) {
+        console.error('Payload saveOnboardingDraft Error:', e);
+        throw e;
     }
 };
 
@@ -635,6 +680,9 @@ export const verifyCustomerBVN = async (bvn: string): Promise<any> => {
 
     return executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
         BVN: bvn
+    }, {
+        authOverride: 'BODY_FIELD',
+        authBodyFieldKey: 'Token' // Critical: SDL template requires 'Token' for this specific call
     });
 };
 

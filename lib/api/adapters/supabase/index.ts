@@ -49,6 +49,9 @@ export const SupabaseAdapter: ApiAdapter = {
     createCoreBankingProfile: async (data) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+    saveOnboardingDraft: async (data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
 
     // Products
     getAllAccounts: async () => {

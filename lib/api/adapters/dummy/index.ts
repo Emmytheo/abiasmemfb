@@ -90,6 +90,18 @@ export const DummyAdapter: ApiAdapter = {
         await delay(1500);
         return { customerId: "C123", accountNumber: "0123456789", localAccountId: "acc_123" };
     },
+    
+    saveOnboardingDraft: async (data: any) => {
+        await delay(500);
+        return {
+            id: 'dummy-id',
+            firstName: data.firstName || 'John',
+            lastName: data.lastName || 'Doe',
+            email: 'john.doe@example.com',
+            kyc_status: 'pending',
+            ...data
+        } as any;
+    },
 
     // Products
     getAllAccounts: async () => {

@@ -15,6 +15,7 @@ export const PayloadAdapter: ApiAdapter = {
     updateCustomer: (id, data) => actions.updateCustomer(id, data),
     verifyIdentity: (bvn) => actions.verifyIdentity(bvn),
     createCoreBankingProfile: (data) => actions.createCoreBankingProfile(data),
+    saveOnboardingDraft: (data) => actions.saveOnboardingDraft(data),
     getCustomerAudit: (...args) => actions.getCustomerAudit(...args),
     deleteCustomer: (...args) => actions.deleteCustomer(...args),
 

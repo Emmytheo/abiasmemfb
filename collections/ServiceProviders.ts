@@ -56,13 +56,32 @@ export const ServiceProviders: CollectionConfig = {
             type: 'select',
             options: [
                 { label: 'None', value: 'NONE' },
-                { label: 'API Key', value: 'API_KEY' },
+                { label: 'API Key (Body)', value: 'API_KEY' },
                 { label: 'Bearer Token', value: 'BEARER' },
+                { label: 'Query Parameter', value: 'QUERY_PARAM' },
                 { label: 'Basic Auth', value: 'BASIC' },
                 { label: 'OAuth 2.0', value: 'OAUTH2' },
             ],
             defaultValue: 'API_KEY',
             required: true,
+        },
+        {
+            name: 'authBodyFieldKey',
+            type: 'text',
+            defaultValue: 'AuthenticationCode',
+            admin: { 
+                description: 'Default field name for body auth (usually AuthenticationCode).',
+                condition: (data) => data.authType === 'API_KEY'
+            }
+        },
+        {
+            name: 'authQueryParamKey',
+            type: 'text',
+            defaultValue: 'authToken',
+            admin: { 
+                description: 'Default key for query param auth (usually authToken).',
+                condition: (data) => data.authType === 'QUERY_PARAM'
+            }
         },
         {
             name: 'secret',

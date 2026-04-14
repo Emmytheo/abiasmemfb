@@ -53,7 +53,7 @@ export function OnboardingWizard({ user, products, initialCustomerData }: Onboar
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 p-0">
             {/* Progress Header */}
             <div className="relative flex justify-between">
                 <div className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-muted transition-all duration-500" />

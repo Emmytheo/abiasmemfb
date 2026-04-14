@@ -103,6 +103,28 @@ export const Customers: CollectionConfig = {
             ]
         },
         {
+            type: 'row',
+            fields: [
+                {
+                    name: 'dob',
+                    type: 'date',
+                    admin: { 
+                        width: '50%',
+                        description: 'Date of Birth (ISO format)' 
+                    }
+                },
+                {
+                    name: 'gender',
+                    type: 'select',
+                    options: [
+                        { label: 'Male', value: '0' },
+                        { label: 'Female', value: '1' },
+                    ],
+                    admin: { width: '50%' }
+                }
+            ]
+        },
+        {
             name: 'is_associated',
             type: 'checkbox',
             defaultValue: false,

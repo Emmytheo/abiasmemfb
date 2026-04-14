@@ -39,6 +39,8 @@ export interface Customer {
     kyc_status: 'pending' | 'active' | 'inactive' | 'rejected';
     risk_tier: 'low' | 'medium' | 'high';
     is_associated: boolean;
+    dob?: string;
+    gender?: number;
     merger_status?: 'none' | 'pending' | 'completed' | 'archived';
     is_archived: boolean;
     is_test_account: boolean;
@@ -294,6 +296,7 @@ export interface ApiAdapter {
     deleteCustomer: (id: string) => Promise<boolean>;
     verifyIdentity: (bvn: string) => Promise<any>;
     createCoreBankingProfile: (data: any) => Promise<any>;
+    saveOnboardingDraft: (data: Partial<Customer> & { userId: string }) => Promise<Customer>;
 
     // Products (Accounts, Loans)
     getAllAccounts: () => Promise<Account[]>;

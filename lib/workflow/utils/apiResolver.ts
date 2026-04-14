@@ -129,19 +129,21 @@ export async function resolveEndpoint(endpoint: any, customParams: Record<string
         })
     }
 
-    // 6. Apply Auth Overrides
+    // 6. Apply Auth Overrides (Merge dynamic overrides from customParams)
+    const effectiveEndpoint = { ...endpoint, ...(customParams.overrides || {}) };
+    
     const authData = applyAuthOverride(
         url,
         headers,
         customParams.body || {},
         secretValue,
         provider,
-        endpoint
+        effectiveEndpoint
     )
 
     return {
         url: authData.url,
-        method: endpoint.method || 'GET',
+        method: effectiveEndpoint.method || 'GET',
         headers: authData.headers,
         body: authData.body
     }

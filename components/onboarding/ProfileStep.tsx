@@ -14,6 +14,7 @@ import {
     SelectValue 
 } from "@/components/ui/select";
 import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
 
 const profileSchema = z.object({
     firstName: z.string().min(2, "First name is too short"),
@@ -50,12 +51,27 @@ export function ProfileStep({ data, onUpdate, onNext }: ProfileStepProps) {
         },
     });
 
-    const onSubmit = (values: any) => {
-        onUpdate({
-            ...values,
-            gender: Number(values.gender),
-        });
-        onNext();
+    const onSubmit = async (values: any) => {
+        try {
+            await api.saveOnboardingDraft({
+                userId: data.userId,
+                firstName: values.firstName,
+                lastName: values.lastName,
+                phone_number: values.phone_number,
+                address: values.address,
+                dob: values.dob,
+                gender: Number(values.gender)
+            });
+            onUpdate({
+                ...values,
+                gender: Number(values.gender),
+            });
+            onNext();
+        } catch (error) {
+            console.error("Failed to save draft:", error);
+            // Continue even if draft save fails to avoid blocking the user
+            onNext();
+        }
     };
 
     return (

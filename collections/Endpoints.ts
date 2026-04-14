@@ -63,6 +63,40 @@ export const Endpoints: CollectionConfig = {
             ]
         },
         {
+            name: 'authOverride',
+            type: 'select',
+            options: [
+                { label: 'Inherit from Provider', value: 'INHERIT' },
+                { label: 'None', value: 'NONE' },
+                { label: 'API Key (Body/Param Name)', value: 'API_KEY' },
+                { label: 'Bearer Token', value: 'BEARER' },
+                { label: 'Query Parameter', value: 'QUERY_PARAM' },
+                { label: 'Body Field', value: 'BODY_FIELD' }
+            ],
+            defaultValue: 'INHERIT',
+            admin: { position: 'sidebar', description: 'Override the default provider auth method for this specific endpoint.' }
+        },
+        {
+            name: 'authBodyFieldKey',
+            type: 'text',
+            defaultValue: 'AuthenticationCode',
+            admin: { 
+                position: 'sidebar', 
+                description: 'The field name used for the secret in the request body (e.g. AuthenticationCode or Token).',
+                condition: (data) => data.authOverride === 'BODY_FIELD' || (data.authOverride === 'INHERIT' && !data.authOverride)
+            }
+        },
+        {
+            name: 'authQueryParamKey',
+            type: 'text',
+            defaultValue: 'authToken',
+            admin: { 
+                position: 'sidebar',
+                description: 'The query parameter name used for the secret (e.g. authToken or token).',
+                condition: (data) => data.authOverride === 'QUERY_PARAM'
+            }
+        },
+        {
             name: 'queryParamsSchema',
             type: 'json',
             admin: { description: 'A JSON Schema outlining the expected query parameters (used to dynamically generate Workflow node inputs).' }
