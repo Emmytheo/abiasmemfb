@@ -1,4 +1,3 @@
-'use server'
 import { getPayloadClient } from '@/lib/payload'
 import { decryptSecret } from './encryption'
 

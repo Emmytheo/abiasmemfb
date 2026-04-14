@@ -84,30 +84,65 @@ export default function ClientDashboard() {
     const portfolioValue = totalLiquidity + investmentYield + availableCredit;
 
     const chartData = useMemo(() => {
-        const months = timeframe === '6M' ? 6 : timeframe === '1Y' ? 12 : 24;
-        const now = isMounted ? new Date() : new Date('2024-01-01T00:00:00.000Z');
-        const dataPoints = Array(months).fill(0);
+        const monthsCount = timeframe === '6M' ? 6 : timeframe === '1Y' ? 12 : 24;
+        const now = isMounted ? new Date() : new Date();
         const labels: string[] = [];
+        const dataPoints = Array(monthsCount).fill(0);
 
-        for (let i = 0; i < months; i++) {
-            const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+        // Create month labels
+        for (let i = 0; i < monthsCount; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - (monthsCount - 1 - i), 1);
             labels.push(d.toLocaleDateString(undefined, { month: 'short' }));
         }
 
-        let currentIterativeValue = portfolioValue || 1000000;
-
-        for (let i = months - 1; i >= 0; i--) {
-            dataPoints[i] = currentIterativeValue;
-            // Go back in time deterministically: previous month was slightly less (growth of ~0.5% to 3.5%)
-            // Using a pseudo-random seed based on the index `i` to prevent SSR mismatches
-            const pseudoRandom = (Math.sin(i * 1000) + 1) / 2;
-            const growthFactor = 1 + (pseudoRandom * 0.03 + 0.005);
-            currentIterativeValue = currentIterativeValue / growthFactor;
+        if (!isMounted || transactions.length === 0) {
+            return { points: dataPoints, labels, isEmpty: true };
         }
 
-        return { points: dataPoints, labels };
+        // Calculate historical balance
+        // We start with current portfolio value and work backwards
+        let runningValue = portfolioValue;
+        const sortedTxs = [...transactions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        const monthBuckets = Array(monthsCount).fill(0).map((_, i) => {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            return {
+                start: new Date(d.getFullYear(), d.getMonth(), 1).getTime(),
+                end: new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(),
+                index: monthsCount - 1 - i
+            };
+        });
 
-    }, [timeframe, portfolioValue, isMounted]);
+        // Current month starts with current value
+        dataPoints[monthsCount - 1] = runningValue;
+
+        let txIndex = 0;
+        for (let i = monthsCount - 1; i >= 0; i--) {
+            const bucket = monthBuckets[monthsCount - 1 - i];
+            
+            // Subtract/Add transactions that happened AFTER this month's start to find PREVIOUS month's end value
+            while (txIndex < sortedTxs.length) {
+                const txDate = new Date(sortedTxs[txIndex].created_at).getTime();
+                if (txDate < bucket.start) break;
+
+                // If it was a credit (+), we subtract it to go back in time
+                // If it was a debit (-), we add it back.
+                if (sortedTxs[txIndex].type === 'credit') {
+                    runningValue -= sortedTxs[txIndex].amount;
+                } else {
+                    runningValue += sortedTxs[txIndex].amount;
+                }
+                txIndex++;
+            }
+            
+            if (i > 0) {
+                dataPoints[i - 1] = Math.max(0, runningValue);
+            }
+        }
+
+        return { points: dataPoints, labels, isEmpty: false };
+
+    }, [timeframe, portfolioValue, isMounted, transactions]);
 
     const { chartPath, chartFill, chartPoints } = useMemo(() => {
         const width = 1000;
@@ -364,29 +399,39 @@ export default function ClientDashboard() {
                         <Button variant={timeframe === 'ALL' ? 'default' : 'secondary'} onClick={() => setTimeframe('ALL')} size="sm" className={`h-8 text-xs font-bold ${timeframe !== 'ALL' && 'text-muted-foreground bg-accent'}`}>ALL</Button>
                     </div>
                 </div>
-                <div className="p-6 md:p-8">
-                    <div className="relative h-64 w-full">
-                        <svg className="w-full h-full" overflow="visible" preserveAspectRatio="none" viewBox="0 0 1000 200">
-                            <defs>
-                                <linearGradient id="chartGradientClient" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
-                                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-                                </linearGradient>
-                            </defs>
-                            <path d={chartFill} fill="url(#chartGradientClient)" />
-                            <path d={chartPath} fill="none" stroke="hsl(var(--primary))" strokeLinecap="round" strokeWidth="4" />
-                            {chartPoints.map((pt, i) => (
-                                <circle key={i} cx={pt.x} cy={pt.y} fill="hsl(var(--primary))" r={i === chartPoints.length - 1 ? "6" : "4"} className={i === chartPoints.length - 1 ? "animate-pulse origin-center shadow-[0_0_10px_rgba(var(--primary),0.8)]" : ""} />
-                            ))}
-                        </svg>
-                    </div>
-                    <div className="flex justify-between mt-6 px-2">
-                        {displayLabels.map((lbl, i) => (
-                            <span key={i} className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest ${i === displayLabels.length - 1 ? 'text-primary' : 'text-muted-foreground'}`}>
-                                {lbl}
-                            </span>
-                        ))}
-                    </div>
+                <div className="p-6 md:p-8 relative">
+                    {chartData.isEmpty ? (
+                        <div className="h-64 w-full flex flex-col items-center justify-center border-2 border-dashed rounded-xl bg-accent/20">
+                            <BarChart3 className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                            <p className="text-sm font-medium text-muted-foreground">No transaction history found</p>
+                            <p className="text-xs text-muted-foreground/60">Your financial trajectory will appear here once you start transacting.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="relative h-64 w-full">
+                                <svg className="w-full h-full" overflow="visible" preserveAspectRatio="none" viewBox="0 0 1000 200">
+                                    <defs>
+                                        <linearGradient id="chartGradientClient" x1="0" x2="0" y1="0" y2="1">
+                                            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
+                                            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+                                        </linearGradient>
+                                    </defs>
+                                    <path d={chartFill} fill="url(#chartGradientClient)" />
+                                    <path d={chartPath} fill="none" stroke="hsl(var(--primary))" strokeLinecap="round" strokeWidth="4" />
+                                    {chartPoints.map((pt, i) => (
+                                        <circle key={i} cx={pt.x} cy={pt.y} fill="hsl(var(--primary))" r={i === chartPoints.length - 1 ? "6" : "4"} className={i === chartPoints.length - 1 ? "animate-pulse origin-center shadow-[0_0_10px_rgba(var(--primary),0.8)]" : ""} />
+                                    ))}
+                                </svg>
+                            </div>
+                            <div className="flex justify-between mt-6 px-2">
+                                {displayLabels.map((lbl, i) => (
+                                    <span key={i} className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest ${i === displayLabels.length - 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+                                        {lbl}
+                                    </span>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -398,25 +443,40 @@ export default function ClientDashboard() {
                     <h4 className="text-xl font-bold tracking-tight">Quick Actions</h4>
                     <div className="grid grid-cols-1 gap-4">
 
-                        <Link href={`/pay/${categories.find(c => c.slug.toLowerCase().includes('transfer') || c.name.toLowerCase().includes('transfer'))?.slug || 'transfers'}`} className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm cursor-pointer">
-                            <div className="size-12 rounded-lg bg-accent flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
-                                <Send className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="font-bold">Transfer Funds</p>
-                                <p className="text-xs text-muted-foreground">Local and international</p>
-                            </div>
-                        </Link>
+                        {accounts.length > 0 ? (
+                            <>
+                                <Link href={`/pay/${categories.find(c => c.slug.toLowerCase().includes('transfer') || c.name.toLowerCase().includes('transfer'))?.slug || 'transfers'}`} className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm cursor-pointer">
+                                    <div className="size-12 rounded-lg bg-accent flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
+                                        <Send className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">Transfer Funds</p>
+                                        <p className="text-xs text-muted-foreground">Local and international</p>
+                                    </div>
+                                </Link>
 
-                        <Link href={`/pay/${categories.find(c => c.slug.toLowerCase().includes('bill') || c.slug.toLowerCase().includes('utilit') || c.name.toLowerCase().includes('bill'))?.slug || 'utilities'}`} className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm cursor-pointer">
-                            <div className="size-12 rounded-lg bg-accent flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
-                                <Receipt className="h-5 w-5" />
+                                <Link href={`/pay/${categories.find(c => c.slug.toLowerCase().includes('bill') || c.slug.toLowerCase().includes('utilit') || c.name.toLowerCase().includes('bill'))?.slug || 'utilities'}`} className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm cursor-pointer">
+                                    <div className="size-12 rounded-lg bg-accent flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
+                                        <Receipt className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">Pay Bills</p>
+                                        <p className="text-xs text-muted-foreground">Utilities, tax, and more</p>
+                                    </div>
+                                </Link>
+                            </>
+                        ) : (
+                            <div className="p-5 bg-accent/20 rounded-xl border border-dashed flex flex-col items-center text-center gap-3">
+                                <Lock className="h-8 w-8 text-muted-foreground/30" />
+                                <div>
+                                    <p className="text-sm font-bold">Banking Locked</p>
+                                    <p className="text-[10px] text-muted-foreground max-w-[200px]">You need an active account to perform transfers or pay bills.</p>
+                                </div>
+                                <Button size="sm" className="w-full font-bold" asChild>
+                                    <Link href="/explore/accounts">Open Account</Link>
+                                </Button>
                             </div>
-                            <div>
-                                <p className="font-bold">Pay Bills</p>
-                                <p className="text-xs text-muted-foreground">Utilities, tax, and more</p>
-                            </div>
-                        </Link>
+                        )}
 
                         <Link href="/applications" className="flex items-center gap-4 p-5 bg-card rounded-xl border hover:border-primary/40 transition-all text-left flex-1 group shadow-sm cursor-pointer">
                             <div className="size-12 rounded-lg bg-accent flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">

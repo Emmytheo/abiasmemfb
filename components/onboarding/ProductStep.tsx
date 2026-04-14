@@ -13,7 +13,7 @@ interface ProductStepProps {
     data: any;
     products: ProductType[];
     onUpdate: (data: any) => void;
-    onComplete: (result: { accountNumber: string; customerId: string }) => void;
+    onComplete: (result: { accountNumber?: string; customerId: string }) => void;
     onBack: () => void;
 }
 
@@ -37,7 +37,7 @@ export function ProductStep({ data, products, onUpdate, onComplete, onBack }: Pr
             toast.success("Banking identity provisioned successfully!");
             onComplete({
                 accountNumber: res.accountNumber,
-                customerId: res.customerId
+                customerId: res.applicationId || res.customerId
             });
         } catch (error: any) {
             console.error(error);

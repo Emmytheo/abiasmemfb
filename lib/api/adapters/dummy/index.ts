@@ -249,6 +249,10 @@ export const DummyAdapter: ApiAdapter = {
         await delay(600);
         return MOCK_APPLICATIONS;
     },
+    reprovisionApplication: async (id) => {
+        await delay(1000);
+        return { accountNumber: "0123456789" };
+    },
 
     // Services
     getAllTransactions: async () => {

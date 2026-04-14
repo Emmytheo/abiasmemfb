@@ -150,6 +150,9 @@ export const SupabaseAdapter: ApiAdapter = {
     } as ProductApplication),
     getUserApplications: async () => [],
     getAllApplications: async () => [],
+    reprovisionApplication: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
 
     // Services
     getAllTransactions: async () => {

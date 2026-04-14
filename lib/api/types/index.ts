@@ -338,6 +338,7 @@ export interface ApiAdapter {
     updateApplication: (id: string, data: Partial<ProductApplication>) => Promise<ProductApplication>;
     getUserApplications: (userId: string) => Promise<ProductApplication[]>;
     getAllApplications: () => Promise<ProductApplication[]>;
+    reprovisionApplication: (id: string) => Promise<{ accountNumber?: string }>;
 
     // Services (Transactions)
     getAllTransactions: () => Promise<Transaction[]>;

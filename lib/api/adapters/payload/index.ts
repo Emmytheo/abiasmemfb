@@ -58,6 +58,7 @@ export const PayloadAdapter: ApiAdapter = {
     updateApplication: (...args) => actions.updateApplication(...args),
     getUserApplications: (...args) => actions.getUserApplications(...args),
     getAllApplications: (...args) => actions.getAllApplications(...args),
+    reprovisionApplication: (...args) => actions.reprovisionApplication(...args),
 
     // Services (Transactions)
     getAllTransactions: (...args) => actions.getAllTransactions(...args),

@@ -16,42 +16,37 @@ export const ProductApplications: CollectionConfig = {
     hooks: {
         afterChange: [
             async ({ doc, previousDoc, operation, req }) => {
-                // Only attempt workflow trigger on creation, and only if the product type has a linked workflow.
-                // The application record is ALWAYS saved first — the workflow is optional.
+                // 1. Workflow Trigger (Creation only)
                 if (operation === 'create' && doc.product_type_id) {
-                    const { payload } = req
-
+                    const { payload } = req;
                     try {
                         const productType = await payload.findByID({
                             collection: 'product-types',
                             id: typeof doc.product_type_id === 'object' ? doc.product_type_id.id : doc.product_type_id,
                             depth: 0,
-                        }).catch(() => null)
+                        }).catch(() => null);
 
-                        // Only trigger workflow if one is explicitly linked to this product type
                         if (productType?.workflow) {
-                            const wfId = typeof productType.workflow === 'object' ? productType.workflow.id : productType.workflow
-
-                            const { executeWorkflow } = await import('@/lib/workflow/executeWorkflow')
+                            const wfId = typeof productType.workflow === 'object' ? productType.workflow.id : productType.workflow;
+                            const { executeWorkflow } = await import('@/lib/workflow/executeWorkflow');
                             await executeWorkflow({
                                 workflowId: wfId,
                                 trigger: 'APPLICATION_SUBMIT',
                                 inputData: doc
                             }).catch((e: any) => {
-                                payload.logger.error(`Workflow trigger failed for app ${doc.id}: ${e.message}`)
-                                // Workflow failure does NOT roll back the application — it was already saved
-                            })
-                        } else {
-                            payload.logger.info(`Application ${doc.id} submitted for product ${doc.product_type_id} — no workflow linked, skipping trigger.`)
+                                payload.logger.error(`Workflow trigger failed for app ${doc.id}: ${e.message}`);
+                            });
                         }
                     } catch (e: any) {
-                        // Catch-all: never let a hook error surface to the user
-                        req.payload.logger.error(`Applications afterChange hook error: ${e.message}`)
+                        req.payload.logger.error(`Applications afterChange Workflow hook error: ${e.message}`);
                     }
                 }
 
-                // Handle Application Approval (Admin action)
-                if (operation === 'update' && doc.status === 'approved' && previousDoc?.status !== 'approved') {
+                // 2. Provisioning / Enrollment Trigger
+                // Trigger if it's a new approved application (Onboarding) or an existing one changed to approved (Admin)
+                const isApprovedNow = doc.status === 'approved' && (operation === 'create' || previousDoc?.status !== 'approved');
+
+                if (isApprovedNow) {
                     const { payload } = req;
                     try {
                         const productType = await payload.findByID({
@@ -101,25 +96,58 @@ export const ProductApplications: CollectionConfig = {
                                 });
 
                             } else {
-                                // Default product represents a standard Account
-                                const prefix = "30";
-                                const rest = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join("");
-                                const accountNumber = prefix + rest;
-
-                                await payload.create({
-                                    collection: 'accounts',
-                                    data: {
-                                        user_id: doc.user_id,
-                                        account_number: accountNumber,
-                                        account_type: (productType.name?.toLowerCase().includes('current') ? 'Current' : productType.name?.toLowerCase().includes('fixed') ? 'Fixed Deposit' : 'Savings') as any,
-                                        balance: (doc.requested_amount || 0) * 100, // store in kobo
-                                        status: 'active',
-                                    }
+                                // Default product represents a standard Account.
+                                // 1. Check if there's a banking integration mapping for this product type
+                                const { docs: mappings } = await payload.find({
+                                    collection: 'provider-mappings' as any,
+                                    where: { relatedEntity: { equals: productType.id } },
+                                    limit: 1,
+                                    overrideAccess: true
                                 });
+
+                                if (mappings.length > 0) {
+                                    // Trigger Banking Provisioning (Calls Qore API)
+                                    const { ProvisionAccountExecutor } = await import('@/lib/workflow/executor/ProvisionAccountExecutor');
+                                    const env: any = {
+                                        payload,
+                                        executionId: `PROVISION-${Date.now()}`,
+                                        inputs: {
+                                            user_id: doc.user_id,
+                                            application_id: doc.id,
+                                        },
+                                        outputs: {},
+                                        getInput: (key: string) => env.inputs[key],
+                                        setOutput: (key: string, val: any) => { env.outputs[key] = val },
+                                        log: { info: (m: string) => payload.logger.info(m), error: (m: string) => payload.logger.error(m) }
+                                    };
+
+                                    await ProvisionAccountExecutor(env).catch((e: any) => {
+                                        payload.logger.error(`Account Provisioning Executor Failed: ${e.message}`);
+                                    });
+                                } else {
+                                    // Default local fallback
+                                    const prefix = "30";
+                                    const rest = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join("");
+                                    const accountNumber = prefix + rest;
+
+                                    await payload.create({
+                                        collection: 'accounts',
+                                        data: {
+                                            user_id: doc.user_id,
+                                            account_number: accountNumber,
+                                            account_type: (productType.name?.toLowerCase().includes('current') ? 'Current' : productType.name?.toLowerCase().includes('fixed') ? 'Fixed Deposit' : 'Savings') as any,
+                                            balance: (doc.requested_amount || 0) * 100, // store in kobo
+                                            status: 'active',
+                                        }
+                                    });
+                                }
                             }
                         }
                     } catch (e: any) {
                         req.payload.logger.error(`Hook error provisioning approved product: ${e.message}`);
+                        if (e.stack) {
+                            req.payload.logger.error(e.stack);
+                        }
                     }
                 }
 

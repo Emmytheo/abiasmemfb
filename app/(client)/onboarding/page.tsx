@@ -22,6 +22,18 @@ export default async function OnboardingPage() {
         redirect("/client-dashboard");
     }
 
+    // Fetch existing applications to support auto-resume
+    const applications = await api.getUserApplications(user.id);
+    console.log(`[Onboarding] Found ${applications.length} applications for user ${user.id}`);
+    
+    const latestApplication = applications.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0] || null;
+
+    if (latestApplication) {
+        console.log(`[Onboarding] Latest application: ${latestApplication.id}, Status: ${latestApplication.status}`);
+    }
+
     // Fetch active product types for selection
     const productTypes = await api.getAllProductTypes();
     const activeProducts = productTypes.filter(p => p.status === 'active');
@@ -33,6 +45,7 @@ export default async function OnboardingPage() {
                     user={user} 
                     products={activeProducts}
                     initialCustomerData={customer}
+                    initialApplication={latestApplication}
                 />
             </div>
         </div>

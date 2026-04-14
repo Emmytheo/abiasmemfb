@@ -26,90 +26,25 @@ import { revalidatePath } from 'next/cache';
 import { lexicalToHtml } from '@/lib/utils/lexical-to-html';
 import { executeWorkflow } from '@/lib/workflow/executeWorkflow';
 import { FundAccountExecutor } from '@/lib/workflow/executor/FundAccountExecutor';
-import { resolveEndpoint, applySchemaMapping, resolveResponseOutputs } from '@/lib/workflow/utils/apiResolver';
 import { getPayloadClient } from '@/lib/payload';
+import { 
+    initPayload as bankingInitPayload, 
+    executeEndpoint as bankingExecuteEndpoint, 
+    applySchemaMapping as bankingApplySchemaMapping, 
+    getCustomerBySupabaseId as bankingGetCustomerBySupabaseId, 
+    updateCustomer as bankingUpdateCustomer 
+} from '../../utils/banking';
 
-const initPayload = async () => {
-    return await getPayloadClient();
-}
+// Internal aliases for use within this file
+const initPayload = bankingInitPayload;
+const executeEndpoint = bankingExecuteEndpoint;
+const applySchemaMapping = bankingApplySchemaMapping;
 
-// Internal helper for authoritative core banking synchronization
-async function executeEndpoint(
-    endpointId: string, 
-    inputData: Record<string, any>, 
-    overrides: Record<string, any> = {}
-) {
-    const payload = await initPayload();
-    const endpoint = await payload.findByID({
-        collection: 'endpoints' as any,
-        id: endpointId,
-        depth: 2, // Crucial: Hydrate Provider and Secret for resolution
-    });
-    if (!endpoint) throw new Error('Endpoint not found');
+// Explicitly export async server actions
+export const getCustomerBySupabaseId = async (supabaseId: string) => bankingGetCustomerBySupabaseId(supabaseId);
+export const updateCustomer = async (id: string, data: any) => bankingUpdateCustomer(id, data);
 
-    // 1. Resolve absolute URL, headers and body using the unified logic
-    const resolved = await resolveEndpoint(endpoint, {
-        body: inputData,
-        overrides: overrides
-    });
 
-    // 2. Execute fetch with absolute URL
-    console.log(`[Adapter][Execute] Calling ${resolved.method} ${resolved.url}`);
-    console.log(`[Adapter][Execute] Request Body:`, JSON.stringify(resolved.body, null, 2));
-    
-    const response = await fetch(resolved.url, {
-        method: resolved.method,
-        headers: resolved.headers,
-        body: resolved.method !== 'GET' ? JSON.stringify(resolved.body) : undefined,
-    });
-
-    const result = await response.json();
-    console.log(`[Adapter][Execute] Response Result:`, JSON.stringify(result, null, 2));
-    
-    // 3. Handle Failure according to schema or default
-    const successPath = resolved.responseSchema?.successPath;
-    const successValue = resolved.responseSchema?.successValue ?? true;
-    
-    let isSuccessful = response.ok;
-    
-    if (successPath) {
-        const rawSuccess = successPath.split('.').reduce((obj: any, key: any) => obj?.[key], result);
-        
-        // If the specified path is missing (undefined), fall back to auto-detection
-        if (rawSuccess !== undefined) {
-            isSuccessful = (rawSuccess === successValue);
-            console.log(`[Adapter][Execute] Success Check (Specified Path: ${successPath}):`, { rawSuccess, successValue, isSuccessful });
-        } else {
-            console.warn(`[Adapter][Execute] Specified successPath "${successPath}" not found in response. Falling back to auto-detection.`);
-            if (result.IsSuccessful !== undefined) isSuccessful = (result.IsSuccessful === successValue);
-            else if (result.RequestStatus !== undefined) isSuccessful = (result.RequestStatus === successValue);
-            console.log(`[Adapter][Execute] Success Check (Fallback Auto):`, { IsSuccessful: result.IsSuccessful, RequestStatus: result.RequestStatus, successValue, isSuccessful, responseOk: response.ok });
-        }
-    } else {
-        // Auto-detect common Qore/BankOne success fields
-        if (result.IsSuccessful !== undefined) isSuccessful = (result.IsSuccessful === successValue);
-        else if (result.RequestStatus !== undefined) isSuccessful = (result.RequestStatus === successValue);
-        console.log(`[Adapter][Execute] Success Check (Direct Auto):`, { IsSuccessful: result.IsSuccessful, RequestStatus: result.RequestStatus, successValue, isSuccessful, responseOk: response.ok });
-    }
-
-    if (!isSuccessful) {
-        console.error(`[Adapter][Execute] Failed:`, result);
-        const errorMsg = result.message || result.Message || result.ResponseMessage || (result.isBvnValid === false ? "Invalid BVN" : 'External sync failed');
-        throw new Error(errorMsg);
-    }
-
-    // 4. Resolve Outputs if schema is defined
-    console.log(`[Adapter][Execute] Schema Outputs:`, JSON.stringify(resolved.responseSchema?.outputs, null, 2));
-    if (resolved.responseSchema?.outputs) {
-        const mappedResult = resolveResponseOutputs(result, resolved.responseSchema.outputs);
-        // Ensure success field is present in mapped result
-        mappedResult.success = true;
-        console.log(`[Adapter][Execute] Mapped Result:`, JSON.stringify(mappedResult, null, 2));
-        return mappedResult;
-    }
-
-    return { ...result, success: true };
-}
 
 // ==========================================
 // USER MANAGEMENT
@@ -205,28 +140,6 @@ export const getCustomerById = async (id: string): Promise<Customer | null> => {
     }
 };
 
-export const getCustomerBySupabaseId = async (supabaseId: string): Promise<Customer | null> => {
-    try {
-        const payload = await initPayload();
-        const { docs } = await payload.find({ 
-            collection: 'customers' as any, 
-            where: { supabase_id: { equals: supabaseId } },
-            limit: 1, 
-            overrideAccess: true 
-        });
-        if (!docs.length) return null;
-        const doc = docs[0];
-        return {
-            ...doc,
-            id: String(doc.id),
-            created_at: doc.createdAt,
-            updated_at: doc.updatedAt,
-        } as any;
-    } catch (e) {
-        console.error('Payload getCustomerBySupabaseId Error:', e);
-        return null;
-    }
-};
 
 export const saveOnboardingDraft = async (data: Partial<Customer> & { userId: string }): Promise<Customer> => {
     try {
@@ -308,26 +221,6 @@ export const restoreCustomerIdentity = async (customerId: string, supabaseId: st
     }
 };
 
-export const updateCustomer = async (id: string, data: Partial<Customer>): Promise<Customer> => {
-    try {
-        const payload = await initPayload();
-        const doc = await payload.update({
-            collection: 'customers' as any,
-            id,
-            data: data as any,
-            overrideAccess: true,
-        });
-        return {
-            ...doc,
-            id: String(doc.id),
-            created_at: doc.createdAt,
-            updated_at: doc.updatedAt,
-        } as any;
-    } catch (e) {
-        console.error('Payload updateCustomer Error:', e);
-        throw e;
-    }
-};
 
 export const getCustomerAudit = async (id: string): Promise<CustomerAudit> => {
     try {
@@ -741,7 +634,7 @@ export const verifyCustomerBVN = async (bvn: string): Promise<any> => {
 
 export const verifyIdentity = verifyCustomerBVN;
 
-export const createCoreBankingProfile = async (data: {
+export const createCoreBankingProfile = async (data: { 
     userId: string;
     firstName: string;
     lastName: string;
@@ -751,128 +644,42 @@ export const createCoreBankingProfile = async (data: {
     dob: string;
     gender: number;
     address: string;
-    productTypeId: string;
+    productTypeId: string | number;
 }): Promise<any> => {
     const payload = await initPayload();
     
-    // 1. Resolve Product Mapping
-    // CRITICAL: We fetch all and filter in-memory to avoid "Not supported" polymorphic crash in Postgres
-    const { docs: allMappings } = await payload.find({
-        collection: 'provider-mappings' as any,
-        limit: 1000,
-        overrideAccess: true
+    console.log(`[Adapter][Provision] Initiating unified application flow for user: ${data.userId}`);
+
+    // Ensure productTypeId is a number if the DB expects int4
+    const pid = typeof data.productTypeId === 'string' && !isNaN(Number(data.productTypeId)) 
+        ? Number(data.productTypeId) 
+        : data.productTypeId;
+
+    // Create a Product Application record
+    const application = await payload.create({
+        collection: 'product-applications',
+        data: {
+            user_id: data.userId,
+            product_type_id: pid,
+            status: 'approved',
+            workflow_stage: 'Auto-Approved (Onboarding)',
+            submitted_data: {
+                ...data,
+                onboarding_provisioning: true
+            }
+        }
     });
 
-    const mapping = allMappings.find((m: any) => 
-        (typeof m.relatedEntity === 'string' ? m.relatedEntity === data.productTypeId : (m.relatedEntity as any)?.id === data.productTypeId)
-    );
-
-    if (!mapping) {
-        throw new Error(`Integration mapping missing for Product Type ID: ${data.productTypeId}`);
-    }
-
-    const productCode = mapping.externalCode;
-    console.log(`[Adapter][Provision] Resolved ProductCode: ${productCode} from mapping: ${mapping.internalName}`);
-
-    // 2. Resolve Endpoint from Site Settings
-    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
-    const createAccountEndpointId = settings?.sync?.acctMgmt?.create;
-
-    if (!createAccountEndpointId) {
-        throw new Error("Core account creation endpoint is not configured in Site Settings.");
-    }
-
-    const endpointId = typeof createAccountEndpointId === 'object' ? createAccountEndpointId.id : createAccountEndpointId;
-
-    // 3. Prepare Mapped Payload
-    const trackingRef = `ONB_${Date.now()}`;
-    const baseData = {
-        ...data,
-        TransactionTrackingRef: trackingRef,
-        AccountOpeningTrackingRef: trackingRef,
-        ProductCode: productCode,
-        OtherNames: data.firstName, // Default fallback if mapping fails
-        PhoneNo: data.phone_number,
-        DateOfBirth: data.dob
-    };
-
-    const provisioningData = applySchemaMapping(baseData, mapping.schemaMapping);
-    console.log(`[Adapter][Provision] Mapped provisioning data:`, JSON.stringify(provisioningData, null, 2));
-
-    // 4. Execute Provisioning
-    const qoreRes = await executeEndpoint(endpointId, provisioningData);
-
-    // executeEndpoint handles success/fail and mapping.
-    // Result now looks like: { accountNumber, customerId, success: true }
-    console.log(`[Adapter][Provision] Mapped Result:`, JSON.stringify(qoreRes, null, 2));
-
-    const { accountNumber, customerId } = qoreRes;
-
-    // 5. Update/Create Payload Customer record
-    const customer = await getCustomerBySupabaseId(data.userId);
-    let customerDocId: string;
-
-    const customerData = {
-        qore_customer_id: customerId,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone_number: data.phone_number,
-        email: data.email,
-        bvn: data.bvn,
-        dob: data.dob,
-        gender: String(data.gender),
-        address: data.address,
-        kyc_status: 'active',
-        onboarding_status: 'completed',
-        is_associated: true
-    };
-
-    if (customer) {
-        customerDocId = customer.id;
-        await payload.update({
-            collection: 'customers' as any,
-            id: customerDocId,
-            data: customerData as any
-        });
-    } else {
-        const newCustomer = await payload.create({
-            collection: 'customers' as any,
-            data: {
-                ...customerData,
-                supabase_id: data.userId,
-                risk_tier: 'low',
-                is_archived: false,
-                is_test_account: false
-            } as any
-        });
-        customerDocId = String(newCustomer.id);
-    }
-
+    console.log(`[Adapter][Provision] Created application ${application.id}. Provisioning will proceed via workflow hooks.`);
+    
     revalidatePath('/onboarding');
     revalidatePath('/client-dashboard');
     revalidatePath('/');
 
-    // 6. Create Local Account Record
-    const account = await payload.create({
-        collection: 'accounts' as any,
-        data: {
-            user_id: data.userId,
-            account_number: accountNumber,
-            account_type: 'Savings', 
-            balance: 0,
-            status: 'active',
-            customer: customerDocId,
-            source: 'qore',
-            is_primary: true,
-            is_archived: false,
-            product_type: data.productTypeId
-        } as any
-    });
-
     return {
-        customerId: customerId,
-        accountNumber: accountNumber,
-        localAccountId: account.id
+        success: true,
+        applicationId: application.id,
+        message: "Account application submitted and auto-approved. Your account is being provisioned."
     };
 };
 
@@ -1140,7 +947,7 @@ export const getAllProductTypes = async (): Promise<ProductType[]> => {
         const payload = await initPayload();
         const { docs } = await payload.find({ collection: 'product-types' as any, depth: 1, limit: 100 });
         return docs.map((doc: any) => ({
-            id: String(doc.id),
+            id: doc.id,
             name: doc.name,
             category: typeof doc.category === 'object' && doc.category ? doc.category.name : doc.category,
             tagline: doc.tagline,
@@ -1160,7 +967,7 @@ export const getProductTypeById = async (id: string): Promise<ProductType | null
         const payload = await initPayload();
         const doc = await payload.findByID({ collection: 'product-types' as any, id, depth: 1 });
         return {
-            id: String(doc.id),
+            id: doc.id,
             name: doc.name,
             category: typeof doc.category === 'object' && doc.category ? String(doc.category.id) : String(doc.category),
             tagline: doc.tagline,
@@ -1198,7 +1005,7 @@ export const deleteProductType = async (id: string): Promise<boolean> => {
 export const createProductApplication = async (data: Omit<ProductApplication, 'id' | 'created_at' | 'updated_at'>): Promise<ProductApplication> => {
     const payload = await initPayload();
     const doc = await payload.create({ collection: 'product-applications' as any, data: data as any });
-    return { id: String(doc.id), user_id: (doc as any).user_id, status: (doc as any).status } as any;
+    return { id: doc.id, user_id: (doc as any).user_id, status: (doc as any).status } as any;
 };
 
 export const updateApplication = async (id: string, data: Partial<ProductApplication>): Promise<ProductApplication> => {
@@ -1211,9 +1018,9 @@ export const getUserApplications = async (userId: string): Promise<ProductApplic
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'product-applications' as any, where: { user_id: { equals: userId } }, depth: 1, overrideAccess: true });
     return docs.map((doc: any) => ({
-        id: String(doc.id),
+        id: doc.id,
         user_id: doc.user_id,
-        product_type: doc.product_type,
+        product_type_id: typeof doc.product_type_id === 'object' ? doc.product_type_id.id : doc.product_type_id,
         status: doc.status,
         created_at: doc.createdAt,
         metadata: doc.metadata
@@ -1223,7 +1030,12 @@ export const getUserApplications = async (userId: string): Promise<ProductApplic
 export const getAllApplications = async (): Promise<ProductApplication[]> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'product-applications' as any, depth: 1 });
-    return docs.map((doc: any) => ({ id: String(doc.id), user_id: doc.user_id, status: doc.status })) as any;
+    return docs.map((doc: any) => ({ 
+        id: doc.id, 
+        user_id: doc.user_id, 
+        product_type_id: typeof doc.product_type_id === 'object' ? doc.product_type_id.id : doc.product_type_id,
+        status: doc.status 
+    })) as any;
 };
 
 // ==========================================
@@ -1248,18 +1060,32 @@ export const getAllTransactions = async (): Promise<Transaction[]> => {
 };
 
 export const getUserTransactions = async (userId: string): Promise<Transaction[]> => {
+    const payload = await initPayload();
     const accounts = await getUserAccounts(userId);
     if (!accounts.length) return [];
+    
+    // 1. Trigger Sync for each Qore-linked account
+    for (const account of accounts) {
+        if (account.source === 'qore' || account.account_number.startsWith('30')) {
+            try {
+                await syncAccountTransactions(account.account_number, userId, account.customer as string);
+            } catch (e: any) {
+                console.warn(`[Ledger] Sync failed for account ${account.account_number}: ${e.message}`);
+            }
+        }
+    }
+
+    // 2. Fetch from synchronized local digital ledger
     const accountIds = accounts.map(a => a.id);
-    const payload = await initPayload();
     const { docs } = await payload.find({ 
         collection: 'transactions' as any, 
-        where: { or: [{ from_account: { in: accountIds } }, { to_account: { in: accountIds } }] }, 
+        where: { or: [{ from_account: { in: accountIds } }, { to_account: { in: accountIds } }, { user_id: { equals: userId } }] }, 
         depth: 1, 
-        limit: 200, 
-        sort: '-createdAt', 
+        limit: 100, 
+        sort: '-date', // Sort by actual transaction date if available
         overrideAccess: true 
     });
+
     return docs.map((doc: any) => ({
         id: String(doc.id),
         amount: (doc.amount ?? 0) / 100,
@@ -1272,6 +1098,89 @@ export const getUserTransactions = async (userId: string): Promise<Transaction[]
         created_at: doc.date || doc.createdAt,
     } as any)) as Transaction[];
 };
+
+/**
+ * Synchronizes external transactions from Core Banking into our local Digital Ledger.
+ */
+async function syncAccountTransactions(accountNumber: string, userId: string, customerId: string) {
+    const payload = await initPayload();
+    const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
+    const endpointId = settings?.sync?.acctMgmt?.stmt; // Reusing statement endpoint if it provides history
+    
+    if (!endpointId) return; // No sync endpoint configured
+
+    const today = new Date().toISOString().split('T')[0];
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    try {
+        const res: any = await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+            accountNumber,
+            fromDate: thirtyDaysAgo,
+            toDate: today
+        });
+
+        const externalTxns = res.transactions || res.Transactions || [];
+        if (!Array.isArray(externalTxns)) return;
+
+        for (const ext of externalTxns) {
+            const ref = ext.reference || ext.Reference || ext.TransactionReference || `EXT_${ext.id || Date.now()}`;
+            
+            // Check if transaction already exists
+            const existing = await payload.find({
+                collection: 'transactions' as any,
+                where: { reference: { equals: ref } },
+                limit: 1,
+                overrideAccess: true
+            });
+
+            if (existing.totalDocs > 0) continue;
+
+            // Resolve transaction type
+            let type: Transaction['type'] = 'credit';
+            const amount = Math.abs(Number(ext.amount || ext.Amount || 0));
+            const isDebit = ext.type?.toLowerCase()?.includes('debit') || Number(ext.amount) < 0 || ext.EntryType === 'Debit';
+            type = isDebit ? 'debit' : 'credit';
+
+            // Attempt to resolve local account relations
+            const narration = ext.narration || ext.Narration || ext.Description || '';
+            let fromAccount = null;
+            let toAccount = null;
+
+            // Simple resolution: if we are debiting, our account is the source
+            const localAcct = await payload.find({
+                collection: 'accounts' as any,
+                where: { account_number: { equals: accountNumber } },
+                limit: 1,
+                overrideAccess: true
+            });
+            const localAcctId = localAcct.docs[0]?.id;
+
+            if (isDebit) fromAccount = localAcctId;
+            else toAccount = localAcctId;
+
+            // Store in Digital Ledger
+            await payload.create({
+                collection: 'transactions' as any,
+                data: {
+                    reference: ref,
+                    type,
+                    amount: Math.round(amount * 100),
+                    status: 'successful',
+                    narration,
+                    from_account: fromAccount,
+                    to_account: toAccount,
+                    customer: customerId,
+                    user_id: userId,
+                    date: ext.date || ext.Date || ext.TransactionDate || new Date().toISOString(),
+                    metadata: ext,
+                    channel: 'api'
+                } as any
+            });
+        }
+    } catch (e: any) {
+        console.error(`[Ledger] Error syncing transactions for ${accountNumber}:`, e.message);
+    }
+}
 
 export const getLoanTransactions = async (loanId: string): Promise<Transaction[]> => {
     const payload = await initPayload();
@@ -2131,4 +2040,41 @@ export const getBeneficiaryById = async (id: string): Promise<Beneficiary | null
         console.error('Payload getBeneficiaryById Error:', e);
         return null;
     }
+};
+
+export const reprovisionApplication = async (applicationId: string): Promise<{ accountNumber?: string }> => {
+    const payload = await initPayload();
+    const doc = await payload.findByID({ collection: 'product-applications' as any, id: applicationId });
+
+    if (!doc) throw new Error('Application not found');
+
+    const { ProvisionAccountExecutor } = await import('@/lib/workflow/executor/ProvisionAccountExecutor');
+    const env: any = {
+        payload,
+        executionId: `MANUAL-${Date.now()}`,
+        inputs: {
+            user_id: doc.user_id,
+            application_id: doc.id,
+        },
+        outputs: {},
+        getInput: (key: string) => env.inputs[key],
+        setOutput: (key: string, val: any) => { env.outputs[key] = val },
+        log: { info: (m: string) => payload.logger.info(m), error: (m: string) => payload.logger.error(m) }
+    };
+
+    const success = await ProvisionAccountExecutor(env);
+
+    if (!success) {
+        throw new Error('Banking synchronization failed. Please check the server logs or verify your banking configuration.');
+    }
+
+    // Fetch the updated account info
+    const { docs: accounts } = await payload.find({
+        collection: 'accounts' as any,
+        where: { user_id: { equals: doc.user_id } },
+        limit: 1,
+        sort: '-createdAt'
+    });
+
+    return { accountNumber: accounts[0]?.account_number };
 };

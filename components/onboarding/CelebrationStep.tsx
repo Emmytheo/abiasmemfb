@@ -3,20 +3,43 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { PartyPopper, ArrowRight, CheckCircle2, Copy, Building, ExternalLink } from "lucide-react";
+import { PartyPopper, ArrowRight, CheckCircle2, Copy, Building, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { useDummyData } from "@/lib/api";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface CelebrationStepProps {
-    accountNumber: string;
+    accountNumber?: string;
     customerId: string;
+    applicationId?: string;
 }
 
-export function CelebrationStep({ accountNumber, customerId }: CelebrationStepProps) {
+export function CelebrationStep({ accountNumber: initialAccountNumber, customerId, applicationId }: CelebrationStepProps) {
+    const [accountNumber, setAccountNumber] = useState(initialAccountNumber);
+    const [isRetrying, setIsRetrying] = useState(false);
+
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast.success("Copied to clipboard!");
+    };
+
+    const handleRetry = async () => {
+        if (!applicationId) return;
+        setIsRetrying(true);
+        try {
+            const res = await api.reprovisionApplication(applicationId);
+            if (res.accountNumber) {
+                setAccountNumber(res.accountNumber);
+                toast.success("Account provisioned successfully!");
+            } else {
+                toast.error("Account still being processed. Please try again in a moment.");
+            }
+        } catch (error: any) {
+            toast.error(error.message || "Failed to retry provisioning.");
+        } finally {
+            setIsRetrying(false);
+        }
     };
 
     return (
@@ -35,9 +58,12 @@ export function CelebrationStep({ accountNumber, customerId }: CelebrationStepPr
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5 }}
-                        className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-green-500 border-4 border-background flex items-center justify-center text-white"
+                        className={cn(
+                            "absolute -top-1 -right-1 h-6 w-6 rounded-full border-4 border-background flex items-center justify-center text-white",
+                            accountNumber ? "bg-green-500" : "bg-orange-500 animate-pulse"
+                        )}
                     >
-                        <CheckCircle2 className="h-3 w-3" />
+                        {accountNumber ? <CheckCircle2 className="h-3 w-3" /> : <Loader2 className="h-3 w-3 animate-spin" />}
                     </motion.div>
                 </div>
 
@@ -46,26 +72,50 @@ export function CelebrationStep({ accountNumber, customerId }: CelebrationStepPr
                         Congratulations!
                     </h2>
                     <p className="text-muted-foreground text-lg">
-                        Your account is now active and ready for use.
+                        {accountNumber ? "Your account is now active and ready for use." : "We are finalizing your account setup. This will only take a moment."}
                     </p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                    className="p-6 rounded-2xl bg-muted/30 border border-primary/10 group cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => copyToClipboard(accountNumber)}
+                    className={cn(
+                        "p-6 rounded-2xl bg-muted/30 border border-primary/10 group transition-all",
+                        accountNumber ? "cursor-pointer hover:bg-muted/50" : "opacity-80"
+                    )}
+                    onClick={() => accountNumber && copyToClipboard(accountNumber)}
                 >
                     <div className="flex justify-between items-start mb-2">
                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Account Number</span>
-                        <Copy className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {accountNumber && <Copy className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
                     </div>
-                    <p className="text-3xl font-mono font-bold tracking-[0.2em] text-primary">{accountNumber}</p>
+                    {accountNumber ? (
+                         <p className="text-3xl font-mono font-bold tracking-[0.2em] text-primary">{accountNumber}</p>
+                    ) : (
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-2 text-primary/40 py-2">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span className="text-sm font-medium">Provisioning...</span>
+                            </div>
+                            {!accountNumber && applicationId && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full bg-background/50 hover:bg-background border-primary/20"
+                                    onClick={(e) => { e.stopPropagation(); handleRetry(); }}
+                                    disabled={isRetrying}
+                                >
+                                    {isRetrying ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />}
+                                    Refresh Status
+                                </Button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="p-6 rounded-2xl bg-muted/30 border border-primary/10">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Customer ID</span>
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Reference ID</span>
                         <Building className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <p className="text-2xl font-mono font-semibold text-foreground/80">{customerId}</p>

@@ -45,7 +45,7 @@ export function ProfileStep({ data, onUpdate, onNext }: ProfileStepProps) {
             firstName: data.firstName,
             lastName: data.lastName,
             phone_number: data.phone_number,
-            dob: data.dob ? data.dob.slice(0, 10) : "",
+            dob: data.dob ? (data.dob.includes('T') ? data.dob.split('T')[0] : data.dob) : "",
             gender: String(data.gender),
             address: data.address,
         },

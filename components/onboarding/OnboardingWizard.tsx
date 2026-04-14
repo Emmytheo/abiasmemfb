@@ -9,34 +9,55 @@ import { ProductStep } from "./ProductStep";
 import { CelebrationStep } from "./CelebrationStep";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, User as UserIcon, ShieldCheck, CreditCard, PartyPopper } from "lucide-react";
+import { Check, User as UserIcon, ShieldCheck, CreditCard, PartyPopper, Loader2, Copy, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface OnboardingWizardProps {
     user: any; // Supabase User
     products: ProductType[];
     initialCustomerData?: any;
+    initialApplication?: any;
 }
 
-export function OnboardingWizard({ user, products, initialCustomerData }: OnboardingWizardProps) {
-    const [step, setStep] = useState(1);
+export function OnboardingWizard({ user, products, initialCustomerData, initialApplication }: OnboardingWizardProps) {
+    console.log('[Wizard] Mount', { 
+        userId: user.id, 
+        hasAppData: !!initialApplication, 
+        appStatus: initialApplication?.status 
+    });
+
+    // Determine the starting step based on the initial application status
+    const getInitialStep = () => {
+        if (initialApplication && (initialApplication.status === 'approved' || initialApplication.status === 'pending')) {
+            console.log('[Wizard] Auto-resuming to step 4');
+            return 4; // Skip to Celebration
+        }
+        return 1;
+    };
+
+    const [step, setStep] = useState(getInitialStep());
     const [formData, setFormData] = useState({
         userId: user.id,
         firstName: initialCustomerData?.firstName || user.user_metadata?.full_name?.split(' ')[0] || "",
         lastName: initialCustomerData?.lastName || user.user_metadata?.full_name?.split(' ')[1] || "",
         email: user.email || "",
         phone_number: initialCustomerData?.phone_number || "",
-        dob: initialCustomerData?.dob || "",
+        dob: initialCustomerData?.dob ? (initialCustomerData.dob.includes('T') ? initialCustomerData.dob.split('T')[0] : initialCustomerData.dob) : "",
         gender: initialCustomerData?.gender || 0,
         address: initialCustomerData?.address || "",
         bvn: initialCustomerData?.bvn || "",
-        productTypeId: "",
+        productTypeId: initialApplication?.product_type_id || "",
     });
 
     const [registrationResult, setRegistrationResult] = useState<{
-        accountNumber: string;
+        accountNumber?: string;
         customerId: string;
-    } | null>(null);
+        applicationId?: string;
+    } | null>(initialApplication ? {
+        accountNumber: undefined, // Will be fetched via retry/refresh
+        customerId: initialCustomerData?.qore_customer_id || initialApplication.id,
+        applicationId: initialApplication.id
+    } : null);
 
     const steps = [
         { id: 1, name: "Profile", icon: UserIcon },
@@ -122,7 +143,11 @@ export function OnboardingWizard({ user, products, initialCustomerData }: Onboar
                                     products={products}
                                     onUpdate={updateFormData} 
                                     onComplete={(result: any) => {
-                                        setRegistrationResult(result);
+                                        setRegistrationResult({
+                                            accountNumber: result.accountNumber,
+                                            customerId: result.customerId || result.applicationId,
+                                            applicationId: result.applicationId
+                                        });
                                         nextStep();
                                     }}
                                     onBack={prevStep}
@@ -132,6 +157,7 @@ export function OnboardingWizard({ user, products, initialCustomerData }: Onboar
                                 <CelebrationStep 
                                     accountNumber={registrationResult.accountNumber} 
                                     customerId={registrationResult.customerId}
+                                    applicationId={registrationResult.applicationId}
                                 />
                             )}
                         </motion.div>
