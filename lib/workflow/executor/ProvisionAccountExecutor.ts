@@ -63,26 +63,79 @@ export async function ProvisionAccountExecutor(
             (typeof m.relatedEntity === 'string' ? m.relatedEntity === productType.id : (m.relatedEntity as any)?.id === productType.id)
         );
 
+        let finalMapping = mapping;
+
+        // --- SELF-HEALING: Auto-create mapping if missing ---
         if (!mapping) {
-            const errorMsg = `PROVISION_ACCOUNT: Integration mapping missing for Product Type: ${productType.name}`;
-            env.log.error(errorMsg);
-            console.error(`[ProvisionAccountExecutor] ${errorMsg}`);
-            return false;
+            console.warn(`[ProvisionAccountExecutor] Missing mapping for ${productType.name}. Attempting to auto-fix...`);
+            
+            const { docs: qoreProviders } = await payload.find({
+                collection: 'service-providers',
+                where: { slug: { equals: 'qore-digital-banking' } },
+                limit: 1,
+            });
+
+            if (qoreProviders.length > 0) {
+                const providerId = qoreProviders[0].id;
+                finalMapping = await payload.create({
+                    collection: 'provider-mappings',
+                    data: {
+                        internalName: `${productType.name} Auto-Mapping`,
+                        provider: providerId,
+                        relatedEntity: {
+                            relationTo: 'product-types',
+                            value: productType.id
+                        },
+                        externalCode: '10', // Default Qore Savings code
+                    } as any
+                });
+                console.log(`[ProvisionAccountExecutor] SUCCESS: Auto-created mapping for ${productType.name} with code 10`);
+            } else {
+                const errorMsg = `PROVISION_ACCOUNT: Integration mapping missing for Product Type: ${productType.name} and no Qore provider found to auto-fix.`;
+                env.log.error(errorMsg);
+                console.error(`[ProvisionAccountExecutor] ${errorMsg}`);
+                return false;
+            }
         }
 
-        const productCode = mapping.externalCode;
+        const productCode = finalMapping.externalCode;
         env.log.info(`PROVISION_ACCOUNT: Resolved ProductCode: ${productCode}`);
         console.log(`[ProvisionAccountExecutor] Resolved ProductCode: ${productCode}`);
 
         // 3. Resolve Endpoint from Site Settings
         const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
-        const createAccountEndpointId = settings?.sync?.acctMgmt?.create;
+        let createAccountEndpointId = settings?.sync?.acctMgmt?.create;
 
+        // --- SELF-HEALING: Auto-link endpoint if missing in settings ---
         if (!createAccountEndpointId) {
-            const errorMsg = "PROVISION_ACCOUNT: Core account creation endpoint is not configured in Site Settings.";
-            env.log.error(errorMsg);
-            console.error(`[ProvisionAccountExecutor] ${errorMsg}`);
-            return false;
+            console.warn(`[ProvisionAccountExecutor] Missing account creation endpoint in Site Settings. Attempting to auto-link...`);
+            const { docs: endpoints } = await payload.find({
+                collection: 'endpoints',
+                where: { name: { contains: 'Create Account' } },
+                limit: 1
+            });
+
+            if (endpoints.length > 0) {
+                createAccountEndpointId = endpoints[0].id;
+                await payload.updateGlobal({
+                    slug: 'site-settings',
+                    data: {
+                        sync: {
+                            ...settings.sync,
+                            acctMgmt: {
+                                ...settings.sync?.acctMgmt,
+                                create: createAccountEndpointId
+                            }
+                        }
+                    }
+                });
+                console.log(`[ProvisionAccountExecutor] SUCCESS: Auto-linked Site Settings to endpoint: ${endpoints[0].name}`);
+            } else {
+                const errorMsg = "PROVISION_ACCOUNT: Core account creation endpoint is not configured and no matching endpoint was found to auto-link.";
+                env.log.error(errorMsg);
+                console.error(`[ProvisionAccountExecutor] ${errorMsg}`);
+                return false;
+            }
         }
 
         const endpointId = typeof createAccountEndpointId === 'object' ? createAccountEndpointId.id : createAccountEndpointId;
@@ -117,7 +170,7 @@ export async function ProvisionAccountExecutor(
             ...(application.submitted_data || {})
         };
 
-        const provisioningData = applySchemaMapping(baseData, mapping.schemaMapping);
+        const provisioningData = applySchemaMapping(baseData, finalMapping.schemaMapping);
         env.log.info(`PROVISION_ACCOUNT: Calling core banking with tracking ref: ${trackingRef}`);
 
         // 5. Execute Provisioning
