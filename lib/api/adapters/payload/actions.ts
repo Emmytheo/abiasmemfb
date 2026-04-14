@@ -22,11 +22,11 @@ import {
 } from '../../types';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
+import { revalidatePath } from 'next/cache';
 import { lexicalToHtml } from '@/lib/utils/lexical-to-html';
 import { executeWorkflow } from '@/lib/workflow/executeWorkflow';
 import { FundAccountExecutor } from '@/lib/workflow/executor/FundAccountExecutor';
-import { resolveEndpoint } from '@/lib/workflow/utils/apiResolver';
-
+import { resolveEndpoint, applySchemaMapping, resolveResponseOutputs } from '@/lib/workflow/utils/apiResolver';
 import { getPayloadClient } from '@/lib/payload';
 
 const initPayload = async () => {
@@ -55,6 +55,7 @@ async function executeEndpoint(
 
     // 2. Execute fetch with absolute URL
     console.log(`[Adapter][Execute] Calling ${resolved.method} ${resolved.url}`);
+    console.log(`[Adapter][Execute] Request Body:`, JSON.stringify(resolved.body, null, 2));
     
     const response = await fetch(resolved.url, {
         method: resolved.method,
@@ -63,11 +64,39 @@ async function executeEndpoint(
     });
 
     const result = await response.json();
-    if (!response.ok) {
-        console.error(`[Adapter][Execute] Failed:`, result);
-        throw new Error(result.message || result.Message || 'External sync failed');
+    console.log(`[Adapter][Execute] Response Result:`, JSON.stringify(result, null, 2));
+    
+    // 3. Handle Failure according to schema or default
+    const successPath = resolved.responseSchema?.successPath;
+    const successValue = resolved.responseSchema?.successValue ?? true;
+    
+    let isSuccessful = response.ok;
+    
+    if (successPath) {
+        const rawSuccess = successPath.split('.').reduce((obj: any, key: any) => obj?.[key], result);
+        isSuccessful = (rawSuccess === successValue);
+    } else {
+        // Auto-detect common Qore/BankOne success fields
+        if (result.IsSuccessful !== undefined) isSuccessful = (result.IsSuccessful === successValue);
+        else if (result.RequestStatus !== undefined) isSuccessful = (result.RequestStatus === successValue);
     }
-    return result;
+
+    if (!isSuccessful) {
+        console.error(`[Adapter][Execute] Failed:`, result);
+        const errorMsg = result.message || result.Message || result.ResponseMessage || (result.isBvnValid === false ? "Invalid BVN" : 'External sync failed');
+        throw new Error(errorMsg);
+    }
+
+    // 4. Resolve Outputs if schema is defined
+    if (resolved.responseSchema?.outputs) {
+        const mappedResult = resolveResponseOutputs(result, resolved.responseSchema.outputs);
+        // Ensure success field is present in mapped result
+        mappedResult.success = true;
+        console.log(`[Adapter][Execute] Mapped Result:`, JSON.stringify(mappedResult, null, 2));
+        return mappedResult;
+    }
+
+    return { ...result, success: true };
 }
 
 // ==========================================
@@ -131,6 +160,8 @@ export const getAllCustomers = async (): Promise<Customer[]> => {
             is_archived: doc.is_archived || false,
             merger_status: doc.merger_status as any,
             address: doc.address,
+            dob: doc.dob,
+            gender: doc.gender,
             metadata: doc.metadata,
             created_at: doc.createdAt,
             updated_at: doc.updatedAt,
@@ -151,25 +182,11 @@ export const getCustomerById = async (id: string): Promise<Customer | null> => {
         });
         if (!doc) return null;
         return {
+            ...doc,
             id: String(doc.id),
-            firstName: doc.firstName,
-            lastName: doc.lastName,
-            email: doc.email,
-            phone_number: doc.phone_number,
-            bvn: doc.bvn,
-            qore_customer_id: doc.qore_customer_id,
-            supabase_id: doc.supabase_id,
-            kyc_status: doc.kyc_status,
-            risk_tier: doc.risk_tier,
-            is_associated: doc.is_associated,
-            is_test_account: doc.is_test_account,
-            is_archived: doc.is_archived || false,
-            merger_status: doc.merger_status as any,
-            address: doc.address,
-            metadata: doc.metadata,
             created_at: doc.createdAt,
             updated_at: doc.updatedAt,
-        } as Customer;
+        } as any;
     } catch (e) {
         console.error('Payload getCustomerById Error:', e);
         return null;
@@ -188,25 +205,11 @@ export const getCustomerBySupabaseId = async (supabaseId: string): Promise<Custo
         if (!docs.length) return null;
         const doc = docs[0];
         return {
+            ...doc,
             id: String(doc.id),
-            firstName: doc.firstName,
-            lastName: doc.lastName,
-            email: doc.email,
-            phone_number: doc.phone_number,
-            bvn: doc.bvn,
-            qore_customer_id: doc.qore_customer_id,
-            supabase_id: doc.supabase_id,
-            kyc_status: doc.kyc_status,
-            risk_tier: doc.risk_tier,
-            is_associated: doc.is_associated,
-            is_test_account: doc.is_test_account,
-            is_archived: doc.is_archived || false,
-            merger_status: doc.merger_status as any,
-            address: doc.address,
-            metadata: doc.metadata,
             created_at: doc.createdAt,
             updated_at: doc.updatedAt,
-        } as Customer;
+        } as any;
     } catch (e) {
         console.error('Payload getCustomerBySupabaseId Error:', e);
         return null;
@@ -215,14 +218,19 @@ export const getCustomerBySupabaseId = async (supabaseId: string): Promise<Custo
 
 export const saveOnboardingDraft = async (data: Partial<Customer> & { userId: string }): Promise<Customer> => {
     try {
+        console.log(`[Adapter][Draft] Saving onboarding draft for user ${data.userId}:`, JSON.stringify(data, null, 2));
         const payload = await initPayload();
         const existing = await getCustomerBySupabaseId(data.userId);
 
         if (existing) {
-            return await updateCustomer(existing.id, {
+            const updated = await updateCustomer(existing.id, {
                 ...data,
                 kyc_status: existing.kyc_status === 'active' ? 'active' : 'pending'
             });
+            revalidatePath('/onboarding');
+            revalidatePath('/client-dashboard');
+            revalidatePath('/');
+            return updated;
         }
 
         const newDoc = await payload.create({
@@ -232,21 +240,22 @@ export const saveOnboardingDraft = async (data: Partial<Customer> & { userId: st
                 supabase_id: data.userId,
                 kyc_status: 'pending',
                 risk_tier: 'low',
-                is_associated: false,
+                onboarding_status: 'pending',
+                is_associated: true,
                 is_archived: false,
                 is_test_account: false,
             } as any,
             overrideAccess: true,
         });
 
+        revalidatePath('/onboarding');
+        revalidatePath('/client-dashboard');
+        revalidatePath('/');
+
         return {
+            ...newDoc,
             id: String(newDoc.id),
-            firstName: (newDoc as any).firstName,
-            lastName: (newDoc as any).lastName,
-            email: (newDoc as any).email,
-            phone_number: (newDoc as any).phone_number,
-            kyc_status: (newDoc as any).kyc_status,
-        } as Customer;
+        } as any;
     } catch (e) {
         console.error('Payload saveOnboardingDraft Error:', e);
         throw e;
@@ -297,25 +306,11 @@ export const updateCustomer = async (id: string, data: Partial<Customer>): Promi
             overrideAccess: true,
         });
         return {
+            ...doc,
             id: String(doc.id),
-            firstName: (doc as any).firstName,
-            lastName: (doc as any).lastName,
-            email: (doc as any).email,
-            phone_number: (doc as any).phone_number,
-            bvn: (doc as any).bvn,
-            qore_customer_id: (doc as any).qore_customer_id,
-            supabase_id: (doc as any).supabase_id,
-            kyc_status: (doc as any).kyc_status,
-            risk_tier: (doc as any).risk_tier,
-            is_associated: (doc as any).is_associated,
-            is_test_account: (doc as any).is_test_account,
-            is_archived: (doc as any).is_archived,
-            merger_status: (doc as any).merger_status,
-            address: (doc as any).address,
-            metadata: (doc as any).metadata,
             created_at: doc.createdAt,
             updated_at: doc.updatedAt,
-        } as Customer;
+        } as any;
     } catch (e) {
         console.error('Payload updateCustomer Error:', e);
         throw e;
@@ -672,17 +667,40 @@ export const queryExternalTransactionStatus = async (referenceId: string): Promi
 };
 
 export const verifyCustomerBVN = async (bvn: string): Promise<any> => {
+    console.log(`[Identity] Initiating BVN verification for: ${bvn.slice(0, 3)}...${bvn.slice(-4)}`);
     const payload = await initPayload();
+    
+    // 1. Resolve Endpoint & Mapping
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
     const endpointId = settings?.sync?.bvnLookupEndpoint;
-    
     if (!endpointId) throw new Error("BVN verification endpoint is not configured.");
 
-    return executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
-        BVN: bvn
-    }, {
+    const id = typeof endpointId === 'object' ? endpointId.id : endpointId;
+    const endpoint = await payload.findByID({ collection: 'endpoints', id });
+    
+    // Resolve Provider ID safely
+    const providerId = typeof endpoint.provider === 'object' ? endpoint.provider.id : endpoint.provider;
+
+    // Find provider mapping for this provider and "BVN Registry" or similar
+    // For now, identity verification is simpler, but we should still check for mappings
+    const { docs: mappings } = await payload.find({
+        collection: 'provider-mappings' as any,
+        where: { provider: { equals: providerId } },
+        limit: 100,
+        overrideAccess: true
+    });
+    
+    const mapping = mappings.find((m: any) => m.internalName.toLowerCase().includes('identity') || m.internalName.toLowerCase().includes('bvn'));
+
+    // 2. Map and Execute
+    const inputData = { BVN: bvn };
+    const mappedData = mapping ? applySchemaMapping(inputData, mapping.schemaMapping) : inputData;
+
+    console.log(`[Identity] Using mapping: ${mapping?.internalName || 'None (Default)'}`);
+
+    return executeEndpoint(id, mappedData, {
         authOverride: 'BODY_FIELD',
-        authBodyFieldKey: 'Token' // Critical: SDL template requires 'Token' for this specific call
+        authBodyFieldKey: 'Token'
     });
 };
 
@@ -703,91 +721,91 @@ export const createCoreBankingProfile = async (data: {
     const payload = await initPayload();
     
     // 1. Resolve Product Mapping
-    const { docs: mappings } = await payload.find({
+    // CRITICAL: We fetch all and filter in-memory to avoid "Not supported" polymorphic crash in Postgres
+    const { docs: allMappings } = await payload.find({
         collection: 'provider-mappings' as any,
-        where: { relatedEntity: { equals: data.productTypeId } },
-        limit: 1,
+        limit: 1000,
         overrideAccess: true
     });
 
-    if (!mappings.length) {
-        throw new Error(`Integration mapping missing for Product Type: ${data.productTypeId}`);
+    const mapping = allMappings.find((m: any) => 
+        (typeof m.relatedEntity === 'string' ? m.relatedEntity === data.productTypeId : (m.relatedEntity as any)?.id === data.productTypeId)
+    );
+
+    if (!mapping) {
+        throw new Error(`Integration mapping missing for Product Type ID: ${data.productTypeId}`);
     }
 
-    const productCode = mappings[0].externalCode;
-    if (!productCode) {
-        throw new Error(`External Code (ProductCode) missing in mapping for Product Type: ${data.productTypeId}`);
-    }
+    const productCode = mapping.externalCode;
+    console.log(`[Adapter][Provision] Resolved ProductCode: ${productCode} from mapping: ${mapping.internalName}`);
 
-    // 2. Prepare External Provisioning Payload
+    // 2. Resolve Endpoint from Site Settings
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
-    const createAccountEndpointId = settings?.sync?.acctMgmt?.create; // Need to ensure this exists in SiteSettings.ts
+    const createAccountEndpointId = settings?.sync?.acctMgmt?.create;
 
     if (!createAccountEndpointId) {
         throw new Error("Core account creation endpoint is not configured in Site Settings.");
     }
 
+    const endpointId = typeof createAccountEndpointId === 'object' ? createAccountEndpointId.id : createAccountEndpointId;
+
+    // 3. Prepare Mapped Payload
     const trackingRef = `ONB_${Date.now()}`;
-    const provisioningData = {
+    const baseData = {
+        ...data,
         TransactionTrackingRef: trackingRef,
         AccountOpeningTrackingRef: trackingRef,
         ProductCode: productCode,
-        LastName: data.lastName,
-        OtherNames: data.firstName,
+        OtherNames: data.firstName, // Default fallback if mapping fails
         PhoneNo: data.phone_number,
-        Gender: data.gender,
-        DateOfBirth: data.dob, // Ensure ISO format: 1990-01-01T00:00:00Z
-        Address: data.address,
-        BVN: data.bvn,
-        Email: data.email
+        DateOfBirth: data.dob
     };
 
-    // 3. Execute Provisioning
-    const qoreRes = await executeEndpoint(
-        typeof createAccountEndpointId === 'object' ? createAccountEndpointId.id : createAccountEndpointId,
-        provisioningData
-    );
+    const provisioningData = applySchemaMapping(baseData, mapping.schemaMapping);
+    console.log(`[Adapter][Provision] Mapped provisioning data:`, JSON.stringify(provisioningData, null, 2));
 
-    if (!qoreRes.IsSuccessful) {
-        throw new Error(qoreRes.Message || "Core banking provisioning failed.");
-    }
+    // 4. Execute Provisioning
+    const qoreRes = await executeEndpoint(endpointId, provisioningData);
 
-    const { CustomerID, AccountNumber } = qoreRes.Payload;
+    // executeEndpoint handles success/fail and mapping.
+    // Result now looks like: { accountNumber, customerId, success: true }
+    console.log(`[Adapter][Provision] Mapped Result:`, JSON.stringify(qoreRes, null, 2));
 
-    // 4. Update/Create Payload Customer
+    const { accountNumber, customerId } = qoreRes;
+
+    // 5. Update/Create Payload Customer record
     const customer = await getCustomerBySupabaseId(data.userId);
     let customerDocId: string;
+
+    const customerData = {
+        qore_customer_id: customerId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone_number: data.phone_number,
+        email: data.email,
+        bvn: data.bvn,
+        dob: data.dob,
+        gender: String(data.gender),
+        address: data.address,
+        kyc_status: 'active',
+        onboarding_status: 'completed',
+        is_associated: true
+    };
 
     if (customer) {
         customerDocId = customer.id;
         await payload.update({
             collection: 'customers' as any,
             id: customerDocId,
-            data: {
-                qore_customer_id: CustomerID,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                phone_number: data.phone_number,
-                bvn: data.bvn,
-                address: data.address,
-                kyc_status: 'active',
-                is_associated: true
-            } as any
+            data: customerData as any
         });
     } else {
         const newCustomer = await payload.create({
             collection: 'customers' as any,
             data: {
+                ...customerData,
                 supabase_id: data.userId,
-                email: data.email,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                phone_number: data.phone_number,
-                bvn: data.bvn,
-                qore_customer_id: CustomerID,
-                kyc_status: 'active',
                 risk_tier: 'low',
-                is_associated: true,
                 is_archived: false,
                 is_test_account: false
             } as any
@@ -795,29 +813,71 @@ export const createCoreBankingProfile = async (data: {
         customerDocId = String(newCustomer.id);
     }
 
-    // 5. Create Local Account Record
+    revalidatePath('/onboarding');
+    revalidatePath('/client-dashboard');
+    revalidatePath('/');
+
+    // 6. Create Local Account Record
     const account = await payload.create({
         collection: 'accounts' as any,
         data: {
             user_id: data.userId,
-            account_number: AccountNumber,
-            account_name: `${data.firstName} ${data.lastName}`,
-            account_type: 'Savings', // Should ideally be derived from ProductType
+            account_number: accountNumber,
+            account_type: 'Savings', 
             balance: 0,
             status: 'active',
             customer: customerDocId,
             source: 'qore',
             is_primary: true,
             is_archived: false,
-            external_status: 'core_synced'
+            product_type: data.productTypeId
         } as any
     });
 
     return {
-        customerId: CustomerID,
-        accountNumber: AccountNumber,
+        customerId: customerId,
+        accountNumber: accountNumber,
         localAccountId: account.id
     };
+};
+
+export const skipOnboarding = async (userId: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        const customer = await getCustomerBySupabaseId(userId);
+        
+        if (!customer) {
+            await payload.create({
+                collection: 'customers' as any,
+                data: {
+                    supabase_id: userId,
+                    onboarding_status: 'skipped',
+                    email: '',
+                    firstName: 'User',
+                    lastName: '',
+                    kyc_status: 'pending',
+                    is_associated: true
+                } as any
+            });
+        } else {
+            await payload.update({
+                collection: 'customers' as any,
+                id: customer.id,
+                data: {
+                    onboarding_status: 'skipped',
+                    is_associated: true
+                } as any
+            });
+        }
+
+        revalidatePath('/onboarding');
+        revalidatePath('/client-dashboard');
+        revalidatePath('/');
+        return true;
+    } catch (e) {
+        console.error('skipOnboarding error:', e);
+        return false;
+    }
 };
 
 export const getAllLoans = async (): Promise<Loan[]> => {

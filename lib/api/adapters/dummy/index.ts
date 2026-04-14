@@ -102,6 +102,10 @@ export const DummyAdapter: ApiAdapter = {
             ...data
         } as any;
     },
+    skipOnboarding: async (userId: string) => {
+        console.log('[Mock] Skipping onboarding for user:', userId);
+        return true;
+    },
 
     // Products
     getAllAccounts: async () => {

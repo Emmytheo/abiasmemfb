@@ -52,6 +52,9 @@ export const SupabaseAdapter: ApiAdapter = {
     saveOnboardingDraft: async (data) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+    skipOnboarding: async (userId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
 
     // Products
     getAllAccounts: async () => {

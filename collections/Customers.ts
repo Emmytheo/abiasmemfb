@@ -13,6 +13,18 @@ export const Customers: CollectionConfig = {
     },
     fields: [
         {
+            name: 'onboarding_status',
+            type: 'select',
+            options: [
+                { label: 'Pending', value: 'pending' },
+                { label: 'Skipped', value: 'skipped' },
+                { label: 'Completed', value: 'completed' },
+            ],
+            defaultValue: 'pending',
+            required: true,
+            admin: { position: 'sidebar' }
+        },
+        {
             type: 'row',
             fields: [
                 {

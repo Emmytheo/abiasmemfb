@@ -20,7 +20,9 @@ import {
     PhoneCall,
     FileText,
     User,
-    Users
+    Users,
+    ShieldCheck,
+    ArrowRight
 } from "lucide-react";
 
 import {
@@ -146,10 +148,19 @@ interface ClientSidebarProps extends React.ComponentProps<typeof Sidebar> {
     userName?: string;
     userEmail?: string;
     serviceCategories?: ServiceCategory[];
+    onboardingStatus?: 'pending' | 'skipped' | 'completed';
 }
 
-export function ClientSidebar({ userRole = "user", userName, userEmail, serviceCategories = [], ...props }: ClientSidebarProps) {
+export function ClientSidebar({ 
+    userRole = "user", 
+    userName, 
+    userEmail, 
+    serviceCategories = [], 
+    onboardingStatus = 'completed',
+    ...props 
+}: ClientSidebarProps) {
     const roleLevel = ROLE_LEVEL[userRole] ?? 0;
+    const isPendingOnboarding = onboardingStatus === 'skipped' || onboardingStatus === 'pending';
 
     // Dynamically insert the Services Hub group if there are active categories
     const dynamicNavGroups = [...navGroups];
@@ -195,6 +206,33 @@ export function ClientSidebar({ userRole = "user", userName, userEmail, serviceC
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+
+                {isPendingOnboarding && (
+                    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+                        <SidebarGroupContent>
+                            <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl space-y-3 mx-2 mt-2">
+                                <div className="flex items-center gap-2 text-orange-600">
+                                    <ShieldCheck className="h-4 w-4" />
+                                    <span className="text-xs font-bold uppercase tracking-tight">Profile Incomplete</span>
+                                </div>
+                                <p className="text-[11px] text-orange-700/80 leading-relaxed font-medium">
+                                    Finish setting up your profile to unlock all banking features.
+                                </p>
+                                <Button 
+                                    size="sm" 
+                                    variant="link" 
+                                    asChild
+                                    className="p-0 h-auto text-orange-600 font-bold hover:text-orange-700 text-xs flex items-center gap-1 no-underline"
+                                >
+                                    <a href="/onboarding">
+                                        Complete Now
+                                        <ArrowRight className="h-3 w-3" />
+                                    </a>
+                                </Button>
+                            </div>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
                 <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                     <SidebarGroupContent>
                         <SidebarMenu>

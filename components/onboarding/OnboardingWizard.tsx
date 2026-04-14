@@ -99,7 +99,7 @@ export function OnboardingWizard({ user, products, initialCustomerData }: Onboar
                             animate={{ x: 0, opacity: 1 }}
                             exit={{ x: -20, opacity: 0 }}
                             transition={{ duration: 0.3 }}
-                            className="p-8 md:p-12"
+                            className="py-8 px-4 md:p-12"
                         >
                             {step === 1 && (
                                 <ProfileStep 

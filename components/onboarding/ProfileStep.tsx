@@ -45,7 +45,7 @@ export function ProfileStep({ data, onUpdate, onNext }: ProfileStepProps) {
             firstName: data.firstName,
             lastName: data.lastName,
             phone_number: data.phone_number,
-            dob: data.dob,
+            dob: data.dob ? data.dob.slice(0, 10) : "",
             gender: String(data.gender),
             address: data.address,
         },
@@ -55,6 +55,7 @@ export function ProfileStep({ data, onUpdate, onNext }: ProfileStepProps) {
         try {
             await api.saveOnboardingDraft({
                 userId: data.userId,
+                email: data.email,
                 firstName: values.firstName,
                 lastName: values.lastName,
                 phone_number: values.phone_number,

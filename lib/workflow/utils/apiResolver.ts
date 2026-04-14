@@ -145,6 +145,37 @@ export async function resolveEndpoint(endpoint: any, customParams: Record<string
         url: authData.url,
         method: effectiveEndpoint.method || 'GET',
         headers: authData.headers,
-        body: authData.body
+        body: authData.body,
+        responseSchema: effectiveEndpoint.responseSchema // Export for mapping result
     }
+}
+
+/**
+ * Maps internal field names to provider-specific names based on a schema mapping.
+ */
+export function applySchemaMapping(data: any, mapping: Record<string, string>): Record<string, any> {
+    if (!mapping || Object.keys(mapping).length === 0) return data;
+    
+    const mapped: Record<string, any> = {};
+    for (const [internalKey, externalKey] of Object.entries(mapping)) {
+        if (data[internalKey] !== undefined) {
+            mapped[externalKey] = data[internalKey];
+        }
+    }
+    
+    // Pass through any keys that aren't in the mapping but might be needed (e.g. tracking refs)
+    return { ...data, ...mapped };
+}
+
+/**
+ * Extracts specific fields from an API response using dot-notation paths.
+ */
+export function resolveResponseOutputs(response: any, outputs: Record<string, string>): Record<string, any> {
+    if (!outputs || Object.keys(outputs).length === 0) return response;
+    
+    const results: Record<string, any> = {};
+    for (const [outputName, path] of Object.entries(outputs)) {
+        results[outputName] = resolvePath(response, path);
+    }
+    return results;
 }

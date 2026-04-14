@@ -38,6 +38,7 @@ export interface Customer {
     supabase_id?: string | null;
     kyc_status: 'pending' | 'active' | 'inactive' | 'rejected';
     risk_tier: 'low' | 'medium' | 'high';
+    onboarding_status?: 'pending' | 'skipped' | 'completed';
     is_associated: boolean;
     dob?: string;
     gender?: number;
@@ -297,6 +298,7 @@ export interface ApiAdapter {
     verifyIdentity: (bvn: string) => Promise<any>;
     createCoreBankingProfile: (data: any) => Promise<any>;
     saveOnboardingDraft: (data: Partial<Customer> & { userId: string }) => Promise<Customer>;
+    skipOnboarding: (userId: string) => Promise<boolean>;
 
     // Products (Accounts, Loans)
     getAllAccounts: () => Promise<Account[]>;

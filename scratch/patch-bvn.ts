@@ -1,5 +1,5 @@
 import { getPayload } from 'payload'
-import config from './payload.config'
+import config from '../payload.config'
 
 async function patch() {
     const payload = await getPayload({ config })

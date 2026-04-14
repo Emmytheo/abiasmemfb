@@ -9,6 +9,8 @@ import type { AppRole } from "@/lib/auth/roles";
 import { api } from "@/lib/api";
 import { headers } from "next/headers";
 
+export const dynamic = 'force-dynamic';
+
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
     // Fetch the authenticated user
     const supabase = await createClient();
@@ -24,15 +26,20 @@ export default async function ClientLayout({ children }: { children: React.React
 
     // Fetch customer data to check onboarding status
     const customer = await api.getCustomerBySupabaseId(user.id);
-    const isOnboarded = !!customer?.qore_customer_id;
+    
+    const hasCoreBanking = !!customer?.qore_customer_id;
+    const onboardingStatus = customer?.onboarding_status || "pending";
+    const isSkipped = onboardingStatus === "skipped";
+    const isCompleted = onboardingStatus === "completed" || hasCoreBanking;
+    const hasVerifiedIdentity = !!customer?.bvn;
 
-    // Guard: If not onboarded and not already on onboarding page, redirect
-    if (!isOnboarded && !isOnboardingPage) {
+    // Guard: If not onboarded AND not skipped AND not identity verified, redirect
+    if (!isCompleted && !isSkipped && !hasVerifiedIdentity && !isOnboardingPage) {
         redirect("/onboarding");
     }
 
-    // Guard: If already onboarded and on onboarding page, redirect back to dashboard
-    if (isOnboarded && isOnboardingPage) {
+    // Guard: If completed but wandering into onboarding, redirect to dashboard
+    if (isCompleted && isOnboardingPage) {
         redirect("/client-dashboard");
     }
 
@@ -65,6 +72,7 @@ export default async function ClientLayout({ children }: { children: React.React
                     userName={userName}
                     userEmail={userEmail}
                     serviceCategories={serviceCategories}
+                    onboardingStatus={onboardingStatus as any}
                 />
             )}
             <SidebarInset>
@@ -90,7 +98,7 @@ export default async function ClientLayout({ children }: { children: React.React
                     </header>
                 )}
 
-                <main className="flex-1 overflow-auto p-4 md:p-8">
+                <main className="flex-1 overflow-auto px-2 p-4 md:p-8">
                     <div className="mx-auto max-w-7xl w-full animate-in fade-in duration-500">
                         {children}
                     </div>
