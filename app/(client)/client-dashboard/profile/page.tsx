@@ -130,7 +130,7 @@ export default function ClientProfilePage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto p-4 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className=" mx-auto  p-2 md:p-4 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <header>
                 <p className="text-xs font-bold uppercase tracking-widest text-primary/70 mb-1">Account Management</p>
                 <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-1">Profile Profile</h1>

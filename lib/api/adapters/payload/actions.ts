@@ -74,11 +74,22 @@ async function executeEndpoint(
     
     if (successPath) {
         const rawSuccess = successPath.split('.').reduce((obj: any, key: any) => obj?.[key], result);
-        isSuccessful = (rawSuccess === successValue);
+        
+        // If the specified path is missing (undefined), fall back to auto-detection
+        if (rawSuccess !== undefined) {
+            isSuccessful = (rawSuccess === successValue);
+            console.log(`[Adapter][Execute] Success Check (Specified Path: ${successPath}):`, { rawSuccess, successValue, isSuccessful });
+        } else {
+            console.warn(`[Adapter][Execute] Specified successPath "${successPath}" not found in response. Falling back to auto-detection.`);
+            if (result.IsSuccessful !== undefined) isSuccessful = (result.IsSuccessful === successValue);
+            else if (result.RequestStatus !== undefined) isSuccessful = (result.RequestStatus === successValue);
+            console.log(`[Adapter][Execute] Success Check (Fallback Auto):`, { IsSuccessful: result.IsSuccessful, RequestStatus: result.RequestStatus, successValue, isSuccessful, responseOk: response.ok });
+        }
     } else {
         // Auto-detect common Qore/BankOne success fields
         if (result.IsSuccessful !== undefined) isSuccessful = (result.IsSuccessful === successValue);
         else if (result.RequestStatus !== undefined) isSuccessful = (result.RequestStatus === successValue);
+        console.log(`[Adapter][Execute] Success Check (Direct Auto):`, { IsSuccessful: result.IsSuccessful, RequestStatus: result.RequestStatus, successValue, isSuccessful, responseOk: response.ok });
     }
 
     if (!isSuccessful) {
@@ -88,6 +99,7 @@ async function executeEndpoint(
     }
 
     // 4. Resolve Outputs if schema is defined
+    console.log(`[Adapter][Execute] Schema Outputs:`, JSON.stringify(resolved.responseSchema?.outputs, null, 2));
     if (resolved.responseSchema?.outputs) {
         const mappedResult = resolveResponseOutputs(result, resolved.responseSchema.outputs);
         // Ensure success field is present in mapped result
@@ -677,6 +689,29 @@ export const verifyCustomerBVN = async (bvn: string): Promise<any> => {
 
     const id = typeof endpointId === 'object' ? endpointId.id : endpointId;
     const endpoint = await payload.findByID({ collection: 'endpoints', id });
+
+    // Hotfix: The BVN endpoint often returns nested bvnDetails. If the mapping is flat, fix it.
+    if (endpoint.responseSchema?.outputs?.firstName === 'FirstName') {
+        console.warn(`[Identity][Hotfix] Mapping for "${endpoint.name}" is flat but response is nested. Updating mapping...`);
+        await payload.update({
+            collection: 'endpoints',
+            id: endpoint.id,
+            data: {
+                responseSchema: {
+                    ...endpoint.responseSchema,
+                    outputs: {
+                        "bvn": "bvnDetails.BVN",
+                        "lastName": "bvnDetails.LastName",
+                        "firstName": "bvnDetails.FirstName",
+                        "dob": "bvnDetails.DOB",
+                        "responseMessage": "ResponseMessage"
+                    }
+                }
+            }
+        });
+        // Clear cache by re-fetching
+        return verifyCustomerBVN(bvn);
+    }
     
     // Resolve Provider ID safely
     const providerId = typeof endpoint.provider === 'object' ? endpoint.provider.id : endpoint.provider;
