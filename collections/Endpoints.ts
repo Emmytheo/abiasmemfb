@@ -63,6 +63,15 @@ export const Endpoints: CollectionConfig = {
             ]
         },
         {
+            name: 'queryParams',
+            type: 'array',
+            admin: { description: 'Static query parameters specific to this endpoint.' },
+            fields: [
+                { name: 'key', type: 'text', required: true },
+                { name: 'value', type: 'text', required: true }
+            ]
+        },
+        {
             name: 'authOverride',
             type: 'select',
             options: [

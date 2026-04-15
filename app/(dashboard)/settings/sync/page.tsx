@@ -35,6 +35,7 @@ export default function SyncSettingsPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [isDiscovering, setIsDiscovering] = useState(false)
+    const [isSyncingOfficers, setIsSyncingOfficers] = useState(false)
     const [settings, setSettings] = useState<SiteSettings | null>(null)
     const [endpoints, setEndpoints] = useState<any[]>([])
     const [healthStatus, setHealthStatus] = useState<Record<string, 'healthy' | 'unhealthy' | 'checking'>>({})
@@ -115,6 +116,38 @@ export default function SyncSettingsPage() {
         }
     }
 
+    const runOfficerSync = async () => {
+        setIsSyncingOfficers(true)
+        setLogs([]) 
+        
+        toast.info("Establishing Account Officer Sync Stream...", {
+            description: "Connection opened to Core Banking staff registry."
+        })
+
+        try {
+            const eventSource = new EventSource('/api/sync/officers/stream')
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const log = JSON.parse(event.data)
+                    setLogs(prev => [...prev.slice(-49), log])
+                } catch (e) {
+                    console.error("Failed to parse log event", e)
+                }
+            }
+
+            eventSource.onerror = (error) => {
+                console.error("EventSource failed:", error)
+                eventSource.close()
+                setIsSyncingOfficers(false)
+                toast.error("Officer sync stream disconnected.")
+            }
+        } catch (err) {
+            toast.error("Failed to connect to officer sync stream")
+            setIsSyncingOfficers(false)
+        }
+    }
+
     const checkHealth = async (endpointId: string) => {
         if (!endpointId) return
         setHealthStatus(prev => ({ ...prev, [endpointId]: 'checking' }))
@@ -152,12 +185,22 @@ export default function SyncSettingsPage() {
                     <Button 
                         variant="outline" 
                         onClick={runDiscovery} 
-                        disabled={isDiscovering}
+                        disabled={isDiscovering || isSyncingOfficers}
                         className="grow md:grow-0 bg-background h-10 md:h-11"
                     >
                         {isDiscovering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Activity className="h-4 w-4 mr-2" />}
                         <span className="hidden sm:inline">Run Discovery</span>
                         <span className="sm:hidden text-xs">Discovery</span>
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        onClick={runOfficerSync} 
+                        disabled={isDiscovering || isSyncingOfficers}
+                        className="grow md:grow-0 bg-background h-10 md:h-11"
+                    >
+                        {isSyncingOfficers ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                        <span className="hidden sm:inline">Sync Officers</span>
+                        <span className="sm:hidden text-xs">Officers</span>
                     </Button>
                     <Button onClick={handleSave} disabled={isSaving} className="grow md:grow-0 h-10 md:h-11 shadow-lg shadow-primary/20">
                         {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
@@ -265,7 +308,15 @@ export default function SyncSettingsPage() {
                                             onCheck={() => checkHealth(getEndpointId(settings.sync.serviceSyncEndpoint))}
                                         />
                                     </div>
-                                    <div className="pt-4 mt-4 border-t">
+                                    <div className="pt-4 mt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                        <EndpointSelector 
+                                            label="Account Officer Sync Path"
+                                            value={getEndpointId(settings.sync.accountOfficerEndpoint)}
+                                            onChange={(val) => setSettings({...settings, sync: {...settings.sync, accountOfficerEndpoint: val}})}
+                                            endpoints={endpoints}
+                                            health={healthStatus[getEndpointId(settings.sync.accountOfficerEndpoint)]}
+                                            onCheck={() => checkHealth(getEndpointId(settings.sync.accountOfficerEndpoint))}
+                                        />
                                         <EndpointSelector 
                                             label="Primary Bridge Push (Customer Update)"
                                             value={getEndpointId(settings.sync.customerUpdateEndpoint)}
@@ -437,6 +488,15 @@ export default function SyncSettingsPage() {
                                                 health={healthStatus[getEndpointId(settings.sync.acctMgmt?.txStatus)]}
                                                 onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.txStatus))}
                                             />
+                                            <div className="md:col-span-2 space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Default Account Officer Code (Fallback)</Label>
+                                                <Input 
+                                                    value={settings.sync.acctMgmt?.defaultAccountOfficerCode || ''}
+                                                    onChange={(e) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), defaultAccountOfficerCode: e.target.value}}})}
+                                                    placeholder="e.g. TEL0001"
+                                                    className="h-11 md:h-10 rounded-xl bg-background border-2 border-primary/5 focus:border-primary/20 transition-all font-mono"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </CardContent>

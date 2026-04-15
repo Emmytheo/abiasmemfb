@@ -92,6 +92,12 @@ export const SiteSettings: GlobalConfig = {
                     admin: { description: 'The API endpoint used to verify BVN/NIN details.' }
                 },
                 {
+                    name: 'accountOfficerEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to fetch the list of Account Officers/Staff.' }
+                },
+                {
                     name: 'acctMgmt',
                     type: 'group',
                     label: 'Account Management (Core Parity)',
@@ -111,7 +117,8 @@ export const SiteSettings: GlobalConfig = {
                         { name: 'upload', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Upload Supporting Document.' } },
                         { name: 'tier', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Update Account KYC Tier.' } },
                         { name: 'txStatus', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Query Transaction Status.' } },
-                        { name: 'create', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Create Account Quick (Onboarding).' } }
+                        { name: 'create', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Create Account Quick (Onboarding).' } },
+                        { name: 'defaultAccountOfficerCode', type: 'text', defaultValue: 'TEL0001', admin: { description: 'Primary fallback staff code for automated account creation (e.g. TEL0001).' } }
                     ]
                 }
             ]

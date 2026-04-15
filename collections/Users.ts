@@ -40,6 +40,14 @@ export const Users: CollectionConfig = {
             },
         },
         {
+            name: 'accountOfficer',
+            type: 'relationship',
+            relationTo: 'account-officers',
+            admin: {
+                description: 'Link this admin user to their staff/account officer identity in BankOne.',
+            },
+        },
+        {
             name: 'role',
             type: 'select',
             options: ['admin'],

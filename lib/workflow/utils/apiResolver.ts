@@ -48,27 +48,31 @@ export function applyAuthOverride(
                 break
 
             case 'QUERY_PARAM': {
-                const paramKey = endpointConfig.authQueryParamKey ?? 'authToken'
+                const paramKey = endpointConfig.authQueryParamKey || provider.authQueryParamKey || 'authToken'
                 finalUrl += `${finalUrl.includes('?') ? '&' : '?'}${paramKey}=${encodeURIComponent(secretValue)}`
                 break
             }
 
             case 'BODY_FIELD': {
-                const fieldKey = endpointConfig.authBodyFieldKey ?? 'AuthenticationCode'
+                const fieldKey = endpointConfig.authBodyFieldKey || provider.authBodyFieldKey || 'AuthenticationCode'
                 finalBody = { ...finalBody, [fieldKey]: secretValue }
                 break
             }
 
-            case 'API_KEY':
+            case 'API_KEY': {
+                // For Qore/BankOne, authToken in Query Param is almost ALWAYS required regardless of method
+                const paramKey = endpointConfig.authQueryParamKey || provider.authQueryParamKey || 'authToken'
+                finalUrl += `${finalUrl.includes('?') ? '&' : '?'}${paramKey}=${encodeURIComponent(secretValue)}`
+
                 if (['POST', 'PUT', 'PATCH'].includes(endpointConfig.method)) {
+                    const fieldKey = endpointConfig.authBodyFieldKey || provider.authBodyFieldKey || 'AuthenticationCode'
                     finalBody = {
                         ...finalBody,
-                        AuthenticationCode: finalBody.AuthenticationCode || secretValue,
+                        [fieldKey]: finalBody[fieldKey] || secretValue,
                     }
-                } else {
-                    finalUrl += `${finalUrl.includes('?') ? '&' : '?'}authToken=${encodeURIComponent(secretValue)}`
                 }
                 break
+            }
 
             default:
                 break
@@ -97,12 +101,20 @@ export async function resolveEndpoint(endpoint: any, customParams: Record<string
     const sep = endpoint.path?.startsWith('/') ? '' : '/'
     let url = `${basePath}${sep}${endpoint.path || ''}`
 
-    // 4. Resolve Query Params
+    // 4. Resolve Query Params (Dynamic + Static)
     const resolvedQuery = resolveQueryParams(
         endpoint.queryParamsSchema,
         customParams.query || {},
         provider
     )
+    
+    // Merge Static Query Params from Endpoint Definition
+    if (Array.isArray(endpoint.queryParams)) {
+        endpoint.queryParams.forEach((q: any) => {
+            if (q.key && q.value) resolvedQuery[q.key] = q.value
+        })
+    }
+
     if (Object.keys(resolvedQuery).length > 0) {
         const searchParams = new URLSearchParams()
         Object.entries(resolvedQuery).forEach(([k, v]) => searchParams.append(k, String(v)))

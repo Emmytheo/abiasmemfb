@@ -14,7 +14,13 @@ export interface ApiEndpoint {
     path: string;
     status: 'active' | 'deprecated' | 'draft';
     headers?: StaticHeader[];
+    queryParams?: StaticHeader[];
     
+    // Auth Overrides
+    authOverride?: 'INHERIT' | 'NONE' | 'API_KEY' | 'BEARER' | 'QUERY_PARAM' | 'BODY_FIELD';
+    authBodyFieldKey?: string;
+    authQueryParamKey?: string;
+
     // JSON Schema representations
     queryParamsSchema?: Record<string, any>;
     bodySchema?: Record<string, any>;

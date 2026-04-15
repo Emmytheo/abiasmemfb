@@ -10,6 +10,7 @@ import { Pages } from './collections/Pages'
 import { Categories } from './collections/Categories'
 import { Tags } from './collections/Tags'
 import { Posts } from './collections/Posts'
+import { AccountOfficers } from './collections/AccountOfficers'
 import { SiteSettings } from './collections/SiteSettings'
 import { ProductTypes } from './collections/ProductTypes'
 import { ProductClasses } from './collections/ProductClasses'
@@ -95,7 +96,7 @@ export default buildConfig({
         // Service Pipeline
         ServiceCategories, Services,
         // Digital Ledger
-        Accounts, Loans, Transactions, Beneficiaries,
+        Accounts, Loans, Transactions, Beneficiaries, AccountOfficers,
     ],
     globals: [SiteSettings],
     editor: lexicalEditor({}),

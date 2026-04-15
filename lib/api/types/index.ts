@@ -196,6 +196,7 @@ export interface SiteSyncConfig {
     serviceSyncEndpoint?: string | any;
     customerUpdateEndpoint?: string | any;
     bvnLookupEndpoint?: string | any;
+    accountOfficerEndpoint?: string | any;
     acctMgmt?: {
         freeze?: string | any;
         unfreeze?: string | any;
@@ -212,6 +213,8 @@ export interface SiteSyncConfig {
         upload?: string | any;
         tier?: string | any;
         txStatus?: string | any;
+        create?: string | any;
+        defaultAccountOfficerCode?: string;
     };
 }
 

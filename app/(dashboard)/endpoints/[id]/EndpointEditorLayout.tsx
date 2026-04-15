@@ -5,6 +5,7 @@ import { ArrowLeft, Save, Play, Loader2, CheckCircle2, XCircle, Globe } from 'lu
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { Plus, Trash2, Shield, Settings, Database, Activity } from 'lucide-react'
 
 export function EndpointEditorLayout({ endpointId, initialData, dynamicOptions }: any) {
     const router = useRouter()
@@ -19,6 +20,10 @@ export function EndpointEditorLayout({ endpointId, initialData, dynamicOptions }
         path: '',
         status: 'active',
         headers: [],
+        queryParams: [],
+        authOverride: 'INHERIT',
+        authBodyFieldKey: 'AuthenticationCode',
+        authQueryParamKey: 'authToken',
         queryParamsSchema: {},
         bodySchema: {},
         responseSchema: {},
@@ -149,81 +154,215 @@ function DefinitionTab({ formData, setFormData, dynamicOptions }: any) {
     const displayJson = (obj: any) => typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2)
 
     return (
-        <div className="p-6 space-y-8">
+        <div className="p-6 space-y-10">
             {/* Core routing */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Provider</label>
-                    <select 
-                        value={typeof formData.provider === 'object' ? formData.provider.id : formData.provider}
-                        onChange={(e) => setFormData({...formData, provider: e.target.value})}
-                        className="w-full text-sm rounded-md border-input bg-transparent border px-3 py-2"
-                    >
-                        {dynamicOptions.providers.map((p: any) => (
-                            <option key={p.id} value={p.id}>{p.label}</option>
-                        ))}
-                    </select>
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                    <Database size={14} />
+                    Core Configuration
                 </div>
-                <div>
-                    <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Method</label>
-                    <select 
-                        value={formData.method}
-                        onChange={(e) => setFormData({...formData, method: e.target.value})}
-                        className="w-full text-sm rounded-md border-input bg-transparent border px-3 py-2 font-mono"
-                    >
-                        {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
-                            <option key={m} value={m}>{m}</option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Status</label>
-                    <select 
-                        value={formData.status}
-                        onChange={(e) => setFormData({...formData, status: e.target.value})}
-                        className="w-full text-sm rounded-md border-input bg-transparent border px-3 py-2"
-                    >
-                        <option value="active">Active</option>
-                        <option value="deprecated">Deprecated</option>
-                        <option value="draft">Draft</option>
-                    </select>
-                </div>
-                <div className="md:col-span-3">
-                    <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Path (Relative to Base URL)</label>
-                    <div className="flex items-center rounded-md border bg-transparent overflow-hidden px-3 py-2">
-                        <span className="text-muted-foreground font-mono text-sm mr-1">/</span>
-                        <input 
-                            type="text" 
-                            className="bg-transparent border-0 focus:ring-0 p-0 w-full text-sm font-mono flex-1 outline-none"
-                            placeholder="api/v1/resource/:id"
-                            value={formData.path.replace(/^\//,'')} // visually trim leading slash
-                            onChange={(e) => setFormData({...formData, path: `/${e.target.value}`})}
-                        />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/20 p-4 rounded-lg border">
+                    <div>
+                        <label className="block text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-tight">Provider</label>
+                        <select 
+                            value={typeof formData.provider === 'object' ? formData.provider.id : formData.provider}
+                            onChange={(e) => setFormData({...formData, provider: e.target.value})}
+                            className="w-full text-sm rounded-md border-input bg-background border px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        >
+                            {dynamicOptions.providers.map((p: any) => (
+                                <option key={p.id} value={p.id}>{p.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-tight">Method</label>
+                        <select 
+                            value={formData.method}
+                            onChange={(e) => setFormData({...formData, method: e.target.value})}
+                            className="w-full text-sm rounded-md border-input bg-background border px-3 py-2 font-mono focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        >
+                            {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-tight">Status</label>
+                        <select 
+                            value={formData.status}
+                            onChange={(e) => setFormData({...formData, status: e.target.value})}
+                            className="w-full text-sm rounded-md border-input bg-background border px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        >
+                            <option value="active">Active</option>
+                            <option value="deprecated">Deprecated</option>
+                            <option value="draft">Draft</option>
+                        </select>
+                    </div>
+                    <div className="md:col-span-3">
+                        <label className="block text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-tight font-mono">Endpoint Path</label>
+                        <div className="flex items-center rounded-md border bg-background overflow-hidden px-3 py-2 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                            <span className="text-muted-foreground font-mono text-sm mr-1">/</span>
+                            <input 
+                                type="text" 
+                                className="bg-transparent border-0 focus:ring-0 p-0 w-full text-sm font-mono flex-1 outline-none"
+                                placeholder="api/v1/resource"
+                                value={formData.path.replace(/^\//,'')} 
+                                onChange={(e) => setFormData({...formData, path: `/${e.target.value}`})}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Schemas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                <div>
-                    <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Query Schema (JSON)</label>
-                    <textarea 
-                        className="w-full h-32 text-xs font-mono rounded-md border bg-muted/20 p-3"
-                        value={displayJson(formData.queryParamsSchema)}
-                        onChange={(e) => handleJsonUpdate('queryParamsSchema', e.target.value)}
-                        placeholder={'{\n  "accountId": "string"\n}'}
+            {/* Static Parameters & Headers */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-6 border-t font-sans">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                        <Settings size={14} />
+                        Static Headers
+                    </div>
+                    <p className="text-[10px] text-muted-foreground -mt-2">Permanent headers sent with every request (e.g. Accept-version).</p>
+                    <KeyValuePairEditor 
+                        items={formData.headers || []} 
+                        onChange={(headers: any) => setFormData({...formData, headers})} 
+                        placeholder="X-Custom-Header"
                     />
                 </div>
-                <div>
-                    <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Body Schema (JSON)</label>
-                    <textarea 
-                        className="w-full h-32 text-xs font-mono rounded-md border bg-muted/20 p-3"
-                        value={displayJson(formData.bodySchema)}
-                        onChange={(e) => handleJsonUpdate('bodySchema', e.target.value)}
-                        placeholder={'{\n  "amount": "number"\n}'}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                        <Plus size={14} />
+                        Static Query Params
+                    </div>
+                    <p className="text-[10px] text-muted-foreground -mt-2">Force specific parameters into the URL (e.g. version=2).</p>
+                    <KeyValuePairEditor 
+                        items={formData.queryParams || []} 
+                        onChange={(queryParams: any) => setFormData({...formData, queryParams})} 
+                        placeholder="paramName"
                     />
                 </div>
             </div>
+
+            {/* Security & Authentication */}
+            <div className="space-y-4 pt-8 border-t">
+                <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                    <Shield size={14} />
+                    Security & Authentication Overrides
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-primary/[0.03] p-6 rounded-xl border-2 border-primary/5">
+                    <div>
+                        <label className="block text-xs font-bold mb-2 text-muted-foreground italic">Auth Injection Mode</label>
+                        <select 
+                            value={formData.authOverride}
+                            onChange={(e) => setFormData({...formData, authOverride: e.target.value})}
+                            className="w-full text-xs font-bold rounded-lg border-primary/10 bg-background border px-3 py-2.5 shadow-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                        >
+                            <option value="INHERIT">Inherit from Provider</option>
+                            <option value="NONE">None (Public)</option>
+                            <option value="API_KEY">API Key (Dual URL/Body)</option>
+                            <option value="BEARER">Bearer Token</option>
+                            <option value="QUERY_PARAM">Query Parameter Only</option>
+                            <option value="BODY_FIELD">Body Field Only</option>
+                        </select>
+                    </div>
+
+                    {['QUERY_PARAM', 'API_KEY'].includes(formData.authOverride) && (
+                        <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                            <label className="block text-xs font-bold mb-2 text-muted-foreground">URL Query Key</label>
+                            <input 
+                                type="text"
+                                value={formData.authQueryParamKey || ''}
+                                onChange={(e) => setFormData({...formData, authQueryParamKey: e.target.value})}
+                                placeholder="authToken"
+                                className="w-full text-xs font-mono rounded-lg border-primary/10 bg-background border px-3 py-2.5 shadow-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                            />
+                        </div>
+                    )}
+
+                    {['BODY_FIELD', 'API_KEY'].includes(formData.authOverride) && (
+                        <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                            <label className="block text-xs font-bold mb-2 text-muted-foreground">Request Body Key</label>
+                            <input 
+                                type="text"
+                                value={formData.authBodyFieldKey || ''}
+                                onChange={(e) => setFormData({...formData, authBodyFieldKey: e.target.value})}
+                                placeholder="AuthenticationCode"
+                                className="w-full text-xs font-mono rounded-lg border-primary/10 bg-background border px-3 py-2.5 shadow-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Schemas */}
+            <div className="space-y-4 pt-8 border-t">
+                <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                    <Activity size={14} />
+                    Data Contracts (Schemas)
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-tight">Query Schema (JSON)</label>
+                        <textarea 
+                            className="w-full h-32 text-xs font-mono rounded-md border bg-muted/20 p-3 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                            value={displayJson(formData.queryParamsSchema)}
+                            onChange={(e) => handleJsonUpdate('queryParamsSchema', e.target.value)}
+                            placeholder={'{\n  "accountId": "string"\n}'}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-tight">Body Schema (JSON)</label>
+                        <textarea 
+                            className="w-full h-32 text-xs font-mono rounded-md border bg-muted/20 p-3 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                            value={displayJson(formData.bodySchema)}
+                            onChange={(e) => handleJsonUpdate('bodySchema', e.target.value)}
+                            placeholder={'{\n  "amount": "number"\n}'}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function KeyValuePairEditor({ items, onChange, placeholder }: any) {
+    const handleAdd = () => onChange([...items, { key: '', value: '' }])
+    const handleRemove = (idx: number) => onChange(items.filter((_: any, i: number) => i !== idx))
+    const handleUpdate = (idx: number, field: string, value: string) => {
+        const newItems = [...items]
+        newItems[idx][field] = value
+        onChange(newItems)
+    }
+
+    return (
+        <div className="space-y-2">
+            {items.map((item: any, idx: number) => (
+                <div key={idx} className="flex gap-2 group animate-in slide-in-from-left-2 fade-in duration-200">
+                    <input 
+                        className="flex-1 text-[11px] font-mono p-2 border rounded-md bg-background focus:ring-2 focus:ring-primary/20 outline-none" 
+                        placeholder={placeholder || "key"}
+                        value={item.key}
+                        onChange={(e) => handleUpdate(idx, 'key', e.target.value)}
+                    />
+                    <input 
+                        className="flex-1 text-[11px] font-mono p-2 border rounded-md bg-background focus:ring-2 focus:ring-primary/20 outline-none" 
+                        placeholder="value"
+                        value={item.value}
+                        onChange={(e) => handleUpdate(idx, 'value', e.target.value)}
+                    />
+                    <button 
+                        onClick={() => handleRemove(idx)}
+                        className="p-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            ))}
+            <button 
+                onClick={handleAdd}
+                className="w-full py-2 border-2 border-dashed rounded-md text-[10px] font-bold text-muted-foreground hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-1.5 uppercase tracking-widest"
+            >
+                <Plus size={12} /> Add Item
+            </button>
         </div>
     )
 }

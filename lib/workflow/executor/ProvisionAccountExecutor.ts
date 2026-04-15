@@ -170,6 +170,34 @@ export async function ProvisionAccountExecutor(
             ...(application.submitted_data || {})
         };
 
+        // --- ACCOUNT OFFICER RESOLUTION ---
+        let accountOfficerCode = baseData.AccountOfficerCode || '';
+        
+        if (!accountOfficerCode) {
+            const approverId = env.getInput('approver_id');
+            if (approverId) {
+                const approver = await payload.findByID({
+                    collection: 'users',
+                    id: approverId,
+                    depth: 1
+                });
+                
+                if (approver?.accountOfficer && typeof approver.accountOfficer === 'object') {
+                    accountOfficerCode = (approver.accountOfficer as any).code;
+                    console.log(`[ProvisionAccountExecutor] Resolved OfficerCode from Approver (${approver.email}): ${accountOfficerCode}`);
+                }
+            }
+        }
+
+        if (!accountOfficerCode) {
+            accountOfficerCode = settings?.sync?.acctMgmt?.defaultAccountOfficerCode || 'TEL0001';
+            console.log(`[ProvisionAccountExecutor] Using fallback OfficerCode: ${accountOfficerCode}`);
+        }
+
+        // Add to baseData for schema mapping
+        (baseData as any).AccountOfficerCode = accountOfficerCode;
+        // ----------------------------------
+
         const provisioningData = applySchemaMapping(baseData, finalMapping.schemaMapping);
         env.log.info(`PROVISION_ACCOUNT: Calling core banking with tracking ref: ${trackingRef}`);
 

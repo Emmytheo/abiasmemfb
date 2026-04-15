@@ -48,7 +48,8 @@
                     "Address": { "type": "string" },
                     "NationalIdentificationNumber": { "type": "string", "description": "11-digit NIN" },
                     "Email": { "type": "string" },
-                    "BVN": { "type": "string", "description": "11-digit BVN" }
+                    "BVN": { "type": "string", "description": "11-digit BVN" },
+                    "AccountOfficerCode": { "type": "string", "description": "Staff code for the account officer. Fallback to SiteSettings.defaultAccountOfficerCode if missing." }
                 },
                 "required": ["TransactionTrackingRef", "AccountOpeningTrackingRef", "ProductCode", "LastName", "OtherNames", "PhoneNo", "BVN"]
             },
@@ -964,6 +965,28 @@
                 "ProductCode": "externalCode",
                 "amount": "loan.principalAmount",
                 "tenure": "loan.tenureMonths"
+            }
+        },
+        {
+            "name": "Get Account Officers",
+            "description": "Retrieves the list of account officers/staff for the institution.",
+            "method": "GET",
+            "path": "/BankOneWebAPI/api/AccountOfficer/Get/2",
+            "authOverride": "QUERY_PARAM",
+            "authQueryParamKey": "authToken",
+            "status": "active",
+            "queryParamsSchema": {
+                "type": "object",
+                "properties": {
+                    "mfbCode": { "type": "string", "description": "The institution code (e.g. '0017' for Abia MFB)" }
+                },
+                "required": ["mfbCode"]
+            },
+            "responseSchema": {
+                "successPath": "",
+                "outputs": {
+                    "officers": ""
+                }
             }
         }
     ]

@@ -114,6 +114,7 @@ export const ProductApplications: CollectionConfig = {
                                         inputs: {
                                             user_id: doc.user_id,
                                             application_id: doc.id,
+                                            approver_id: req.user?.id || null,
                                         },
                                         outputs: {},
                                         getInput: (key: string) => env.inputs[key],
