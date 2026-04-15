@@ -193,6 +193,10 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
 
                 if (res.ok) {
                     const data = await res.json();
+                    
+                    // Specific to BankOne/Qore: payload is often in .Payload
+                    const apiData = data.Payload || data;
+                    
                     if (event.mappingConfig) {
                         const updates: Record<string, string> = {};
                         for (const [targetField, template] of Object.entries(event.mappingConfig)) {
@@ -200,11 +204,17 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                             // Support nested path resolution via {{$response.path.to.prop}}
                             if (typeof template === 'string' && template.includes('{{$response.')) {
                                 const path = template.replace('{{$response.', '').replace('}}', '');
-                                resolvedValue = path.split('.').reduce((acc, part) => acc && acc[part], data);
+                                resolvedValue = path.split('.').reduce((acc, part) => acc && acc[part], apiData);
                             }
                             updates[targetField] = String(resolvedValue || '');
                         }
                         setFormData(prev => ({ ...prev, ...updates }));
+                        
+                        // Store the resolved label for UI display
+                        const resolvedLabel = updates[event.fieldName] || apiData.fullName || apiData.AccountName || apiData.accountName;
+                        if (resolvedLabel) {
+                            setValidationData(prev => ({ ...prev, [event.fieldName]: resolvedLabel }));
+                        }
                     }
                     toast.success('Information resolved successfully');
                 } else {
@@ -478,6 +488,7 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                         id={id}
                         value={formData[field.name] || ""}
                         onChange={(e) => handleInputChange(field.name, e.target.value)}
+                        onBlur={() => handleBlur(field.name)}
                         className="w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer"
                     >
                         <option value="" disabled>Select {field.label.toLowerCase()}...</option>

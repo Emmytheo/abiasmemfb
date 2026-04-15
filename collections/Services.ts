@@ -106,7 +106,7 @@ export const Services: CollectionConfig = {
                     name: 'type',
                     type: 'select',
                     required: true,
-                    options: ['text', 'number', 'email', 'select', 'destination_bank_lookup'],
+                    options: ['text', 'number', 'email', 'select', 'destination_bank_lookup', 'beneficiary_select'],
                 },
                 {
                     name: 'required',
@@ -150,7 +150,7 @@ export const Services: CollectionConfig = {
                     admin: { description: 'Dynamic actions triggered when interacting with this field.' },
                     fields: [
                         { name: 'trigger', type: 'select', options: ['onChange', 'onBlur', 'onLoad'], required: true },
-                        { name: 'action', type: 'select', options: ['EXECUTE_ENDPOINT', 'SET_VALUE'], required: true },
+                        { name: 'action', type: 'select', options: ['EXECUTE_ENDPOINT', 'SET_VALUE', 'SET_VALUES'], required: true },
                         { name: 'endpointId', type: 'relationship', relationTo: 'endpoints', admin: { condition: (_, siblingData) => siblingData?.action === 'EXECUTE_ENDPOINT' } },
                         { name: 'mappingConfig', type: 'json', admin: { description: 'JSON describing how API response or static data maps back to form fields.' } }
                     ]

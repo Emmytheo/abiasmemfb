@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { importRegistryBundle } from '../lib/registry/sdl';
+import { loadEnvConfig } from '@next/env';
+loadEnvConfig(process.cwd());
 
 const run = async () => {
     try {

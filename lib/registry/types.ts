@@ -24,6 +24,7 @@ export interface ServiceSDL {
     fee_type?: 'flat' | 'percentage' | 'none';
     fee_value?: number;
     form_schema: FormField[];
+    service_intent?: 'transfer_intra' | 'transfer_interbank' | 'transfer_international' | 'none';
     status?: 'active' | 'inactive';
 }
 

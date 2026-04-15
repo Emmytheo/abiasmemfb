@@ -107,7 +107,8 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
                         execution_workflow: executionWf?.id || undefined,
                         form_schema: normalizedSchema.length > 0 ? normalizedSchema : (target.form_schema || []),
                         fee_type: svc.fee_type || target.fee_type,
-                        fee_value: svc.fee_value ?? target.fee_value
+                        fee_value: svc.fee_value ?? target.fee_value,
+                        service_intent: svc.service_intent || target.service_intent
                     }
                 });
             } else {
@@ -121,6 +122,7 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
                         form_schema: normalizedSchema,
                         fee_type: svc.fee_type || 'none',
                         fee_value: svc.fee_value || 0,
+                        service_intent: svc.service_intent || 'none',
                         status: svc.status || 'active'
                     }
                 });

@@ -6,6 +6,7 @@
             "name": "Intra-Bank Funds Transfer",
             "categorySlug": "transfers",
             "provider_service_code": "QORE-INTRA-TRF",
+            "service_intent": "transfer_intra",
             "fee_type": "none",
             "fee_value": 0,
             "status": "active",
@@ -34,7 +35,16 @@
                     "type": "text",
                     "required": true,
                     "placeholder": "Enter 10-digit Abia MFB Account",
-                    "triggers_validation": true
+                    "events": [
+                        {
+                            "trigger": "onBlur",
+                            "action": "EXECUTE_ENDPOINT",
+                            "endpointId": "Get Customer By Account Number",
+                            "mappingConfig": {
+                                "fullName": "destination_name"
+                            }
+                        }
+                    ]
                 },
                 {
                     "id": "destination_name",
@@ -65,6 +75,7 @@
             "name": "Inter-Bank Funds Transfer (NIP)",
             "categorySlug": "transfers",
             "provider_service_code": "QORE-NIP-TRF",
+            "service_intent": "transfer_interbank",
             "fee_type": "flat",
             "fee_value": 50,
             "status": "active",
@@ -101,7 +112,16 @@
                     "type": "text",
                     "required": true,
                     "placeholder": "Enter 10-digit Account Number",
-                    "triggers_validation": true
+                    "events": [
+                        {
+                            "trigger": "onBlur",
+                            "action": "EXECUTE_ENDPOINT",
+                            "endpointId": "Inter-Bank Name Enquiry",
+                            "mappingConfig": {
+                                "AccountName": "destination_name"
+                            }
+                        }
+                    ]
                 },
                 {
                     "id": "destination_name",
@@ -132,6 +152,7 @@
             "name": "International Wire Transfer (SWIFT)",
             "categorySlug": "transfers",
             "provider_service_code": "QORE-SWIFT-TRF",
+            "service_intent": "transfer_international",
             "fee_type": "percentage",
             "fee_value": 0.5,
             "status": "active",
