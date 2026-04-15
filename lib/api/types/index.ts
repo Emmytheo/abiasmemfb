@@ -396,7 +396,7 @@ export interface ApiAdapter {
 
     // Blog
     getBlogPosts: (params?: any) => Promise<BlogPost[]>;
-    getBlogPostBySlug: (slug: string) => Promise<BlogPost | null>;
+    getBlogPostBySlug: (slug: string) => Promise<BlogPost | undefined>;
     getFeaturedPosts: () => Promise<BlogPost[]>;
     getPostsByCategory: (category: string) => Promise<BlogPost[]>;
     getPopularPosts: () => Promise<BlogPost[]>;

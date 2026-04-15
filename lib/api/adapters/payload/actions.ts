@@ -1328,8 +1328,21 @@ export const getServicesByCategory = async (categorySlug: string): Promise<Servi
     const payload = await initPayload();
     const { docs: cats } = await payload.find({ collection: 'service-categories' as any, where: { slug: { equals: categorySlug } }, limit: 1 });
     if (!cats.length) return [];
-    const { docs } = await payload.find({ collection: 'services' as any, where: { and: [{ category: { equals: cats[0].id } }, { status: { equals: 'active' } }] }, depth: 1, limit: 200 });
-    return docs.map((doc: any) => ({ id: String(doc.id), name: doc.name || 'Service', status: doc.status || 'active' })) as any;
+    const { docs } = await payload.find({ collection: 'services' as any, where: { and: [{ category: { equals: cats[0].id } }, { status: { equals: 'active' } }] }, depth: 2, limit: 200 });
+    return docs.map((doc: any) => ({
+        id: String(doc.id),
+        name: doc.name || 'Service',
+        status: doc.status || 'active',
+        fee_type: doc.fee_type || 'none',
+        fee_value: doc.fee_value ?? 0,
+        form_schema: Array.isArray(doc.form_schema) ? doc.form_schema : [],
+        service_intent: doc.service_intent || 'none',
+        provider_service_code: doc.provider_service_code || '',
+        category: typeof doc.category === 'object' ? doc.category?.name : doc.category,
+        category_id: typeof doc.category === 'object' ? String(doc.category?.id) : String(doc.category),
+        validation_workflow: doc.validation_workflow,
+        execution_workflow: doc.execution_workflow,
+    })) as any;
 };
 
 export const getAllServices = async (): Promise<Service[]> => {
@@ -1486,10 +1499,10 @@ export const getBlogPosts = async (params?: any): Promise<BlogPost[]> => {
     } catch (e) { return []; }
 };
 
-export const getBlogPostBySlug = async (slug: string): Promise<BlogPost | null> => {
+export const getBlogPostBySlug = async (slug: string): Promise<BlogPost | undefined> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'posts' as any, where: { slug: { equals: slug } }, limit: 1 });
-    return (docs[0] as any) || null;
+    return (docs[0] as any) || undefined;
 };
 
 export const getFeaturedPosts = async (): Promise<BlogPost[]> => (await getBlogPosts()).slice(0, 3);

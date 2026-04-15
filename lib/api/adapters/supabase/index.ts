@@ -228,7 +228,7 @@ export const SupabaseAdapter: ApiAdapter = {
     },
     getBlogPostBySlug: async (slug) => {
         throw new Error("Supabase Adapter not fully implemented");
-        return null; // Ensure null return for type safety
+        return undefined; // Ensure undefined return for type safety
     },
     getFeaturedPosts: async () => {
         throw new Error("Supabase Adapter not fully implemented");

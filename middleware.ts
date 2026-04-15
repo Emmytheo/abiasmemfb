@@ -15,6 +15,7 @@ const PUBLIC_PATTERNS = [
     "/business",
     "/product",
     "/api/auth",
+    "/api/registry",
 ];
 
 // Admin dashboard routes — require 'admin' role

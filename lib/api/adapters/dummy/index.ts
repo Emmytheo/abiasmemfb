@@ -443,7 +443,7 @@ export const DummyAdapter: ApiAdapter = {
     },
 
     getBlogPostBySlug: async (slug) => {
-        return MOCK_POSTS.find(p => p.slug === slug) || null;
+        return MOCK_POSTS.find(p => p.slug === slug) || undefined;
     },
 
     getFeaturedPosts: async () => {
