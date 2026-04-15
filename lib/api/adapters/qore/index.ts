@@ -27,4 +27,8 @@ export const QoreAdapter: ApiAdapter = {
     getAccountTransactions: (...args) => actions.getAccountTransactions(...args),
     getTransactionById: (...args) => actions.getTransactionById(...args),
     getTransactionsByCategory: (...args) => actions.getTransactionsByCategory(...args),
+    
+    // Explicitly inherit Account Officer methods from Payload (unless Qore needs specialized logic)
+    getAllAccountOfficers: () => PayloadAdapter.getAllAccountOfficers(),
+    linkOfficerToUser: (officerId, userId) => PayloadAdapter.linkOfficerToUser(officerId, userId),
 };

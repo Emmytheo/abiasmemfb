@@ -18,7 +18,8 @@ import {
     Service, 
     Beneficiary, 
     SiteSettings, 
-    CustomerAudit 
+    CustomerAudit,
+    AccountOfficer
 } from '../../types';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
@@ -633,6 +634,70 @@ export const verifyCustomerBVN = async (bvn: string): Promise<any> => {
 };
 
 export const verifyIdentity = verifyCustomerBVN;
+
+// ==========================================
+// ACCOUNT OFFICERS
+// ==========================================
+
+export const getAllAccountOfficers = async (): Promise<AccountOfficer[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'account-officers' as any,
+            limit: 1000,
+            sort: 'name',
+            overrideAccess: true,
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            name: doc.name,
+            code: doc.code,
+            branch: doc.branch,
+            gender: doc.gender,
+            phone: doc.phone,
+            email: doc.email,
+            linked_user_id: typeof doc.linked_user === 'object' ? doc.linked_user?.id : doc.linked_user,
+            created_at: doc.createdAt,
+            updated_at: doc.updatedAt,
+        } as AccountOfficer));
+    } catch (e) {
+        console.error('Payload getAllAccountOfficers Error:', e);
+        return [];
+    }
+};
+
+export const linkOfficerToUser = async (officerId: string, userId: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        
+        // 1. Link the officer record to the user
+        await payload.update({
+            collection: 'account-officers' as any,
+            id: officerId,
+            data: {
+                linked_user: userId
+            } as any,
+            overrideAccess: true,
+        });
+
+        // 2. Link the user record back to the officer (for fast resolution during provisioning)
+        await payload.update({
+            collection: 'users' as any,
+            id: userId,
+            data: {
+                accountOfficer: officerId
+            } as any,
+            overrideAccess: true,
+        });
+
+        revalidatePath('/account-officers');
+        revalidatePath('/dashboard');
+        return true;
+    } catch (e) {
+        console.error('Payload linkOfficerToUser Error:', e);
+        return false;
+    }
+};
 
 export const createCoreBankingProfile = async (data: { 
     userId: string;
@@ -1400,7 +1465,7 @@ export const updateSiteSettings = async (data: Partial<SiteSettings>): Promise<S
 // BLOG
 // ==========================================
 
-export const getBlogPosts = async (): Promise<BlogPost[]> => {
+export const getBlogPosts = async (params?: any): Promise<BlogPost[]> => {
     try {
         const payload = await initPayload();
         const { docs } = await payload.find({ 
@@ -1421,10 +1486,10 @@ export const getBlogPosts = async (): Promise<BlogPost[]> => {
     } catch (e) { return []; }
 };
 
-export const getBlogPostBySlug = async (slug: string): Promise<BlogPost | undefined> => {
+export const getBlogPostBySlug = async (slug: string): Promise<BlogPost | null> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'posts' as any, where: { slug: { equals: slug } }, limit: 1 });
-    return docs[0] as any;
+    return (docs[0] as any) || null;
 };
 
 export const getFeaturedPosts = async (): Promise<BlogPost[]> => (await getBlogPosts()).slice(0, 3);

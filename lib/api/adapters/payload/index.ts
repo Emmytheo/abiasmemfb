@@ -109,6 +109,10 @@ export const PayloadAdapter: ApiAdapter = {
     // Careers
     getOpenPositions: (...args) => actions.getOpenPositions(...args),
 
+    // Account Officers
+    getAllAccountOfficers: () => actions.getAllAccountOfficers(),
+    linkOfficerToUser: (officerId, userId) => actions.linkOfficerToUser(officerId, userId),
+
     // Endpoints
     getAllEndpoints: (...args) => actions.getAllEndpoints(...args),
 

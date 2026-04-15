@@ -228,6 +228,7 @@ export const SupabaseAdapter: ApiAdapter = {
     },
     getBlogPostBySlug: async (slug) => {
         throw new Error("Supabase Adapter not fully implemented");
+        return null; // Ensure null return for type safety
     },
     getFeaturedPosts: async () => {
         throw new Error("Supabase Adapter not fully implemented");
@@ -244,6 +245,14 @@ export const SupabaseAdapter: ApiAdapter = {
 
     // Careers
     getOpenPositions: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+
+    // Account Officers
+    getAllAccountOfficers: async () => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    linkOfficerToUser: async (officerId: string, userId: string) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
     // Pages

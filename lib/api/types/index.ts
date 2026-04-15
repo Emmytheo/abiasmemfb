@@ -51,6 +51,19 @@ export interface Customer {
     updated_at: string;
 }
 
+export interface AccountOfficer {
+    id: string;
+    name: string;
+    code: string;
+    branch?: string;
+    gender?: string;
+    phone?: string;
+    email?: string;
+    linked_user_id?: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Loan {
     id: string;
     user_id: string;
@@ -382,12 +395,16 @@ export interface ApiAdapter {
     updateSiteSettings: (data: Partial<SiteSettings>) => Promise<SiteSettings>;
 
     // Blog
-    getBlogPosts: () => Promise<BlogPost[]>;
-    getBlogPostBySlug: (slug: string) => Promise<BlogPost | undefined>;
+    getBlogPosts: (params?: any) => Promise<BlogPost[]>;
+    getBlogPostBySlug: (slug: string) => Promise<BlogPost | null>;
     getFeaturedPosts: () => Promise<BlogPost[]>;
-    getPostsByCategory: (categorySlug: string) => Promise<BlogPost[]>;
+    getPostsByCategory: (category: string) => Promise<BlogPost[]>;
     getPopularPosts: () => Promise<BlogPost[]>;
     getAllTags: () => Promise<string[]>;
+
+    // Account Officers
+    getAllAccountOfficers: () => Promise<AccountOfficer[]>;
+    linkOfficerToUser: (officerId: string, userId: string) => Promise<boolean>;
 
     // Careers
     getOpenPositions: () => Promise<JobPosition[]>;

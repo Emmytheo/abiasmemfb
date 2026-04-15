@@ -443,8 +443,7 @@ export const DummyAdapter: ApiAdapter = {
     },
 
     getBlogPostBySlug: async (slug) => {
-        await delay(200);
-        return MOCK_POSTS.find((p) => p.slug === slug);
+        return MOCK_POSTS.find(p => p.slug === slug) || null;
     },
 
     getFeaturedPosts: async () => {
@@ -479,6 +478,16 @@ export const DummyAdapter: ApiAdapter = {
     getOpenPositions: async () => {
         await delay(500);
         return MOCK_JOBS;
+    },
+
+    // Account Officers
+    getAllAccountOfficers: async () => {
+        await delay(300);
+        return [];
+    },
+    linkOfficerToUser: async (officerId: string, userId: string) => {
+        await delay(500);
+        return true;
     },
 
     // Beneficiaries

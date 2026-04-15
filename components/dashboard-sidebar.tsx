@@ -26,6 +26,7 @@ import {
     FileText,
     Play,
     Users,
+    UserSquare2,
     RefreshCw,
 } from "lucide-react";
 
@@ -90,6 +91,11 @@ const navGroups = [
                 title: "Customers",
                 url: "/customers",
                 icon: Users,
+            },
+            {
+                title: "Account Officers",
+                url: "/account-officers",
+                icon: UserSquare2,
             },
         ],
     },
