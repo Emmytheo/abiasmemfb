@@ -1373,7 +1373,16 @@ export const createServiceCategory = async (data: Omit<ServiceCategory, 'id' | '
 export const updateServiceCategory = async (id: string, data: Partial<ServiceCategory>): Promise<ServiceCategory> => {
     const payload = await initPayload();
     const doc = await payload.update({ collection: 'service-categories' as any, id, data: data as any });
-    return { id: String(doc.id), name: (doc as any).name } as any;
+    return {
+        id: String(doc.id),
+        name: (doc as any).name,
+        slug: (doc as any).slug,
+        description: (doc as any).description,
+        icon: (doc as any).icon,
+        status: (doc as any).status,
+        ui_layout: (doc as any).ui_layout,
+        created_at: (doc as any).created_at,
+    } as any;
 };
 
 export const deleteServiceCategory = async (id: string): Promise<boolean> => {
@@ -1412,7 +1421,22 @@ export const updateService = async (id: string, data: Partial<Service>): Promise
     }
 
     const doc = await payload.update({ collection: 'services' as any, id, data: payloadData });
-    return { id: String(doc.id), name: (doc as any).name } as any;
+    
+    // Return full mapped object
+    return {
+        id: String(doc.id),
+        name: doc.name,
+        status: doc.status,
+        fee_type: doc.fee_type,
+        fee_value: doc.fee_value,
+        form_schema: doc.form_schema || [],
+        provider_service_code: doc.provider_service_code,
+        category: typeof doc.category === 'object' ? doc.category?.name : doc.category,
+        category_id: typeof doc.category === 'object' ? String(doc.category?.id) : String(doc.category),
+        validation_workflow: doc.validation_workflow,
+        execution_workflow: doc.execution_workflow,
+        service_intent: (doc as any).service_intent,
+    } as any;
 };
 
 export const deleteService = async (id: string): Promise<boolean> => {

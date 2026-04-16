@@ -5,8 +5,8 @@ import path from 'path';
 import { importRegistryBundle } from './lib/registry/sdl';
 
 // Manually load environment to bypass Payload internal loadEnvConfig issue
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+// import dotenv from 'dotenv';
+// dotenv.config({ path: '.env.local' });
 
 async function runSync() {
     console.log("[SYNC] Initializing Payload...");
