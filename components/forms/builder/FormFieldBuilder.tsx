@@ -234,6 +234,7 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
                                                                     <option value="onChange">On Change</option>
                                                                     <option value="onBlur">On Blur</option>
                                                                     <option value="onLoad">On Load</option>
+                                                                    <option value="onCondition">On Condition</option>
                                                                 </select>
                                                                 <select 
                                                                     value={ev.action}
@@ -250,6 +251,37 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
                                                                     updateField(index, { events: field.events.filter((_: any, i: number) => i !== eIdx) })
                                                                 }} className="text-destructive p-1 hover:bg-destructive/10 rounded transition-colors"><Trash size={12} /></button>
                                                             </div>
+
+                                                            {ev.trigger === 'onCondition' && (
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <select 
+                                                                        value={ev.condition?.type || 'length'}
+                                                                        onChange={(e) => {
+                                                                            const eCopy = [...field.events];
+                                                                            eCopy[eIdx].condition = { ...(eCopy[eIdx].condition || {}), type: e.target.value };
+                                                                            updateField(index, { events: eCopy })
+                                                                        }}
+                                                                        className="bg-background border rounded h-7 text-[10px] px-1 outline-none"
+                                                                    >
+                                                                        <option value="length">Char Length</option>
+                                                                        <option value="regex">Regex Match</option>
+                                                                        <option value="regex_not_match">Regex Not</option>
+                                                                    </select>
+                                                                    <input 
+                                                                        type="text" 
+                                                                        placeholder="Value..."
+                                                                        value={ev.condition?.value || ''}
+                                                                        onChange={(e) => {
+                                                                            const eCopy = [...field.events];
+                                                                            eCopy[eIdx].condition = { ...(eCopy[eIdx].condition || {}), value: e.target.value };
+                                                                            updateField(index, { events: eCopy })
+                                                                        }}
+                                                                        className="bg-background border rounded h-7 text-[10px] px-2 outline-none"
+                                                                    />
+                                                                </div>
+                                                            )}
+
+                                                            <div className="flex gap-2">
                                                             {ev.action === 'EXECUTE_ENDPOINT' && (
                                                                 <select 
                                                                     value={ev.endpointId || ''}
@@ -277,7 +309,8 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
                                                                 className="w-full bg-background border rounded h-12 p-1 text-[9px] font-mono outline-none"
                                                             />
                                                         </div>
-                                                    ))}
+                                                    </div>
+                                                ))}
                                                 </div>
                                             </div>
                                         </div>

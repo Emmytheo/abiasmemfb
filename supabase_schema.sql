@@ -1,5 +1,5 @@
 -- ==============================================================================
--- ABIA MFB - Supabase Transactional Schema Setup
+-- ABIASMEMFB - Supabase Transactional Schema Setup
 -- Run this script in the Supabase SQL Editor.
 -- ==============================================================================
 

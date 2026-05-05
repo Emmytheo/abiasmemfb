@@ -1488,6 +1488,63 @@ export const getPageBySlug = async (slug: string): Promise<any | null> => {
     return docs[0] || null;
 };
 
+export const getPromotions = async (placement?: string): Promise<any[]> => {
+    const payload = await initPayload();
+    const where: any = { isActive: { equals: true } };
+    if (placement) {
+        where.placement = { equals: placement };
+    }
+    const { docs } = await payload.find({ 
+        collection: 'promotions' as any, 
+        where, 
+        limit: 10,
+        sort: '-createdAt'
+    });
+    return docs.map((doc: any) => {
+        // Normalize image data for the frontend
+        let imageData = doc.mediaImage;
+        if (doc.imageSource === 'url' && doc.externalUrl) {
+            imageData = { url: doc.externalUrl };
+        }
+
+        return {
+            id: String(doc.id),
+            title: doc.title,
+            description: doc.description,
+            image: imageData,
+            link: doc.link,
+            isActive: doc.isActive,
+            placement: doc.placement,
+            updatedAt: doc.updatedAt,
+            createdAt: doc.createdAt
+        };
+    });
+};
+
+export const createPromotion = async (data: any): Promise<any> => {
+    try {
+        const payload = await initPayload();
+        console.log('--- CREATE PROMOTION DATA ---', JSON.stringify(data, null, 2));
+        const doc = await payload.create({ collection: 'promotions' as any, data });
+        return { ...data, id: String(doc.id) };
+    } catch (error: any) {
+        console.error('--- PAYLOAD ERROR ---', JSON.stringify(error, null, 2));
+        throw error;
+    }
+};
+
+export const updatePromotion = async (id: string, data: any): Promise<any> => {
+    const payload = await initPayload();
+    const doc = await payload.update({ collection: 'promotions' as any, id, data });
+    return { ...doc, id: String(doc.id) };
+};
+
+export const deletePromotion = async (id: string): Promise<boolean> => {
+    const payload = await initPayload();
+    await payload.delete({ collection: 'promotions' as any, id });
+    return true;
+};
+
 export const getSiteSettings = async (): Promise<SiteSettings | null> => {
     const payload = await initPayload();
     return await payload.findGlobal({ slug: 'site-settings', depth: 1 }) as any;

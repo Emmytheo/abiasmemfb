@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 // Generate a pseudo-random account number
 function generateAccountNumber() {
-    const prefix = "30"; // Abia MFB prefix
+    const prefix = "30"; // ABIASMEMFB prefix
     const rest = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join("");
     return prefix + rest;
 }

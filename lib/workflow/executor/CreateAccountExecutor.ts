@@ -8,7 +8,7 @@
 import type { ExecutionEnvironment } from '../types/executor'
 
 function generateNUBAN(): string {
-    const bankCode = '033' // Simulated bank code (3 digits for ABIA MFB)
+    const bankCode = '033' // Simulated bank code (3 digits for ABIASMEMFB)
     const digits = Array.from({ length: 7 }, () => Math.floor(Math.random() * 10)).join('')
     return bankCode + digits
 }

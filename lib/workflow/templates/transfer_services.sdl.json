@@ -1,6 +1,7 @@
 {
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Harmonized Transfer Services with Event-Driven Beneficiary Selection",
+    "products": [],
     "services": [
         {
             "name": "Intra-Bank Funds Transfer",
@@ -34,12 +35,13 @@
                     "label": "Target Account Number",
                     "type": "text",
                     "required": true,
-                    "placeholder": "Enter 10-digit Abia MFB Account",
+                    "placeholder": "Enter 10-digit ABIASMEMFB Account",
                     "events": [
                         {
-                            "trigger": "onBlur",
+                            "trigger": "onCondition",
+                            "condition": { "type": "length", "value": 10 },
                             "action": "EXECUTE_ENDPOINT",
-                            "endpointId": "Get Customer By Account Number",
+                            "endpointId": "Account Enquiry",
                             "mappingConfig": {
                                 "fullName": "destination_name"
                             }
@@ -114,7 +116,8 @@
                     "placeholder": "Enter 10-digit Account Number",
                     "events": [
                         {
-                            "trigger": "onBlur",
+                            "trigger": "onCondition",
+                            "condition": { "type": "length", "value": 10 },
                             "action": "EXECUTE_ENDPOINT",
                             "endpointId": "Inter-Bank Name Enquiry",
                             "mappingConfig": {

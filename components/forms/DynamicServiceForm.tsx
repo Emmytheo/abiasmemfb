@@ -50,10 +50,26 @@ export function DynamicServiceForm({
             setFieldErrors(prev => ({ ...prev, [name]: null }))
         }
         
-        // Handle onChange events
+        // Handle events
         const field = fields.find(f => f.name === name)
         if (field?.events) {
             handleEvents(field, 'onChange', value)
+
+            // Handle onCondition triggers
+            const conditionEvents = field.events.filter(e => e.trigger === 'onCondition')
+            for (const event of conditionEvents) {
+                if (!event.condition) continue
+                const { type, value: targetValue } = event.condition
+                const currentVal = String(value || '')
+                let meets = false
+                if (type === 'length' && currentVal.length === Number(targetValue)) meets = true
+                else if (type === 'regex' && new RegExp(String(targetValue)).test(currentVal)) meets = true
+                else if (type === 'regex_not_match' && !new RegExp(String(targetValue)).test(currentVal)) meets = true
+                
+                if (meets) {
+                    handleEvents(field, 'onCondition', value)
+                }
+            }
         }
     }
 
@@ -100,7 +116,7 @@ export function DynamicServiceForm({
         return true
     }
 
-    const handleEvents = async (field: FormFieldSchema, trigger: 'onChange' | 'onBlur' | 'onLoad', value: any) => {
+    const handleEvents = async (field: FormFieldSchema, trigger: 'onChange' | 'onBlur' | 'onLoad' | 'onCondition', value: any) => {
         const events = field.events?.filter(e => e.trigger === trigger)
         if (!events || events.length === 0) return
 

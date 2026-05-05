@@ -38,7 +38,7 @@ export default function Page() {
 
         <div className="relative z-10 w-full max-w-lg text-center flex flex-col items-center">
             <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md mb-8 ring-1 ring-white/20 shadow-2xl">
-                <Logo className="h-16 w-auto drop-shadow-lg" />
+                <Logo className="h-16 w-auto drop-shadow-lg" textClassName="text-white" />
             </div>
             <h2 className="text-4xl lg:text-5xl font-bold tracking-tight text-white mb-6 leading-tight font-display">
                 Empowering Your Financial Future

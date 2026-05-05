@@ -4,6 +4,10 @@ import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, Fil
 import { Newsletter } from "@/components/newsletter";
 import { SuccessStories } from "@/components/home/success-stories";
 import { NewsInsights } from "@/components/home/news-insights";
+import { PromotionsShowcase } from "@/components/home/promotions-showcase";
+import { ProductsShowcase } from "@/components/home/products-showcase";
+import { HeroExpository } from "@/components/home/hero-expository";
+import { SpotlightSection } from "@/components/home/spotlight-section";
 import { Suspense } from "react";
 import { api } from "@/lib/api";
 import { PageRenderer } from "@/components/payload/PageRenderer";
@@ -20,140 +24,25 @@ async function HomeContent() {
   }
 
   return (
-    <>
-      {/* Hero Section */}
-      <section className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-fixed"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1579621970588-a35d0e7ab9b6?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80')" }}
-        ></div>
-        <div
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(color-mix(in srgb, hsl(var(--primary)), transparent 20%), color-mix(in srgb, hsl(var(--primary)), transparent 40%))" }}
-        ></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
-          <span className="inline-block py-1 px-3 rounded-full bg-accent/20 border border-accent/40 text-accent text-sm font-semibold mb-6 animate-fade-in-up">
-            Building Tomorrow, Today
-          </span>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold text-white mb-6 leading-tight tracking-tight">
-            Empowering Your <br />
-            <span className="text-accent italic">Financial Future</span>
-          </h1>
-          <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-200 font-light mb-10">
-            We create financial giants by providing bespoke microfinance solutions for entrepreneurs and small
-            business owners across Abia State.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold rounded-full text-white bg-primary border-2 border-primary hover:bg-transparent hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
-              href="/personal-banking"
-            >
-              Open An Account
-            </Link>
-            <Link
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold rounded-full text-white border-2 border-white/30 bg-white/10 hover:bg-white hover:text-primary backdrop-blur-sm transition-all duration-300"
-              href="/business"
-            >
-              Explore Services
-            </Link>
-          </div>
-        </div>
-      </section>
+    <main className="flex flex-col min-h-screen overflow-x-hidden">
+      {/* Grand Hero/Expository Section */}
+      <HeroExpository />
 
-      {/* Stats Section */}
-      <section className="py-12 bg-background -mt-20 relative z-20">
+      {/* Featured Offers & Promotions Strip */}
+      <div className="relative z-30 bg-background pt-12 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-card text-card-foreground rounded-2xl shadow-xl p-8 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border -mt-20">
-            <div className="p-6 text-center">
-              <p className="text-4xl font-display font-bold text-primary mb-2">25k+</p>
-              <p className="text-muted-foreground font-medium">Active Customers</p>
+            <div className="flex items-center gap-4 mb-8">
+                <div className="h-[1px] flex-1 bg-border"></div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground whitespace-nowrap">Current Highlights</h3>
+                <div className="h-[1px] flex-1 bg-border"></div>
             </div>
-            <div className="p-6 text-center">
-              <p className="text-4xl font-display font-bold text-primary mb-2">98%</p>
-              <p className="text-muted-foreground font-medium">Customer Satisfaction</p>
-            </div>
-            <div className="p-6 text-center">
-              <p className="text-4xl font-display font-bold text-primary mb-2">₦1.5B+</p>
-              <p className="text-muted-foreground font-medium">Loans Disbursed</p>
-            </div>
-          </div>
         </div>
-      </section>
+        <PromotionsShowcase />
+      </div>
 
-      {/* Expertise Section */}
-      <section className="py-20 bg-background pattern-dots">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-accent font-semibold tracking-wide uppercase text-sm mb-3">Our Expertise</h2>
-            <h3 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-6">
-              Banking Tailored To You
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-lg hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-6">
-                <DollarSign />
-              </div>
-              <h4 className="text-xl font-bold text-foreground mb-3">Business Savings</h4>
-              <p className="text-muted-foreground leading-relaxed">
-                Secure your business future with competitive interest rates designed to help your capital grow
-                steadily.
-              </p>
-            </div>
-            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-lg hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-bl-full transition-transform group-hover:scale-150 duration-500"></div>
-              <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center text-accent mb-6 relative z-10">
-                <TrendingUp />
-              </div>
-              <h4 className="text-xl font-bold text-foreground mb-3 relative z-10">SME Loans</h4>
-              <p className="text-muted-foreground leading-relaxed relative z-10">
-                Fast, flexible financing solutions to scale your operations, purchase inventory, or expand your
-                reach.
-              </p>
-            </div>
-            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-lg hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center text-secondary mb-6">
-                <Smartphone />
-              </div>
-              <h4 className="text-xl font-bold text-foreground mb-3">Digital Banking</h4>
-              <p className="text-muted-foreground leading-relaxed">
-                Experience banking at your fingertips. Transfer funds, pay bills, and manage accounts 24/7.
-              </p>
-            </div>
-          </div>
+      <ProductsShowcase />
 
-          <div className="bg-primary rounded-3xl p-8 md:p-12 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary-foreground/5 rounded-full blur-3xl"></div>
-            <div className="max-w-2xl relative z-10">
-              <h3 className="text-2xl md:text-3xl font-display font-bold mb-4 text-primary-foreground">Flexible Financing</h3>
-              <p className="text-primary-foreground/90 text-lg mb-6">
-                We've simplified the loan application process to get you the capital you need without the usual
-                banking headaches.
-              </p>
-              <div className="flex flex-wrap gap-4 text-sm font-medium text-primary-foreground/80">
-                <span className="flex items-center gap-1">
-                  <CheckCircle size={16} /> Fast Approval
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle size={16} /> Low Interest
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle size={16} /> Secure
-                </span>
-              </div>
-            </div>
-            <div className="flex-shrink-0 relative z-10">
-              <Link
-                className="inline-flex items-center justify-center px-8 py-3 bg-white text-primary font-bold rounded-lg shadow-lg hover:bg-gray-50 transition-colors"
-                href="/business"
-              >
-                Start Your Application
-                <ArrowRight className="ml-2" size={20} />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <SpotlightSection />
 
       {/* App Section */}
       <section className="py-24 bg-muted overflow-hidden">
@@ -178,7 +67,7 @@ async function HomeContent() {
                     {/* Header bar fake */}
                     <div className="bg-primary px-4 py-3 flex justify-between items-center shadow-sm">
                       <Menu className="text-black w-5 h-5 cursor-pointer" />
-                      <span className="text-sm font-black tracking-tight text-black border-2 border-black rounded-sm px-2">ABIA MFB</span>
+                      <span className="text-sm font-black tracking-tight text-black border-2 border-black rounded-sm px-2">ABIASMEMFB</span>
                       <UserCircle className="text-black w-6 h-6 cursor-pointer" />
                     </div>
 
@@ -510,13 +399,13 @@ async function HomeContent() {
       <Suspense fallback={null}>
         <NewsInsights />
       </Suspense>
-    </>
+    </main>
   );
 }
 
 export default function Home() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center flex-col space-y-4"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div><p className="text-muted-foreground animate-pulse">Loading Abia MFB...</p></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center flex-col space-y-4"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div><p className="text-muted-foreground animate-pulse">Loading ABIASMEMFB...</p></div>}>
       <HomeContent />
     </Suspense>
   )

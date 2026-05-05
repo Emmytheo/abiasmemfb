@@ -28,6 +28,7 @@ import {
     Users,
     UserSquare2,
     RefreshCw,
+    Megaphone,
 } from "lucide-react";
 
 import {
@@ -136,6 +137,11 @@ const navGroups = [
                 title: "Page Builder",
                 url: "/admin/collections/pages",
                 icon: LayoutTemplate,
+            },
+            {
+                title: "Promotions & Adverts",
+                url: "/promotions",
+                icon: Megaphone,
             },
         ],
     },

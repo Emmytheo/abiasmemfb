@@ -332,7 +332,7 @@ export const DummyAdapter: ApiAdapter = {
             return [
                 {
                     id: 'svc_intra',
-                    name: 'Transfer to Abia MFB',
+                    name: 'Transfer to ABIASMEMFB',
                     category: 'cat_transfers',
                     provider_service_code: 'INTRA',
                     service_intent: 'transfer_intra',
@@ -436,6 +436,54 @@ export const DummyAdapter: ApiAdapter = {
         return null; // Mock returns null for pages to fallback to standard routing for now
     },
 
+    getPromotions: async (placement) => {
+        await delay(200);
+        return [
+            {
+                id: 'dummy_promo_1',
+                title: '5% Cash Back on Business Loans',
+                description: 'Apply for a business loan this month and get 5% cash back on your first repayment.',
+                image: { url: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80' },
+                link: '/business',
+                isActive: true,
+                placement: 'hero',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 'dummy_promo_2',
+                title: 'High Yield Savings',
+                description: 'Earn up to 10% per annum with our secure fixed deposit accounts.',
+                image: { url: 'https://images.unsplash.com/photo-1601597111158-2fceff292cdc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80' },
+                link: '/personal-banking',
+                isActive: true,
+                placement: 'hero',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+        ].filter(p => placement ? p.placement === placement : true) as any[];
+    },
+
+    createPromotion: async (data) => {
+        await delay(500);
+        return {
+            ...data,
+            id: `promo_${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        } as any;
+    },
+
+    updatePromotion: async (id, data) => {
+        await delay(500);
+        return { id, ...data, updatedAt: new Date().toISOString() } as any;
+    },
+
+    deletePromotion: async (id) => {
+        await delay(400);
+        return true;
+    },
+
     // Blog
     getBlogPosts: async () => {
         await delay(300);
@@ -520,7 +568,7 @@ export const DummyAdapter: ApiAdapter = {
     getSiteSettings: async () => {
         await delay(300);
         return {
-            siteTitle: 'Abia MFB',
+            siteTitle: 'ABIASMEMFB',
             sync: {
                 baselineAccounts: [{ accountNumber: '0123456789' }],
                 autoDiscoveryEnabled: true,

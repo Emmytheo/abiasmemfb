@@ -38,7 +38,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
 
 export const MOCK_USERS: User[] = [
     { id: 'usr_1', email: 'john@example.com', full_name: 'John Doe', role: 'customer', created_at: new Date().toISOString() },
-    { id: 'usr_2', email: 'admin@abia.com', full_name: 'Admin User', role: 'admin', created_at: new Date().toISOString() },
+    { id: 'usr_2', email: 'admin@abiasmemfb.com', full_name: 'Admin User', role: 'admin', created_at: new Date().toISOString() },
 ];
 
 export const MOCK_ACCOUNTS: Account[] = [
@@ -94,7 +94,7 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
 ];
 
 export const MOCK_CONFIGS: SystemConfig[] = [
-    { id: 'cfg_1', key: 'Home_Welcome_Text', value: 'Welcome to ABIA MFB - Your Trusted Partner', category: 'Global Content', updated_at: new Date().toISOString() },
+    { id: 'cfg_1', key: 'Home_Welcome_Text', value: 'Welcome to ABIASMEMFB - Your Trusted Partner', category: 'Global Content', updated_at: new Date().toISOString() },
     { id: 'cfg_2', key: 'Max_Loan_Amount', value: '5000000', category: 'Product Settings', updated_at: new Date().toISOString() },
 ];
 

@@ -135,6 +135,27 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
             for (const event of fieldSchema.events) {
                 if (event.trigger === 'onChange') {
                     await executeEvent(event, displayValue, extraData);
+                } else if (event.trigger === 'onCondition' && event.condition) {
+                    const { type, value: condValue } = event.condition;
+                    let met = false;
+                    
+                    try {
+                        if (type === 'length') {
+                            met = String(displayValue).length === Number(condValue);
+                        } else if (type === 'regex') {
+                            const regex = new RegExp(String(condValue));
+                            met = regex.test(String(displayValue));
+                        } else if (type === 'regex_not_match') {
+                            const regex = new RegExp(String(condValue));
+                            met = !regex.test(String(displayValue));
+                        }
+                    } catch (e) {
+                        console.error(`Error evaluating condition for field ${name}:`, e);
+                    }
+                    
+                    if (met) {
+                        await executeEvent(event, displayValue, extraData);
+                    }
                 }
             }
         }
@@ -312,8 +333,8 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                     (b.account_number?.includes(searchQuery));
                 
                 if (!matchesSearch) return false;
-                if (benType === 'internal') return b.bank_code === 'abia_mfb' || !b.bank_code;
-                if (benType === 'interbank') return b.bank_code && b.bank_code !== 'abia_mfb' && !b.is_international;
+                if (benType === 'internal') return b.bank_code === 'abiasmemfb' || !b.bank_code;
+                if (benType === 'interbank') return b.bank_code && b.bank_code !== 'abiasmemfb' && !b.is_international;
                 if (benType === 'international') return b.is_international;
                 return true;
             });
@@ -494,7 +515,7 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                         <option value="" disabled>Select {field.label.toLowerCase()}...</option>
                         {field.type === 'destination_bank_lookup' ? (
                             <>
-                                <option value="abia_mfb">Abia MFB (Intra-bank)</option>
+                                <option value="abiasmemfb">ABIASMEMFB (Intra-bank)</option>
                                 <option value="access_bank">Access Bank</option>
                                 <option value="gtbank">GTBank</option>
                             </>

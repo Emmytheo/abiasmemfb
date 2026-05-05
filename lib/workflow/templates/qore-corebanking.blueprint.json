@@ -1,7 +1,7 @@
 {
     "apiVersion": "v1",
     "name": "Qore / BankOne Core Banking",
-    "description": "Full API surface for Abia MFB's BankOne integration via Qore. Covers Corebanking (/BankOneWebAPI) and Channels (/thirdpartyapiservice) services.",
+    "description": "Full API surface for ABIASMEMFB's BankOne integration via Qore. Covers Corebanking (/BankOneWebAPI) and Channels (/thirdpartyapiservice) services.",
 
     "provider": {
         "name": "Qore BankOne (Corebanking)",
@@ -645,7 +645,7 @@
         },
         {
             "name": "Intra-Bank Transfer",
-            "description": "Transfers funds between two accounts within Abia MFB. Amount in kobo (Naira × 100).",
+            "description": "Transfers funds between two accounts within ABIASMEMFB. Amount in kobo (Naira × 100).",
             "method": "POST",
             "path": "/thirdpartyapiservice/apiservice/CoreTransactions/IntraBankTransfer/2",
             "authOverride": "BODY_FIELD",
@@ -933,7 +933,7 @@
             "queryParamsSchema": {
                 "type": "object",
                 "properties": {
-                    "mfbCode": { "type": "string", "description": "The institution code (e.g. '0017' for Abia MFB)" }
+                    "mfbCode": { "type": "string", "description": "The institution code (e.g. '0017' for ABIASMEMFB)" }
                 },
                 "required": ["mfbCode"]
             },

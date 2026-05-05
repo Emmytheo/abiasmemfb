@@ -176,10 +176,25 @@ export function UniversalDynamicForm({
             })
         }
 
-        // Check for onChange events
+        // Check for events
         if (field.events) {
             const changeEvents = field.events.filter(e => e.trigger === 'onChange')
             changeEvents.forEach(evt => handleEvent(field, evt, value))
+
+            const conditionEvents = field.events.filter(e => e.trigger === 'onCondition')
+            for (const evt of conditionEvents) {
+                if (!evt.condition) continue
+                const { type, value: targetValue } = evt.condition
+                const currentVal = String(value || '')
+                let meets = false
+                if (type === 'length' && currentVal.length === Number(targetValue)) meets = true
+                else if (type === 'regex' && new RegExp(String(targetValue)).test(currentVal)) meets = true
+                else if (type === 'regex_not_match' && !new RegExp(String(targetValue)).test(currentVal)) meets = true
+
+                if (meets) {
+                    handleEvent(field, evt, value)
+                }
+            }
         }
     }
 

@@ -87,7 +87,11 @@ export interface FieldValidation {
 }
 
 export interface FieldEvent {
-    trigger: 'onChange' | 'onBlur' | 'onLoad';
+    trigger: 'onChange' | 'onBlur' | 'onLoad' | 'onCondition';
+    condition?: {
+        type: 'length' | 'regex' | 'regex_not_match';
+        value: string | number;
+    };
     action: 'EXECUTE_ENDPOINT' | 'SET_VALUE' | 'SET_VALUES';
     endpointId?: string;
     mappingConfig?: Record<string, any>;
@@ -283,6 +287,18 @@ export interface JobPosition {
     description?: string;
 }
 
+export interface Promotion {
+    id: string;
+    title: string;
+    description?: string;
+    image: any; // Media object from Payload
+    link?: string;
+    isActive: boolean;
+    placement: 'hero' | 'banner' | 'sidebar';
+    updatedAt: string;
+    createdAt: string;
+}
+
 export interface CustomerAudit {
     accounts: number;
     loans: number;
@@ -389,6 +405,10 @@ export interface ApiAdapter {
 
     // Global CMS
     getPageBySlug: (slug: string) => Promise<any | null>;
+    getPromotions: (placement?: string) => Promise<Promotion[]>;
+    createPromotion: (data: Omit<Promotion, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Promotion>;
+    updatePromotion: (id: string, data: Partial<Promotion>) => Promise<Promotion>;
+    deletePromotion: (id: string) => Promise<boolean>;
 
     // Site Settings
     getSiteSettings: () => Promise<SiteSettings | null>;

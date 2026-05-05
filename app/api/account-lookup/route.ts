@@ -9,7 +9,7 @@ import { decryptSecret } from '@/lib/workflow/secrets/encryption'
  * Resolves a NUBAN account number to the registered holder's name.
  *
  * Resolution order:
- * 1. Internal Abia MFB DB (no external call required)
+ * 1. Internal ABIASMEMFB DB (no external call required)
  * 2. External NIP provider configured in CMS ServiceProviders (uses Vault secret)
  * 3. Deterministic mock fallback (for demo/testing when no external provider is ready)
  */
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     const payload = await getPayload({ config })
 
-    // 1. Check internal Abia MFB accounts first
+    // 1. Check internal ABIASMEMFB accounts first
     try {
         const { docs } = await payload.find({
             collection: 'accounts',
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
                     || account.user.email
             }
             if (holderName) {
-                return NextResponse.json({ accountName: holderName.toUpperCase(), bank: 'Abia MFB', isInternal: true })
+                return NextResponse.json({ accountName: holderName.toUpperCase(), bank: 'ABIASMEMFB', isInternal: true })
             }
         }
     } catch (err) {

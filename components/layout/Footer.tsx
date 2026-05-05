@@ -16,7 +16,7 @@ export function Footer() {
                         <div>
                             <div className="flex items-center gap-2 mb-6 hover:opacity-90 transition-opacity">
                                 <Logo
-                                    iconClassName="w-8 h-8 bg-accent text-primary text-xl"
+                                    iconClassName="w-8 h-8 text-xl"
                                     textClassName="text-xl text-white font-display"
                                 />
                             </div>

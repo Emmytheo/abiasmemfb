@@ -24,7 +24,7 @@ export function Logo({
     // Use this central file to swap out your logo icon or image!
     const renderIcon = () => (
         <div className={cn(
-            "flex aspect-square shrink-0 items-center justify-center bg-primary text-primary-foreground shadow-sm",
+            "flex aspect-square shrink-0 items-center justify-center bg-accent text-primary shadow-sm",
             iconShape === "square" ? "" : iconShape === "circle" ? "rounded-full" : "rounded-lg",
             "w-8 h-8 text-lg font-black", // Default styles
             iconClassName

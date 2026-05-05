@@ -1424,7 +1424,7 @@ export const TaskRegistry: Registry = {
         label: 'Intra-Bank Transfer (Qore)',
         icon: ArrowRightLeft,
         category: TaskCategory.COMPLIANCE,
-        description: 'Transfers funds between two accounts within Abia MFB via Qore.',
+        description: 'Transfers funds between two accounts within ABIASMEMFB via Qore.',
         inputs: [
             { 
                 name: 'providerId', type: TaskParamType.PROVIDER, required: true,
@@ -1452,7 +1452,7 @@ export const TaskRegistry: Registry = {
         label: 'Inter-Bank Transfer (Qore)',
         icon: Globe,
         category: TaskCategory.COMPLIANCE,
-        description: 'Transfers funds from an Abia MFB account to another bank via Qore.',
+        description: 'Transfers funds from an ABIASMEMFB account to another bank via Qore.',
         inputs: [
             { 
                 name: 'providerId', type: TaskParamType.PROVIDER, required: true,

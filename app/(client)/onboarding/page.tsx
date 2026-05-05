@@ -4,8 +4,8 @@ import { api } from "@/lib/api";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 
 export const metadata = {
-  title: "Complete Your Onboarding | ABIA MFB",
-  description: "Set up your banking identity and open your first account with ABIA MFB.",
+  title: "Complete Your Onboarding | ABIASMEMFB",
+  description: "Set up your banking identity and open your first account with ABIASMEMFB.",
 };
 
 export default async function OnboardingPage() {

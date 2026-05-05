@@ -4,7 +4,7 @@ const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const schemas = {
     "4": [
         { "id": "beneficiary_id", "name": "beneficiary_id", "label": "Select Saved Beneficiary", "type": "beneficiary_select", "required": false, "events": [{ "trigger": "onChange", "action": "SET_VALUES", "mappingConfig": { "destination_account": "{{$value.account_number}}", "destination_name": "{{$value.account_name}}" } }] },
-        { "id": "destination_account", "name": "destination_account", "label": "Target Account Number", "type": "text", "required": true, "placeholder": "Enter 10-digit Abia MFB Account", "events": [{ "trigger": "onBlur", "action": "EXECUTE_ENDPOINT", "endpointId": "Get Customer By Account Number", "mappingConfig": { "fullName": "destination_name" } }] },
+        { "id": "destination_account", "name": "destination_account", "label": "Target Account Number", "type": "text", "required": true, "placeholder": "Enter 10-digit ABIASMEMFB Account", "events": [{ "trigger": "onBlur", "action": "EXECUTE_ENDPOINT", "endpointId": "Get Customer By Account Number", "mappingConfig": { "fullName": "destination_name" } }] },
         { "id": "destination_name", "name": "destination_name", "label": "Verified Account Name", "type": "text", "required": true, "placeholder": "Auto-verifying..." },
         { "id": "amount", "name": "amount", "label": "Transfer Amount", "type": "number", "required": true },
         { "id": "narration", "name": "narration", "label": "Transaction Narration", "type": "text", "required": true, "placeholder": "e.g. Lunch with the team" }

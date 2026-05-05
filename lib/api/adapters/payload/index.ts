@@ -93,6 +93,10 @@ export const PayloadAdapter: ApiAdapter = {
 
     // Global CMS
     getPageBySlug: (...args) => actions.getPageBySlug(...args),
+    getPromotions: (...args) => actions.getPromotions(...args),
+    createPromotion: (...args) => actions.createPromotion(...args),
+    updatePromotion: (...args) => actions.updatePromotion(...args),
+    deletePromotion: (...args) => actions.deletePromotion(...args),
 
     // Site Settings
     getSiteSettings: (...args) => actions.getSiteSettings(...args),

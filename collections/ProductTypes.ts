@@ -123,7 +123,37 @@ export const ProductTypes: CollectionConfig = {
                     type: 'array',
                     admin: { description: 'Dynamic actions triggered when interacting with this field.' },
                     fields: [
-                        { name: 'trigger', type: 'select', options: ['onChange', 'onBlur', 'onLoad'], required: true },
+                        { 
+                            name: 'trigger', 
+                            type: 'select', 
+                            options: [
+                                { label: 'On Change', value: 'onChange' },
+                                { label: 'On Blur', value: 'onBlur' },
+                                { label: 'On Load', value: 'onLoad' },
+                                { label: 'On Condition', value: 'onCondition' }
+                            ], 
+                            required: true 
+                        },
+                        {
+                            name: 'condition',
+                            type: 'group',
+                            admin: {
+                                condition: (_, siblingData) => siblingData.trigger === 'onCondition'
+                            },
+                            fields: [
+                                { 
+                                    name: 'type', 
+                                    type: 'select', 
+                                    options: [
+                                        { label: 'Character Length', value: 'length' },
+                                        { label: 'Regex Match', value: 'regex' },
+                                        { label: 'Regex Not Match', value: 'regex_not_match' }
+                                    ], 
+                                    required: true 
+                                },
+                                { name: 'value', type: 'text', required: true }
+                            ]
+                        },
                         { name: 'action', type: 'select', options: ['EXECUTE_ENDPOINT', 'SET_VALUE'], required: true },
                         { name: 'endpointId', type: 'relationship', relationTo: 'endpoints', admin: { condition: (_, siblingData) => siblingData?.action === 'EXECUTE_ENDPOINT' } },
                         { name: 'mappingConfig', type: 'json', admin: { description: 'JSON describing how API response or static data maps back to form fields.' } }

@@ -16,6 +16,7 @@ import { ProductTypes } from './collections/ProductTypes'
 import { ProductClasses } from './collections/ProductClasses'
 import { ProductCategories } from './collections/ProductCategories'
 import { ProductApplications } from './collections/ProductApplications'
+import { Promotions } from './collections/Promotions'
 // Workflow Engine collections
 import { Workflows } from './collections/Workflows'
 import { WorkflowExecutions } from './collections/WorkflowExecutions'
@@ -88,6 +89,8 @@ export default buildConfig({
     collections: [
         // Content & Auth
         Users, Customers, Media, Pages, Categories, Tags, Posts,
+        // Marketing
+        Promotions,
         // Products
         ProductClasses, ProductCategories, ProductTypes, ProductApplications,
         // Workflow Engine

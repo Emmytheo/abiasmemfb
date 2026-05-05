@@ -78,7 +78,7 @@ export function ProfileStep({ data, onUpdate, onNext }: ProfileStepProps) {
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2 text-center">
-                <h2 className="text-3xl font-bold tracking-tight">Welcome to ABIA MFB</h2>
+                <h2 className="text-3xl font-bold tracking-tight">Welcome to ABIASMEMFB</h2>
                 <p className="text-muted-foreground">Let's start with your basic profile details.</p>
             </div>
 

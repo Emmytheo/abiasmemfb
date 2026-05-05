@@ -66,7 +66,7 @@ export const Accounts: CollectionConfig = {
             defaultValue: 'qore',
             options: [
                 { label: 'Qore Core Banking', value: 'qore' },
-                { label: 'Abia MFB Local', value: 'local' },
+                { label: 'ABIASMEMFB Local', value: 'local' },
             ],
             admin: {
                 position: 'sidebar',

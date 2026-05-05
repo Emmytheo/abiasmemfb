@@ -24,13 +24,15 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
     };
 
     // --- Process Products ---
-    for (const prod of bundle.products) {
+    for (const prod of (bundle.products || [])) {
         try {
             // 1. Ensure Hierarchy (Class -> Category)
             const productClass = await findOrCreateProductClass(payload, prod.classSlug, cache);
             const productCategory = await findOrCreateProductCategory(payload, prod.categorySlug, productClass.id, cache);
 
             // 2. Upsert ProductType (Merge Logic)
+            const normalizedSchema = await normalizeFormSchema(payload, prod.form_schema || [], cache);
+            
             const existing = await payload.find({
                 collection: 'product-types',
                 where: { name: { equals: prod.name } },
@@ -47,7 +49,7 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
                         category: productCategory.id,
                         tagline: prod.tagline || target.tagline,
                         description: prod.description || target.description,
-                        form_schema: prod.form_schema || target.form_schema,
+                        form_schema: normalizedSchema.length > 0 ? normalizedSchema : (target.form_schema || []),
                         financial_terms: prod.financial_terms || target.financial_terms,
                         status: prod.status || target.status,
                     }
@@ -61,7 +63,7 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
                         category: productCategory.id,
                         tagline: prod.tagline || `About ${prod.name}`,
                         description: prod.description || `Description of ${prod.name}`,
-                        form_schema: prod.form_schema || [],
+                        form_schema: normalizedSchema,
                         financial_terms: prod.financial_terms || [],
                         status: prod.status || 'draft',
                         workflow_stages: prod.workflow_stages || ['Submitted', 'Approved']
@@ -82,7 +84,7 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
     }
 
     // --- Process Services ---
-    for (const svc of bundle.services) {
+    for (const svc of (bundle.services || [])) {
         try {
             const category = await findOrCreateServiceCategory(payload, svc.categorySlug, cache);
             const validationWf = svc.validation_workflow_slug ? await findWorkflowBySlug(payload, svc.validation_workflow_slug, cache) : null;
@@ -241,6 +243,7 @@ async function normalizeFormSchema(payload: any, schema: any[], cache: any): Pro
 
             return {
                 trigger: ev.trigger,
+                condition: ev.condition || undefined,
                 action: ev.action,
                 endpointId: resolvedEndpointId || undefined,
                 mappingConfig: ev.mappingConfig || undefined,

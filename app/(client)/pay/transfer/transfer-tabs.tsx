@@ -38,7 +38,7 @@ export function TransferTabs({ services }: TransferTabsProps) {
                     const ben = await api.getBeneficiaryById(beneficiaryId)
                     if (ben) {
                         if (ben.is_international) setActiveTab('international')
-                        else if (ben.bank_code === 'abia_mfb' || !ben.bank_code) setActiveTab('internal')
+                        else if (ben.bank_code === 'abiasmemfb' || !ben.bank_code) setActiveTab('internal')
                         else setActiveTab('interbank')
                     }
                 } catch (e) {
@@ -64,7 +64,7 @@ export function TransferTabs({ services }: TransferTabsProps) {
             <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="internal" className="flex items-center gap-2">
                     <Wallet size={16} className="hidden sm:inline-block" />
-                    <span>Abia MFB</span>
+                    <span>ABIASMEMFB</span>
                 </TabsTrigger>
                 <TabsTrigger value="interbank" className="flex items-center gap-2">
                     <Building2 size={16} className="hidden sm:inline-block" />
