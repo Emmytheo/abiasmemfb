@@ -279,5 +279,19 @@ export const SupabaseAdapter: ApiAdapter = {
     },
     unlinkCustomer: async () => {
         throw new Error("Supabase Adapter not fully implemented");
+    },
+
+    // Promotions
+    getPromotions: async (placement) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    createPromotion: async (data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    updatePromotion: async (id, data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    deletePromotion: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
     }
 };

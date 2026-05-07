@@ -204,6 +204,32 @@ export const syncBankingIdentity = async (userId: string): Promise<{ success: bo
 export const restoreCustomerIdentity = async (customerId: string, supabaseId: string, email: string): Promise<boolean> => {
     try {
         const payload = await initPayload();
+        
+        // 1. Find if this identity is already claimed by another record
+        const existing = await payload.find({
+            collection: 'customers',
+            where: {
+                supabase_id: { equals: supabaseId }
+            }
+        });
+
+        // 2. If it is, unlink it from the old record first to satisfy uniqueness
+        if (existing.docs.length > 0) {
+            const oldRecord = existing.docs[0];
+            if (String(oldRecord.id) !== customerId) {
+                console.log(`[Identity Harmonization] Unlinking identity ${supabaseId} from old record ${oldRecord.id}`);
+                await payload.update({
+                    collection: 'customers',
+                    id: oldRecord.id,
+                    data: {
+                        supabase_id: null,
+                        is_associated: false
+                    }
+                });
+            }
+        }
+
+        // 3. Link it to the new intended record
         await payload.update({
             collection: 'customers',
             id: customerId,

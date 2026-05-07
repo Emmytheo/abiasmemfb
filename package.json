@@ -91,7 +91,7 @@
   },
   "resolutions": {
     "lexical": "0.41.0",
-    "uuid": "10.0.0",
+    "uuid": "9.0.1",
     "@lexical/clipboard": "0.41.0",
     "@lexical/code": "0.41.0",
     "@lexical/history": "0.41.0",
