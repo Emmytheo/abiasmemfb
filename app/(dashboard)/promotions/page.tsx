@@ -7,13 +7,15 @@ import { api } from "@/lib/api";
 import { Promotion } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { useState as useToggleState } from "react";
 
 export default function AdminPromotionsPage() {
     const [data, setData] = useState<Promotion[]>([]);
     const [loading, setLoading] = useState(true);
+    const [togglingId, setTogglingId] = useState<string | null>(null);
 
     async function loadData() {
         setLoading(true);
@@ -39,6 +41,19 @@ export default function AdminPromotionsPage() {
             loadData();
         } catch (error) {
             toast.error("Failed to delete promotion.");
+        }
+    };
+
+    const handleToggleActive = async (item: Promotion) => {
+        setTogglingId(item.id);
+        try {
+            await api.updatePromotion(item.id, { isActive: !item.isActive });
+            setData(prev => prev.map(p => p.id === item.id ? { ...p, isActive: !p.isActive } : p));
+            toast.success(`Promotion ${!item.isActive ? 'activated' : 'deactivated'}.`);
+        } catch {
+            toast.error('Failed to update promotion status.');
+        } finally {
+            setTogglingId(null);
         }
     };
 
@@ -70,11 +85,11 @@ export default function AdminPromotionsPage() {
                         header: "Image",
                         accessorKey: "image",
                         cell: (item) => (
-                            <div className="relative w-16 h-10 rounded overflow-hidden">
-                                {item.image?.url ? (
-                                    <Image src={item.image.url} alt={item.title} fill className="object-cover" />
+                            <div className="relative w-16 h-10 rounded overflow-hidden bg-muted">
+                                {item.resolvedImageUrl ? (
+                                    <Image src={item.resolvedImageUrl} alt={item.title} fill className="object-cover" unoptimized />
                                 ) : (
-                                    <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-muted-foreground">No img</div>
+                                    <div className="w-full h-full flex items-center justify-center text-[9px] text-muted-foreground">No img</div>
                                 )}
                             </div>
                         )
@@ -111,13 +126,28 @@ export default function AdminPromotionsPage() {
                         header: "Action",
                         accessorKey: "id",
                         cell: (item) => (
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" size="sm" asChild>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    title={item.isActive ? 'Deactivate' : 'Activate'}
+                                    disabled={togglingId === item.id}
+                                    onClick={() => handleToggleActive(item)}
+                                >
+                                    {togglingId === item.id
+                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                        : item.isActive
+                                            ? <ToggleRight className="h-4 w-4 text-emerald-500" />
+                                            : <ToggleLeft className="h-4 w-4 text-muted-foreground" />
+                                    }
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
                                     <Link href={`/promotions/${item.id}`}>
                                         <Edit className="h-4 w-4 text-primary" />
                                     </Link>
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleDelete(item.id)}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                             </div>

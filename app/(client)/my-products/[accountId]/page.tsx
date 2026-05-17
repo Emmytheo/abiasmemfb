@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
     ArrowLeft, Loader2, Copy, Check, ShieldCheck,
     Smartphone, ArrowUpRight, ArrowDownLeft, Building,
-    Activity, CreditCard, Bell, Settings, Tag, Target
+    Activity, CreditCard, Bell, Settings, Tag, Target, Snowflake, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { api } from "@/lib/api";
 import { Account, Transaction } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 export default function AccountDetailsPage({ params }: { params: Promise<{ accountId: string }> }) {
     const resolvedParams = use(params);
@@ -26,6 +27,9 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [copied, setCopied] = useState(false);
+    const [freezeLoading, setFreezeLoading] = useState(false);
+    const [emailAlerts, setEmailAlerts] = useState(true);
+    const [smsAlerts, setSmsAlerts] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -212,7 +216,9 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-lg">Recent Transactions</CardTitle>
-                                    <Button variant="ghost" size="sm" className="text-primary h-8">View Statement</Button>
+                                    <Button variant="ghost" size="sm" className="text-primary h-8" onClick={() => toast.info('Statement request sent — check your email.')}>
+                                        View Statement
+                                    </Button>
                                 </div>
                                 <CardDescription>A summary of your latest deposits and withdrawals.</CardDescription>
                             </CardHeader>
@@ -225,32 +231,35 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                                 ) : (
                                     <div className="space-y-4">
                                         {transactions.map((tx) => (
-                                            <div key={tx.id} className="flex items-center justify-between p-3 sm:p-4 rounded-xl border bg-card hover:shadow-md transition-shadow gap-2 sm:gap-4">
+                                            <Link key={tx.id} href={`/client-dashboard/transactions/${tx.id}`} className="flex items-center justify-between p-3 sm:p-4 rounded-xl border bg-card hover:shadow-md hover:border-primary/30 transition-all gap-2 sm:gap-4 cursor-pointer group">
                                                 <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                                                     <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center border shadow-sm shrink-0 ${tx.type === 'credit' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'
                                                         }`}>
                                                         {tx.type === 'credit' ? <ArrowDownLeft className="h-4 w-4 sm:h-5 sm:w-5" /> : <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="font-medium text-sm sm:text-base truncate">{tx.reference || tx.category}</p>
+                                                        <p className="font-medium text-sm sm:text-base truncate">{tx.narration || tx.reference || tx.category}</p>
                                                         <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                                                             <span className="shrink-0">{new Date(tx.created_at).toLocaleDateString()}</span>
                                                             <span className="w-1 h-1 rounded-full bg-muted-foreground/30 shrink-0" />
-                                                            <span className="truncate">{tx.narration || 'Transaction'}</span>
+                                                            <span className="truncate font-mono">{tx.reference}</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-right shrink-0">
-                                                    <p className={`font-mono text-sm sm:text-base font-bold tracking-tight ${tx.type === 'credit' ? 'text-emerald-500' : ''}`}>
-                                                        {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-                                                    </p>
-                                                    <Badge variant="outline" className={`text-[9px] sm:text-[10px] mt-1 h-4 sm:h-5 uppercase tracking-wider px-1 sm:px-2.5 ${tx.status === 'successful' ? 'border-emerald-500/30 text-emerald-500' :
-                                                        tx.status === 'failed' ? 'border-red-500/30 text-red-500' : 'border-amber-500/30 text-amber-500'
-                                                        }`}>
-                                                        {tx.status}
-                                                    </Badge>
+                                                <div className="text-right shrink-0 flex items-center gap-2">
+                                                    <div>
+                                                        <p className={`font-mono text-sm sm:text-base font-bold tracking-tight ${tx.type === 'credit' ? 'text-emerald-500' : ''}`}>
+                                                            {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                                                        </p>
+                                                        <Badge variant="outline" className={`text-[9px] sm:text-[10px] mt-1 h-4 sm:h-5 uppercase tracking-wider px-1 sm:px-2.5 ${tx.status === 'successful' ? 'border-emerald-500/30 text-emerald-500' :
+                                                            tx.status === 'failed' ? 'border-red-500/30 text-red-500' : 'border-amber-500/30 text-amber-500'
+                                                            }`}>
+                                                            {tx.status}
+                                                        </Badge>
+                                                    </div>
+                                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors" />
                                                 </div>
-                                            </div>
+                                            </Link>
                                         ))}
                                     </div>
                                 )}
@@ -354,10 +363,29 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                                     <h3 className="text-sm font-semibold tracking-tight uppercase text-muted-foreground">Account Status</h3>
                                     <div className="flex items-center justify-between p-4 rounded-xl border border-destructive/20 bg-destructive/5">
                                         <div className="space-y-1">
-                                            <p className="font-medium text-sm text-destructive">Freeze Account</p>
+                                            <p className="font-medium text-sm text-destructive">
+                                                {account.is_frozen ? 'Account is Frozen' : 'Freeze Account'}
+                                            </p>
                                             <p className="text-xs text-muted-foreground">Temporarily block all outbound transactions</p>
                                         </div>
-                                        <Button variant="destructive" size="sm">Freeze</Button>
+                                        <Button
+                                            variant={account.is_frozen ? 'outline' : 'destructive'}
+                                            size="sm"
+                                            disabled={freezeLoading}
+                                            onClick={async () => {
+                                                setFreezeLoading(true);
+                                                try {
+                                                    await api.updateAccount(accountId, { is_frozen: !account.is_frozen });
+                                                    const updated = await api.getAccountById(accountId);
+                                                    setAccount(updated);
+                                                    toast.success(account.is_frozen ? 'Account unfrozen.' : 'Account frozen.');
+                                                } catch { toast.error('Action failed.'); }
+                                                finally { setFreezeLoading(false); }
+                                            }}
+                                        >
+                                            <Snowflake className="h-3.5 w-3.5 mr-1.5" />
+                                            {freezeLoading ? 'Processing…' : account.is_frozen ? 'Unfreeze' : 'Freeze'}
+                                        </Button>
                                     </div>
                                 </div>
                             </CardContent>

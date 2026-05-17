@@ -74,6 +74,32 @@ export const SupabaseAdapter: ApiAdapter = {
     getLoanById: async (id) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+
+    // Extended accounting methods (stub — implement against Supabase when needed)
+    updateLoan: async (id, data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    recordLoanRepayment: async (loanId, amountNaira, narration) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getCustomerAccounts: async (customerId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getCustomerLoans: async (customerId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getCustomerTransactions: async (customerId, limit) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getAccountTransactionSummary: async (accountId, days) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    withdrawApplication: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    getAllTransactionsPaginated: async (page, limit, filters) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
     processAccountFunding: async (targetAccountId, amountNaira, reference) => {
         throw new Error("Supabase Adapter not fully implemented");
     },

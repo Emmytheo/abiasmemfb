@@ -158,6 +158,65 @@ export const DummyAdapter: ApiAdapter = {
         return MOCK_LOANS.find(l => l.id === id) || null;
     },
 
+    // ── Extended accounting methods ──────────────────────────────────────
+    updateLoan: async (id, data) => {
+        await delay(400);
+        const existing = MOCK_LOANS.find(l => l.id === id);
+        return { ...(existing || MOCK_LOANS[0]), ...data, updated_at: new Date().toISOString() } as any;
+    },
+
+    recordLoanRepayment: async (loanId, amountNaira, narration) => {
+        await delay(600);
+        console.log(`[Mock] Recording repayment of ₦${amountNaira} for loan ${loanId}`, narration);
+        return true;
+    },
+
+    getCustomerAccounts: async (customerId) => {
+        await delay(350);
+        return MOCK_ACCOUNTS.filter(a =>
+            (typeof a.customer === 'object' ? (a.customer as any)?.id === customerId : a.customer === customerId)
+        );
+    },
+
+    getCustomerLoans: async (customerId) => {
+        await delay(350);
+        return MOCK_LOANS.filter(l =>
+            (typeof l.customer === 'object' ? (l.customer as any)?.id === customerId : l.customer === customerId)
+        );
+    },
+
+    getCustomerTransactions: async (customerId, limit = 50) => {
+        await delay(400);
+        return MOCK_TRANSACTIONS.slice(0, limit);
+    },
+
+    getAccountTransactionSummary: async (accountId, days = 30) => {
+        await delay(400);
+        const series = Array.from({ length: Math.min(days, 30) }, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (29 - i));
+            return { date: d.toISOString().slice(0, 10), credit: Math.random() * 50000, debit: Math.random() * 30000 };
+        });
+        return {
+            totalCredits: series.reduce((s, r) => s + r.credit, 0),
+            totalDebits: series.reduce((s, r) => s + r.debit, 0),
+            series,
+        };
+    },
+
+    withdrawApplication: async (id) => {
+        await delay(500);
+        console.log(`[Mock] Withdrawing application ${id}`);
+        return true;
+    },
+
+    getAllTransactionsPaginated: async (page = 1, limit = 20, filters) => {
+        await delay(400);
+        const docs = MOCK_TRANSACTIONS.slice((page - 1) * limit, page * limit);
+        return { docs, totalDocs: MOCK_TRANSACTIONS.length, totalPages: Math.ceil(MOCK_TRANSACTIONS.length / limit), page };
+    },
+    // ─────────────────────────────────────────────────────────────────────
+
     // Product Configuration & Dynamic Forms
     getAllProductClasses: async () => {
         await delay(300);

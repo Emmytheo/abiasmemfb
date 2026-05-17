@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Rubik, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { PaletteProvider } from "@/context/palette-context";
@@ -18,27 +17,6 @@ export const metadata: Metadata = {
     description: "We create financial giants by providing bespoke microfinance solutions for entrepreneurs and small business owners across Abia State.",
 };
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-    variable: "--font-sans",
-    subsets: ["latin"],
-    display: "swap",
-    weight: ["300", "400", "500", "600", "700"],
-});
-
-const rubik = Rubik({
-    variable: "--font-rubik",
-    subsets: ["latin"],
-    display: "swap",
-    weight: ["300", "400", "500", "600", "700"],
-});
-
-const playfairDisplay = Playfair_Display({
-    variable: "--font-display",
-    subsets: ["latin"],
-    display: "swap",
-    weight: ["500", "700"],
-});
-
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -51,9 +29,9 @@ export default function RootLayout({
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-                <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet" />
+                <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Rubik:ital,wght@0,300..900;1,300..900&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet" />
             </head>
-            <body className={`${plusJakartaSans.variable} ${rubik.variable} ${playfairDisplay.variable} font-sans antialiased bg-background text-foreground`}>
+            <body className="font-sans antialiased bg-background text-foreground">
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="system"

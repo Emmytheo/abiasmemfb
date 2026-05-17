@@ -7,8 +7,9 @@ import { api } from "@/lib/api";
 import { ProductApplication, ProductType, Loan } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, TrendingUp, RefreshCw, AlertTriangle } from "lucide-react";
+import { Eye, TrendingUp, RefreshCw, AlertTriangle, List, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type EnrichedApp = ProductApplication & { product?: ProductType };
 
@@ -81,82 +82,182 @@ export default function AdminLoansPage() {
                 </div>
             )}
 
-            {/* Applications Table */}
-            <GenericDataTable
-                title="Customer Loan Applications"
-                description="Manage and review customer applications for loans and credit facilities."
-                data={applications}
-                searchPlaceholder="Search by Reference ID..."
-                searchKey="id"
-                columns={[
-                    {
-                        header: "Reference",
-                        accessorKey: "id",
-                        cell: (item) => <span className="font-mono text-xs">{String(item.id).slice(0, 8).toUpperCase()}</span>
-                    },
-                    {
-                        header: "Product",
-                        accessorKey: "product_type_id",
-                        cell: (item) => <span className="font-medium">{item.product?.name || 'Unknown'}</span>
-                    },
-                    {
-                        header: "Requested",
-                        accessorKey: "requested_amount",
-                        cell: (item) => <span className="font-mono">₦{item.requested_amount?.toLocaleString() || 'N/A'}</span>
-                    },
-                    {
-                        header: "Status",
-                        accessorKey: "status",
-                        cell: (item) => (
-                            <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize">
-                                {item.status}
-                            </Badge>
-                        )
-                    },
-                    {
-                        header: "Current Stage",
-                        accessorKey: "workflow_stage",
-                        cell: (item) => <span className="text-xs">{item.workflow_stage}</span>
-                    },
-                    {
-                        header: "Action",
-                        accessorKey: "id",
-                        cell: (item) => (
-                            <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/products/applications/${item.id}`}>
-                                    <Eye className="h-4 w-4 mr-2" /> View
-                                </Link>
-                            </Button>
-                        )
-                    }
-                ]}
-                gridRenderItem={(item) => (
-                    <div key={item.id} className="border rounded-lg p-4 bg-background shadow-sm hover:shadow-md transition-shadow relative">
-                        <div className="flex justify-between items-start mb-4 gap-2">
-                            <div>
-                                <h3 className="font-semibold">{item.product?.name || 'Unknown'}</h3>
-                                <p className="text-xs text-muted-foreground font-mono mt-1">Ref: {String(item.id).slice(0, 8).toUpperCase()}</p>
+            {/* Tabbed View */}
+            <Tabs defaultValue="applications" className="w-full">
+                <div className="px-6 mb-4">
+                    <TabsList>
+                        <TabsTrigger value="applications" className="gap-2"><FileText className="h-4 w-4" /> Applications</TabsTrigger>
+                        <TabsTrigger value="active" className="gap-2"><List className="h-4 w-4" /> Active Loans</TabsTrigger>
+                    </TabsList>
+                </div>
+
+                <TabsContent value="applications" className="m-0 focus-visible:outline-none">
+                    <GenericDataTable
+                        title="Customer Loan Applications"
+                        description="Manage and review customer applications for loans and credit facilities."
+                        data={applications}
+                        searchPlaceholder="Search by Reference ID..."
+                        searchKey="id"
+                        columns={[
+                            {
+                                header: "Reference",
+                                accessorKey: "id",
+                                cell: (item) => <span className="font-mono text-xs">{String(item.id).slice(0, 8).toUpperCase()}</span>
+                            },
+                            {
+                                header: "Product",
+                                accessorKey: "product_type_id",
+                                cell: (item) => <span className="font-medium">{item.product?.name || 'Unknown'}</span>
+                            },
+                            {
+                                header: "Requested",
+                                accessorKey: "requested_amount",
+                                cell: (item) => <span className="font-mono">₦{item.requested_amount?.toLocaleString() || 'N/A'}</span>
+                            },
+                            {
+                                header: "Status",
+                                accessorKey: "status",
+                                cell: (item) => (
+                                    <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize">
+                                        {item.status}
+                                    </Badge>
+                                )
+                            },
+                            {
+                                header: "Current Stage",
+                                accessorKey: "workflow_stage",
+                                cell: (item) => <span className="text-xs">{item.workflow_stage}</span>
+                            },
+                            {
+                                header: "Action",
+                                accessorKey: "id",
+                                cell: (item) => (
+                                    <Button variant="ghost" size="sm" asChild>
+                                        <Link href={`/products/applications/${item.id}`}>
+                                            <Eye className="h-4 w-4 mr-2" /> View
+                                        </Link>
+                                    </Button>
+                                )
+                            }
+                        ]}
+                        gridRenderItem={(item) => (
+                            <div key={item.id} className="border rounded-lg p-4 bg-background shadow-sm hover:shadow-md transition-shadow relative">
+                                <div className="flex justify-between items-start mb-4 gap-2">
+                                    <div>
+                                        <h3 className="font-semibold">{item.product?.name || 'Unknown'}</h3>
+                                        <p className="text-xs text-muted-foreground font-mono mt-1">Ref: {String(item.id).slice(0, 8).toUpperCase()}</p>
+                                    </div>
+                                    <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize shrink-0">
+                                        {item.status}
+                                    </Badge>
+                                </div>
+                                <div className="text-2xl font-bold mb-3">
+                                    ₦{item.requested_amount?.toLocaleString() || '0'}
+                                </div>
+                                <div className="text-sm border-t pt-3 mb-4">
+                                    <span className="text-muted-foreground block text-xs mb-1">Workflow Stage:</span>
+                                    <span className="font-medium">{item.workflow_stage}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs text-muted-foreground mt-4">
+                                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href={`/products/applications/${item.id}`}>Review</Link>
+                                    </Button>
+                                </div>
                             </div>
-                            <Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize shrink-0">
-                                {item.status}
-                            </Badge>
-                        </div>
-                        <div className="text-2xl font-bold mb-3">
-                            ₦{item.requested_amount?.toLocaleString() || '0'}
-                        </div>
-                        <div className="text-sm border-t pt-3 mb-4">
-                            <span className="text-muted-foreground block text-xs mb-1">Workflow Stage:</span>
-                            <span className="font-medium">{item.workflow_stage}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs text-muted-foreground mt-4">
-                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={`/products/applications/${item.id}`}>Review</Link>
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            />
+                        )}
+                    />
+                </TabsContent>
+
+                <TabsContent value="active" className="m-0 focus-visible:outline-none">
+                    <GenericDataTable
+                        title="Active Loan Facilities"
+                        description="Manage disbursed and active loan accounts."
+                        data={activeLoans}
+                        searchPlaceholder="Search by Customer ID..."
+                        searchKey="user_id"
+                        columns={[
+                            {
+                                header: "Loan ID",
+                                accessorKey: "id",
+                                cell: (item) => <span className="font-mono text-xs">{String(item.id).slice(0, 8).toUpperCase()}</span>
+                            },
+                            {
+                                header: "Customer ID",
+                                accessorKey: "user_id",
+                                cell: (item) => <span className="font-mono text-xs">{item.user_id}</span>
+                            },
+                            {
+                                header: "Principal",
+                                accessorKey: "amount",
+                                cell: (item) => <span className="font-bold">₦{item.amount?.toLocaleString() || '0'}</span>
+                            },
+                            {
+                                header: "Tenure",
+                                accessorKey: "duration_months",
+                                cell: (item) => <span>{item.duration_months} mo</span>
+                            },
+                            {
+                                header: "Rate",
+                                accessorKey: "interest_rate",
+                                cell: (item) => <span>{item.interest_rate}% pa</span>
+                            },
+                            {
+                                header: "Status",
+                                accessorKey: "status",
+                                cell: (item) => (
+                                    <Badge variant={item.status === 'active' ? 'default' : item.status === 'defaulted' ? 'destructive' : 'secondary'} className="capitalize">
+                                        {item.status.replace('_', ' ')}
+                                    </Badge>
+                                )
+                            },
+                            {
+                                header: "Action",
+                                accessorKey: "id",
+                                cell: (item) => (
+                                    <Button variant="ghost" size="sm" asChild>
+                                        <Link href={`/products/loans/${item.id}`}>
+                                            <Eye className="h-4 w-4 mr-2" /> View
+                                        </Link>
+                                    </Button>
+                                )
+                            }
+                        ]}
+                        gridRenderItem={(item) => (
+                            <div key={item.id} className="border rounded-lg p-4 bg-background shadow-sm hover:shadow-md transition-shadow relative">
+                                <div className="flex justify-between items-start mb-4 gap-2">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground font-mono">Loan: {String(item.id).slice(0, 8).toUpperCase()}</p>
+                                        <p className="text-xs text-muted-foreground font-mono">Cust: {String(item.user_id).slice(0, 8).toUpperCase()}</p>
+                                    </div>
+                                    <Badge variant={item.status === 'active' ? 'default' : item.status === 'defaulted' ? 'destructive' : 'secondary'} className="capitalize shrink-0">
+                                        {item.status.replace('_', ' ')}
+                                    </Badge>
+                                </div>
+                                <div className="text-2xl font-bold mb-1">
+                                    ₦{item.amount?.toLocaleString() || '0'}
+                                </div>
+                                <div className="flex gap-4 text-sm border-t pt-3 mb-4 mt-2">
+                                    <div>
+                                        <span className="text-muted-foreground block text-[10px] uppercase">Tenure</span>
+                                        <span className="font-medium">{item.duration_months} mo</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground block text-[10px] uppercase">Rate</span>
+                                        <span className="font-medium">{item.interest_rate}%</span>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center text-xs text-muted-foreground mt-4">
+                                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href={`/products/loans/${item.id}`}>Manage</Link>
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

@@ -6,8 +6,9 @@ import { api, Beneficiary } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, Users, Trash2, Globe, Building, Search, ArrowRight } from "lucide-react";
+import { Loader2, Plus, Users, Trash2, Globe, Building, Search, ArrowRight, Edit2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -27,6 +28,9 @@ export default function BeneficiariesPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [userId, setUserId] = useState<string | null>(null);
+    const [editingBeneficiary, setEditingBeneficiary] = useState<Beneficiary | null>(null);
+    const [editName, setEditName] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
 
     async function loadBeneficiaries() {
         try {
@@ -64,6 +68,26 @@ export default function BeneficiariesPage() {
         } catch (err) {
             console.error(err);
             toast.error("An error occurred");
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingBeneficiary || !userId) return;
+        setIsSaving(true);
+        try {
+            // Note: in a real app, updateBeneficiary might be a separate method. 
+            // We use saveBeneficiary or a generic update here.
+            const updated = { ...editingBeneficiary, account_name: editName };
+            const res = await api.saveBeneficiary(updated);
+            if (res) {
+                toast.success("Beneficiary updated");
+                setBeneficiaries(prev => prev.map(b => b.id === editingBeneficiary.id ? { ...b, account_name: editName } : b));
+                setEditingBeneficiary(null);
+            }
+        } catch (err) {
+            toast.error("Failed to update beneficiary");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -167,6 +191,18 @@ export default function BeneficiariesPage() {
                                             </Link>
                                         </Button>
 
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="text-muted-foreground hover:text-primary"
+                                            onClick={() => {
+                                                setEditingBeneficiary(b);
+                                                setEditName(b.account_name);
+                                            }}
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </Button>
+
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
@@ -200,6 +236,41 @@ export default function BeneficiariesPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <Dialog open={!!editingBeneficiary} onOpenChange={(open) => !open && setEditingBeneficiary(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Beneficiary</DialogTitle>
+                        <DialogDescription>
+                            Update the alias or display name for this saved account.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Beneficiary Name</Label>
+                            <Input 
+                                id="name" 
+                                value={editName} 
+                                onChange={(e) => setEditName(e.target.value)} 
+                                placeholder="E.g. John Doe - Rent"
+                            />
+                        </div>
+                        <div className="space-y-2 opacity-50">
+                            <Label>Account Details (Read-only)</Label>
+                            <div className="text-sm font-mono p-2 bg-muted rounded border">
+                                {editingBeneficiary?.account_number} • {editingBeneficiary?.bank_name}
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingBeneficiary(null)} disabled={isSaving}>Cancel</Button>
+                        <Button onClick={handleSaveEdit} disabled={isSaving}>
+                            {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

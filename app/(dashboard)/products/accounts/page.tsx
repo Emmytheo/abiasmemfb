@@ -7,9 +7,10 @@ import { api } from "@/lib/api";
 import { Account, User } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, Snowflake, Shield, Database } from "lucide-react";
+import { Customer } from "@/lib/api/types";
 
-type EnrichedAccount = Account & { user?: User };
+type EnrichedAccount = Account & { customer?: Customer };
 
 export default function AdminAccountsPage() {
     const [data, setData] = useState<EnrichedAccount[]>([]);
@@ -18,14 +19,17 @@ export default function AdminAccountsPage() {
     useEffect(() => {
         async function loadData() {
             try {
-                const [accounts, users] = await Promise.all([
+                const [accounts, customers] = await Promise.all([
                     api.getAllAccounts(),
-                    api.getAllUsers()
+                    api.getAllCustomers(),
                 ]);
 
-                const enriched = accounts.map(acc => ({ 
-                    ...acc, 
-                    user: users.find(u => u.id === acc.user_id) 
+                const customerMap = new Map(customers.map(c => [String(c.id), c]));
+                const enriched = accounts.map(acc => ({
+                    ...acc,
+                    customer: typeof acc.customer === 'object'
+                        ? acc.customer as any
+                        : customerMap.get(String(acc.customer))
                 }));
 
                 setData(enriched);
@@ -54,13 +58,17 @@ export default function AdminAccountsPage() {
                     },
                     {
                         header: "Customer",
-                        accessorKey: "user_id",
-                        cell: (item) => (
-                            <div className="flex flex-col">
-                                <span className="font-medium text-sm">{item.user?.full_name || 'Unknown User'}</span>
-                                <span className="text-xs text-muted-foreground">{item.user?.email}</span>
-                            </div>
-                        )
+                        accessorKey: "customer",
+                        cell: (item) => {
+                            const cust = item.customer as any;
+                            const name = cust ? `${cust.firstName || ''} ${cust.lastName || ''}`.trim() : null;
+                            return (
+                                <div className="flex flex-col">
+                                    <span className="font-medium text-sm">{name || <span className="text-muted-foreground italic">No Customer</span>}</span>
+                                    <span className="text-xs text-muted-foreground">{cust?.email}</span>
+                                </div>
+                            );
+                        }
                     },
                     {
                         header: "Type",
@@ -76,9 +84,14 @@ export default function AdminAccountsPage() {
                         header: "Status",
                         accessorKey: "status",
                         cell: (item) => (
-                            <Badge variant={item.status === 'active' ? 'default' : item.status === 'dormant' ? 'secondary' : 'destructive'} className="capitalize">
-                                {item.status}
-                            </Badge>
+                            <div className="flex items-center gap-1.5">
+                                <Badge variant={item.status === 'active' ? 'default' : item.status === 'dormant' ? 'secondary' : 'destructive'} className="capitalize text-[10px]">
+                                    {item.status}
+                                </Badge>
+                                {item.is_frozen && <Snowflake className="h-3.5 w-3.5 text-blue-500" aria-label="Frozen" />}
+                                {item.pnd_enabled && <Shield className="h-3.5 w-3.5 text-amber-500" aria-label="PND" />}
+                                {item.source === 'qore' && <Database className="h-3 w-3 text-muted-foreground" aria-label="Qore CBS" />}
+                            </div>
                         )
                     },
                     {
@@ -110,7 +123,9 @@ export default function AdminAccountsPage() {
                         </div>
                         <div className="flex flex-col gap-1 mb-4 text-xs">
                             <span className="text-muted-foreground">Owner</span>
-                            <span className="font-medium">{item.user?.full_name || 'Unknown'} ({item.user?.email})</span>
+                            <span className="font-medium">
+                                {(() => { const c = item.customer as any; return c ? `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.email : 'No Customer'; })()}
+                            </span>
                         </div>
                         <div className="flex justify-between items-center text-xs text-muted-foreground">
                             <span>{new Date(item.created_at).toLocaleDateString()}</span>

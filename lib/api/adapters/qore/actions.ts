@@ -141,7 +141,25 @@ export const getAccountById = async (id: string): Promise<Account | null> => {
     const localAcc = await PayloadAdapter.getAccountById(id);
     if (!localAcc) return null;
 
+    if (localAcc.source !== 'qore' && !localAcc.account_number.startsWith('30')) {
+        return localAcc;
+    }
+
     try {
+        let hasQoreId = false;
+        if (localAcc.customer) {
+            const customerId = typeof localAcc.customer === 'object' ? localAcc.customer.id : localAcc.customer;
+            const customer = await PayloadAdapter.getCustomerById(customerId);
+            if (customer && customer.qore_customer_id) {
+                hasQoreId = true;
+            }
+        }
+
+        if (!hasQoreId) {
+            console.log(`[Qore Adapter] Skipping getAccountSummary for account ${localAcc.account_number}: Customer has no qore_customer_id.`);
+            return localAcc;
+        }
+
         const qoreRes = await getAccountSummary(localAcc.account_number);
         return {
             ...localAcc,

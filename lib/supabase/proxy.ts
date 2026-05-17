@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Refreshes the Supabase session tokens.
  * Called from middleware to keep auth cookies fresh.
- * All route protection logic is handled in middleware.ts.
+ * All route protection logic is handled in proxy.ts.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

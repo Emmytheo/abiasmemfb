@@ -7,13 +7,17 @@ import { api } from "@/lib/api";
 import { Customer } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, RefreshCw, UserCheck, ShieldAlert } from "lucide-react";
+import { Eye, RefreshCw, UserCheck, ShieldAlert, Filter } from "lucide-react";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMemo } from "react";
 
 export default function AdminCustomersPage() {
     const [data, setData] = useState<Customer[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [kycFilter, setKycFilter] = useState('all');
+    const [riskFilter, setRiskFilter] = useState('all');
 
     async function loadData() {
         setLoading(true);
@@ -50,7 +54,20 @@ export default function AdminCustomersPage() {
         }
     };
 
-    if (loading && data.length === 0) return <div className="p-8">Loading customer registry...</div>;
+    const filteredData = useMemo(() => {
+        return data.filter(c => {
+            const mKyc = kycFilter === 'all' || c.kyc_status === kycFilter;
+            const mRisk = riskFilter === 'all' || (c.risk_tier || 'low') === riskFilter;
+            return mKyc && mRisk;
+        });
+    }, [data, kycFilter, riskFilter]);
+
+    if (loading && data.length === 0) return (
+        <div className="space-y-6 animate-pulse p-4">
+            <div className="h-12 w-64 bg-muted rounded-lg"></div>
+            <div className="h-96 bg-muted/40 rounded-xl"></div>
+        </div>
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -65,10 +82,36 @@ export default function AdminCustomersPage() {
                 </Button>
             </div>
 
+            {/* Filters */}
+            <div className="flex gap-4 px-4 md:px-8">
+                <Select value={kycFilter} onValueChange={setKycFilter}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="KYC Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All KYC Statuses</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={riskFilter} onValueChange={setRiskFilter}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Risk Tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Risk Tiers</SelectItem>
+                        <SelectItem value="low">Low Risk</SelectItem>
+                        <SelectItem value="medium">Medium Risk</SelectItem>
+                        <SelectItem value="high">High Risk</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
             <GenericDataTable
                 title="Customer Directory"
                 description="Consolidated view of all bank customers synced from the Core Banking System."
-                data={data}
+                data={filteredData}
                 searchPlaceholder="Search by email, name or BVN..."
                 searchKey="email"
                 columns={[
@@ -98,6 +141,15 @@ export default function AdminCustomersPage() {
                         cell: (item) => (
                             <Badge variant={item.kyc_status === 'active' ? 'default' : item.kyc_status === 'pending' ? 'secondary' : 'destructive'} className="capitalize">
                                 {item.kyc_status}
+                            </Badge>
+                        )
+                    },
+                    {
+                        header: "Risk Tier",
+                        accessorKey: "risk_tier",
+                        cell: (item) => (
+                            <Badge variant={item.risk_tier === 'high' ? 'destructive' : item.risk_tier === 'medium' ? 'secondary' : 'default'} className="capitalize bg-muted/50">
+                                {item.risk_tier || 'Low'}
                             </Badge>
                         )
                     },

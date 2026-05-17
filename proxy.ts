@@ -55,7 +55,7 @@ function isPayloadRoute(pathname: string): boolean {
     return pathname.startsWith("/admin");
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-url', request.nextUrl.href);

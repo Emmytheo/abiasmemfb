@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { ProductApplication, ProductType } from "@/lib/api/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, CheckCircle2, Clock, Building, Landmark, Check, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, Clock, Building, Landmark, Check, XCircle, AlertCircle, X, Info } from "lucide-react";
+import { toast } from "sonner";
 
 function ApplicationDetailContent({ params }: { params: Promise<{ applicationId: string }> }) {
     const resolvedParams = use(params);
@@ -16,6 +17,7 @@ function ApplicationDetailContent({ params }: { params: Promise<{ applicationId:
     const [app, setApp] = useState<ProductApplication | null>(null);
     const [product, setProduct] = useState<ProductType | null>(null);
     const [loading, setLoading] = useState(true);
+    const [withdrawLoading, setWithdrawLoading] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -68,6 +70,22 @@ function ApplicationDetailContent({ params }: { params: Promise<{ applicationId:
     const refId = typeof app.id === 'string' && app.id.includes('_')
         ? app.id.split('_')[1]?.toUpperCase()
         : String(app.id).substring(0, 8).toUpperCase();
+
+    const handleWithdraw = async () => {
+        if (!confirm("Are you sure you want to withdraw this application? This action cannot be undone.")) return;
+        setWithdrawLoading(true);
+        try {
+            await api.withdrawApplication(String(app.id));
+            toast.success("Application withdrawn successfully");
+            const allApps = await api.getUserApplications(app.user_id);
+            const currentApp = allApps.find(a => String(a.id) === String(app.id));
+            if (currentApp) setApp(currentApp);
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to withdraw application");
+        } finally {
+            setWithdrawLoading(false);
+        }
+    };
 
     return (
         <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24">
@@ -127,13 +145,26 @@ function ApplicationDetailContent({ params }: { params: Promise<{ applicationId:
                                 })}
                             </div>
                         ) : (
-                            <div className="flex items-center gap-4 py-4">
-                                {isApproved ? (
-                                    <><CheckCircle2 className="h-8 w-8 text-emerald-500" /><div><p className="font-bold text-emerald-600">Your application has been approved!</p><p className="text-sm text-muted-foreground">Your account/loan has been created.</p></div></>
-                                ) : isRejected ? (
-                                    <><XCircle className="h-8 w-8 text-destructive" /><div><p className="font-bold text-destructive">Your application was not approved.</p><p className="text-sm text-muted-foreground">Please contact support for more information.</p></div></>
-                                ) : (
-                                    <><Clock className="h-8 w-8 text-amber-500 animate-pulse" /><div><p className="font-bold text-amber-600">Your application is under review</p><p className="text-sm text-muted-foreground">Our team is reviewing your submission.</p></div></>
+                            <div className="flex flex-col gap-4 py-4">
+                                <div className="flex items-center gap-4">
+                                    {isApproved ? (
+                                        <><CheckCircle2 className="h-8 w-8 text-emerald-500" /><div><p className="font-bold text-emerald-600">Your application has been approved!</p><p className="text-sm text-muted-foreground">Your account/loan has been created.</p></div></>
+                                    ) : isRejected ? (
+                                        <><XCircle className="h-8 w-8 text-destructive" /><div><p className="font-bold text-destructive">Your application was not approved.</p><p className="text-sm text-muted-foreground">Please contact support for more information.</p></div></>
+                                    ) : app.status === 'withdrawn' ? (
+                                        <><AlertCircle className="h-8 w-8 text-muted-foreground" /><div><p className="font-bold text-muted-foreground">Application Withdrawn</p><p className="text-sm text-muted-foreground">You have cancelled this application.</p></div></>
+                                    ) : (
+                                        <><Clock className="h-8 w-8 text-amber-500 animate-pulse" /><div><p className="font-bold text-amber-600">Your application is under review</p><p className="text-sm text-muted-foreground">Our team is reviewing your submission.</p></div></>
+                                    )}
+                                </div>
+                                {isRejected && app.metadata?.rejection_reason && (
+                                    <div className="mt-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl flex items-start gap-3">
+                                        <Info className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-xs font-bold text-destructive uppercase tracking-widest mb-1">Reason for Rejection</p>
+                                            <p className="text-sm text-destructive/90">{app.metadata.rejection_reason}</p>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -214,6 +245,26 @@ function ApplicationDetailContent({ params }: { params: Promise<{ applicationId:
                         <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                         <p>Our team typically processes documentation and updates the tracker within 2-3 business days.</p>
                     </div>
+
+                    {!isApproved && !isRejected && app.status !== 'withdrawn' && (
+                        <Card className="border shadow-sm border-destructive/20">
+                            <CardContent className="pt-6 space-y-4">
+                                <div>
+                                    <h4 className="font-bold text-sm text-destructive">Withdraw Application</h4>
+                                    <p className="text-xs text-muted-foreground mt-1">If you no longer wish to proceed, you can cancel this application.</p>
+                                </div>
+                                <Button 
+                                    variant="outline" 
+                                    className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                                    onClick={handleWithdraw}
+                                    disabled={withdrawLoading}
+                                >
+                                    {withdrawLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <X className="h-4 w-4 mr-2" />}
+                                    Withdraw Application
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>

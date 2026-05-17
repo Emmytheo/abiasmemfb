@@ -119,16 +119,52 @@ export async function CustomerBulkSyncExecutor(
 
             // 3. Upsert Customer into Payload
             // Support Identity Harmonization: Check if qoreID is primary OR if it was merged into an active profile
-            const existingCustomers = await payload.find({
+            let existingCustomers = await payload.find({
                 collection: 'customers',
                 where: { 
-                    or: [
-                        { qore_customer_id: { equals: qoreCustomerID } },
-                        { 'legacy_qore_ids.qore_id': { equals: qoreCustomerID } }
+                    and: [
+                        { is_archived: { not_equals: true } },
+                        {
+                            or: [
+                                { qore_customer_id: { equals: qoreCustomerID } },
+                                { 'legacy_qore_ids.qore_id': { equals: qoreCustomerID } }
+                            ]
+                        }
                     ]
                 },
                 limit: 1
             });
+
+            // Fallback: If no exact matching active profile by Qore ID, lookup active profiles by BVN, Email, or Phone
+            if (existingCustomers.docs.length === 0) {
+                const fallbackClauses: any[] = [];
+                if (bvn) {
+                    fallbackClauses.push({ bvn: { equals: bvn } });
+                }
+                if (email && !email.endsWith('@abia-mfb.internal')) {
+                    fallbackClauses.push({ email: { equals: email } });
+                }
+                if (phone) {
+                    fallbackClauses.push({ phone_number: { equals: phone } });
+                }
+
+                if (fallbackClauses.length > 0) {
+                    const fallbackSearch = await payload.find({
+                        collection: 'customers',
+                        where: {
+                            and: [
+                                { is_archived: { not_equals: true } },
+                                { or: fallbackClauses }
+                            ]
+                        },
+                        limit: 1
+                    });
+                    if (fallbackSearch.docs.length > 0) {
+                        existingCustomers = fallbackSearch;
+                        log(`Match found via fallback properties (BVN/Email/Phone) for Qore Customer ID ${qoreCustomerID}. Re-using customer profile ${existingCustomers.docs[0].id}`, 'info');
+                    }
+                }
+            }
 
             let customerId: string | number;
             const customerBaseData = {
@@ -143,10 +179,19 @@ export async function CustomerBulkSyncExecutor(
             };
 
             if (existingCustomers.docs.length > 0) {
+                const matchedCust = existingCustomers.docs[0];
+                const updateData: any = {
+                    ...customerBaseData,
+                };
+                // Ensure qore_customer_id is set if it was missing on the matched profile
+                if (!matchedCust.qore_customer_id) {
+                    updateData.qore_customer_id = qoreCustomerID;
+                    log(`Associated Qore Customer ID ${qoreCustomerID} to matched active customer profile ${matchedCust.id}`, 'info');
+                }
                 const updated = await payload.update({
                     collection: 'customers',
-                    id: existingCustomers.docs[0].id,
-                    data: customerBaseData
+                    id: matchedCust.id,
+                    data: updateData
                 });
                 customerId = updated.id;
                 results.customersUpdated++;

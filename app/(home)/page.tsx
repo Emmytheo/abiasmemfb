@@ -4,7 +4,7 @@ import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, Fil
 import { Newsletter } from "@/components/newsletter";
 import { SuccessStories } from "@/components/home/success-stories";
 import { NewsInsights } from "@/components/home/news-insights";
-import { PromotionsShowcase } from "@/components/home/promotions-showcase";
+import { HeroPromotionsShowcase } from "@/components/home/promotions-showcase";
 import { ProductsShowcase } from "@/components/home/products-showcase";
 import { HeroExpository } from "@/components/home/hero-expository";
 import { SpotlightSection } from "@/components/home/spotlight-section";
@@ -37,7 +37,7 @@ async function HomeContent() {
                 <div className="h-[1px] flex-1 bg-border"></div>
             </div>
         </div>
-        <PromotionsShowcase />
+        <HeroPromotionsShowcase />
       </div>
 
       <ProductsShowcase />

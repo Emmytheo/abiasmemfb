@@ -291,7 +291,10 @@ export interface Promotion {
     id: string;
     title: string;
     description?: string;
-    image: any; // Media object from Payload
+    imageSource?: 'url' | 'media';
+    externalUrl?: string;
+    mediaImage?: any; // Media object from Payload
+    resolvedImageUrl?: string; // Client-side computed URL for easy rendering
     link?: string;
     isActive: boolean;
     placement: 'hero' | 'banner' | 'sidebar';
@@ -342,6 +345,14 @@ export interface ApiAdapter {
     getUserLoans: (userId: string) => Promise<Loan[]>;
     getLoanById: (id: string) => Promise<Loan | null>;
     createLoan: (data: Omit<Loan, 'id' | 'created_at' | 'updated_at'>) => Promise<Loan>;
+    updateLoan: (id: string, data: Partial<Loan>) => Promise<Loan | null>;
+    recordLoanRepayment: (loanId: string, amountNaira: number, narration?: string) => Promise<boolean>;
+    getCustomerAccounts: (customerId: string) => Promise<Account[]>;
+    getCustomerLoans: (customerId: string) => Promise<Loan[]>;
+    getCustomerTransactions: (customerId: string, limit?: number) => Promise<Transaction[]>;
+    getAccountTransactionSummary: (accountId: string, days?: number) => Promise<{ totalCredits: number; totalDebits: number; series: { date: string; credit: number; debit: number }[] }>;
+    withdrawApplication: (id: string) => Promise<boolean>;
+    getAllTransactionsPaginated: (page?: number, limit?: number, filters?: { type?: string; status?: string; fromDate?: string; toDate?: string }) => Promise<{ docs: Transaction[]; totalDocs: number; totalPages: number; page: number }>;
 
     // Beneficiaries
     getUserBeneficiaries: (userId: string) => Promise<Beneficiary[]>;
@@ -387,6 +398,7 @@ export interface ApiAdapter {
     getServiceCategories: () => Promise<ServiceCategory[]>;
     getServicesByCategory: (categorySlug: string) => Promise<Service[]>;
     getAllServices: () => Promise<Service[]>;
+    getServiceById: (id: string) => Promise<Service | null>;
     createServiceCategory: (data: Omit<ServiceCategory, 'id' | 'created_at'>) => Promise<ServiceCategory>;
     updateServiceCategory: (id: string, data: Partial<ServiceCategory>) => Promise<ServiceCategory>;
     deleteServiceCategory: (id: string) => Promise<boolean>;

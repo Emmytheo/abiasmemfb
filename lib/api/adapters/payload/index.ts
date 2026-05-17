@@ -30,6 +30,15 @@ export const PayloadAdapter: ApiAdapter = {
     getUserLoans: (...args) => actions.getUserLoans(...args),
     getLoanById: (...args) => actions.getLoanById(...args),
     createLoan: (...args) => actions.createLoan(...args),
+    // Extended accounting methods
+    updateLoan: (...args) => actions.updateLoan(...args),
+    recordLoanRepayment: (...args) => actions.recordLoanRepayment(...args),
+    getCustomerAccounts: (...args) => actions.getCustomerAccounts(...args),
+    getCustomerLoans: (...args) => actions.getCustomerLoans(...args),
+    getCustomerTransactions: (...args) => actions.getCustomerTransactions(...args),
+    getAccountTransactionSummary: (...args) => actions.getAccountTransactionSummary(...args),
+    withdrawApplication: (...args) => actions.withdrawApplication(...args),
+    getAllTransactionsPaginated: (...args) => actions.getAllTransactionsPaginated(...args),
 
     // Beneficiaries
     getUserBeneficiaries: (...args) => actions.getUserBeneficiaries(...args),

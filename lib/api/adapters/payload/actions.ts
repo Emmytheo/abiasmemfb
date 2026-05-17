@@ -508,6 +508,38 @@ export const checkExternalAccountStatus = async (accountNumber: string, statusTy
 
 export const generateAccountStatement = async (accountNumber: string, fromDate: string, toDate: string): Promise<{ statementBase64: string, fileName: string }> => {
     const payload = await initPayload();
+    
+    // Verify that the account is Qore-linked and the customer has a valid qore_customer_id
+    try {
+        const { docs: accounts } = await payload.find({
+            collection: 'accounts' as any,
+            where: { account_number: { equals: accountNumber } },
+            limit: 1,
+            depth: 1,
+            overrideAccess: true
+        });
+        if (accounts.length > 0) {
+            const acc = accounts[0];
+            if (acc.source !== 'qore') {
+                throw new Error("Cannot generate statement: This is not a Qore core-banking account.");
+            }
+            const customerId = typeof acc.customer === 'object' ? acc.customer?.id : acc.customer;
+            if (customerId) {
+                const customer = await payload.findByID({
+                    collection: 'customers',
+                    id: customerId,
+                    depth: 0,
+                    overrideAccess: true
+                });
+                if (!customer || !customer.qore_customer_id) {
+                    throw new Error("Cannot generate statement: The linked customer profile does not have a valid Qore customer ID.");
+                }
+            }
+        }
+    } catch (e: any) {
+        throw new Error(e.message || "Failed to verify account permissions for statement generation.");
+    }
+
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
     const endpointId = settings?.sync?.acctMgmt?.stmt;
     
@@ -1157,9 +1189,18 @@ export const getUserTransactions = async (userId: string): Promise<Transaction[]
     
     // 1. Trigger Sync for each Qore-linked account
     for (const account of accounts) {
-        if (account.source === 'qore' || account.account_number.startsWith('30')) {
+        if (account.source === 'qore') {
+            const customerObj = typeof account.customer === 'object' ? account.customer : null;
+            const qoreCustomerId = customerObj?.qore_customer_id || '';
+            const customerIdStr = customerObj ? customerObj.id : (account.customer as string);
+
+            if (customerObj && !qoreCustomerId) {
+                console.log(`[Ledger] Skipping transaction sync for account ${account.account_number}: Customer has no qore_customer_id.`);
+                continue;
+            }
+
             try {
-                await syncAccountTransactions(account.account_number, userId, account.customer as string);
+                await syncAccountTransactions(account.account_number, userId, customerIdStr);
             } catch (e: any) {
                 console.warn(`[Ledger] Sync failed for account ${account.account_number}: ${e.message}`);
             }
@@ -1194,7 +1235,21 @@ export const getUserTransactions = async (userId: string): Promise<Transaction[]
  * Synchronizes external transactions from Core Banking into our local Digital Ledger.
  */
 async function syncAccountTransactions(accountNumber: string, userId: string, customerId: string) {
+    if (!customerId) return;
     const payload = await initPayload();
+
+    // Verify the customer exists and has a qore_customer_id
+    try {
+        const custDoc = await payload.findByID({ collection: 'customers', id: customerId, depth: 0 });
+        if (!custDoc || !custDoc.qore_customer_id) {
+            console.log(`[Ledger] Skipping Qore sync for account ${accountNumber}: Customer has no qore_customer_id.`);
+            return;
+        }
+    } catch (e: any) {
+        console.warn(`[Ledger] Skipping Qore sync for account ${accountNumber} due to customer check failure: ${e.message}`);
+        return;
+    }
+
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
     const endpointId = settings?.sync?.acctMgmt?.stmt; // Reusing statement endpoint if it provides history
     
@@ -1527,17 +1582,21 @@ export const getPromotions = async (placement?: string): Promise<any[]> => {
         sort: '-createdAt'
     });
     return docs.map((doc: any) => {
-        // Normalize image data for the frontend
-        let imageData = doc.mediaImage;
+        let resolvedImageUrl = '';
         if (doc.imageSource === 'url' && doc.externalUrl) {
-            imageData = { url: doc.externalUrl };
+            resolvedImageUrl = doc.externalUrl;
+        } else if (doc.mediaImage && doc.mediaImage.url) {
+            resolvedImageUrl = doc.mediaImage.url;
         }
 
         return {
             id: String(doc.id),
             title: doc.title,
             description: doc.description,
-            image: imageData,
+            imageSource: doc.imageSource,
+            externalUrl: doc.externalUrl,
+            mediaImage: doc.mediaImage,
+            resolvedImageUrl,
             link: doc.link,
             isActive: doc.isActive,
             placement: doc.placement,
@@ -1550,6 +1609,13 @@ export const getPromotions = async (placement?: string): Promise<any[]> => {
 export const createPromotion = async (data: any): Promise<any> => {
     try {
         const payload = await initPayload();
+        
+        if (data.imageSource === 'url') {
+            data.mediaImage = null;
+        } else if (data.imageSource === 'media') {
+            data.externalUrl = null;
+        }
+        
         console.log('--- CREATE PROMOTION DATA ---', JSON.stringify(data, null, 2));
         const doc = await payload.create({ collection: 'promotions' as any, data });
         return { ...data, id: String(doc.id) };
@@ -1561,6 +1627,11 @@ export const createPromotion = async (data: any): Promise<any> => {
 
 export const updatePromotion = async (id: string, data: any): Promise<any> => {
     const payload = await initPayload();
+    if (data.imageSource === 'url') {
+        data.mediaImage = null;
+    } else if (data.imageSource === 'media') {
+        data.externalUrl = null;
+    }
     const doc = await payload.update({ collection: 'promotions' as any, id, data });
     return { ...doc, id: String(doc.id) };
 };
@@ -1682,6 +1753,7 @@ export const executeCustomerMerge = async (params: MergeParams) => {
         // Safety: Renaming unique fields on loser to allow winner to adopt them if needed
         const cleanEmail = loser.email.replace(/^archived_\d+_/, '');
         const cleanBvn = loser.bvn ? loser.bvn.replace(/^archived_\d+_/, '') : null;
+        const cleanQoreId = loser.qore_customer_id ? loser.qore_customer_id.replace(/^archived_\d+_/, '') : null;
         
         await payload.update({
             collection: 'customers',
@@ -1689,6 +1761,7 @@ export const executeCustomerMerge = async (params: MergeParams) => {
             data: {
                 email: `archived_${timestamp}_${cleanEmail}`,
                 bvn: cleanBvn ? `archived_${timestamp}_${cleanBvn}` : null,
+                qore_customer_id: cleanQoreId ? `archived_${timestamp}_${cleanQoreId}` : null,
                 supabase_id: null,
                 is_associated: false,
                 is_archived: true,
@@ -1698,18 +1771,29 @@ export const executeCustomerMerge = async (params: MergeParams) => {
         });
 
         // Harmonization Fix: Secure the Loser's Qore ID into the Winner's legacy array so future syncs respect the merge.
-        if (loser.qore_customer_id) {
+        if (cleanQoreId) {
             const winner = await payload.findByID({ collection: 'customers', id: winnerId });
             const existingLegacy = winner.legacy_qore_ids || [];
-            if (!existingLegacy.find((l: any) => l.qore_id === loser.qore_customer_id)) {
+            
+            const updateData: any = {};
+            
+            // If the winner does not have a primary Qore ID, let them adopt the loser's clean Qore ID
+            if (!winner.qore_customer_id) {
+                updateData.qore_customer_id = cleanQoreId;
+                console.log(`[Harmonization] Winner ${winnerId} adopted Qore Customer ID ${cleanQoreId} as primary`);
+            }
+            
+            if (!existingLegacy.find((l: any) => l.qore_id === cleanQoreId)) {
+                updateData.legacy_qore_ids = [...existingLegacy, { qore_id: cleanQoreId }];
+                console.log(`[Harmonization] Locked Legacy Qore ID ${cleanQoreId} into primary profile ${winnerId}`);
+            }
+            
+            if (Object.keys(updateData).length > 0) {
                 await payload.update({
                     collection: 'customers',
                     id: winnerId,
-                    data: {
-                        legacy_qore_ids: [...existingLegacy, { qore_id: loser.qore_customer_id }]
-                    } as any
+                    data: updateData
                 });
-                console.log(`[Harmonization] Locked Legacy Qore ID ${loser.qore_customer_id} into primary profile ${winnerId}`);
             }
         }
 
@@ -2262,4 +2346,242 @@ export const reprovisionApplication = async (applicationId: string): Promise<{ a
     });
 
     return { accountNumber: accounts[0]?.account_number };
+};
+
+// ==========================================
+// EXTENDED ACCOUNTING METHODS
+// ==========================================
+
+const mapLoanDoc = (doc: any) => ({
+    id: String(doc.id),
+    user_id: doc.user_id,
+    product_type_id: typeof doc.product_type === 'object' ? doc.product_type?.id : doc.product_type,
+    amount: (doc.principal ?? 0) / 100,
+    interest_rate: doc.interest_rate ?? 0,
+    duration_months: doc.duration_months ?? 0,
+    outstanding_balance: (doc.outstanding_balance ?? 0) / 100,
+    monthly_installment: (doc.monthly_installment ?? 0) / 100,
+    next_payment_date: doc.next_payment_date,
+    maturity_date: doc.maturity_date,
+    status: doc.status || 'pending',
+    created_at: doc.createdAt,
+    customer: doc.customer,
+} as Loan);
+
+const mapAccountDoc = (doc: any) => ({
+    id: String(doc.id),
+    user_id: doc.user_id || '',
+    account_number: doc.account_number,
+    account_type: doc.account_type || 'Savings',
+    balance: (doc.balance ?? 0) / 100,
+    status: doc.status || 'active',
+    is_frozen: doc.is_frozen || false,
+    pnd_enabled: doc.pnd_enabled || false,
+    lien_amount: (doc.lien_amount ?? 0) / 100,
+    source: doc.source || 'local',
+    is_primary: doc.is_primary || false,
+    is_archived: doc.is_archived || false,
+    created_at: doc.createdAt || new Date().toISOString(),
+    customer: doc.customer,
+} as Account);
+
+export const getCustomerAccounts = async (customerId: string): Promise<Account[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'accounts' as any,
+            where: { customer: { equals: customerId } },
+            depth: 1,
+            limit: 100,
+            sort: '-createdAt',
+            overrideAccess: true,
+        });
+        return docs.map(mapAccountDoc);
+    } catch (e) { return []; }
+};
+
+export const getCustomerLoans = async (customerId: string): Promise<Loan[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'loans' as any,
+            where: { customer: { equals: customerId } },
+            depth: 2,
+            limit: 100,
+            sort: '-createdAt',
+            overrideAccess: true,
+        });
+        return docs.map(mapLoanDoc);
+    } catch (e) { return []; }
+};
+
+export const getCustomerTransactions = async (customerId: string, limit = 50): Promise<Transaction[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'transactions' as any,
+            where: { customer: { equals: customerId } },
+            depth: 1,
+            limit,
+            sort: '-createdAt',
+            overrideAccess: true,
+        });
+        return docs.map((doc: any) => ({
+            id: String(doc.id),
+            user_id: doc.user_id,
+            amount: (doc.amount ?? 0) / 100,
+            type: doc.type || 'debit',
+            status: doc.status || 'successful',
+            reference: doc.reference || '',
+            narration: doc.narration,
+            balance_after: doc.balance_after != null ? doc.balance_after / 100 : undefined,
+            from_account: doc.from_account,
+            to_account: doc.to_account,
+            metadata: doc.metadata,
+            created_at: doc.createdAt || doc.date,
+        } as Transaction));
+    } catch (e) { return []; }
+};
+
+export const updateLoan = async (id: string, data: { status?: Loan['status']; outstanding_balance?: number; monthly_installment?: number; next_payment_date?: string; maturity_date?: string; interest_rate?: number; duration_months?: number; }): Promise<Loan | null> => {
+    try {
+        const payload = await initPayload();
+        const updateData: any = { ...data };
+        if (updateData.outstanding_balance != null) updateData.outstanding_balance = Math.round(updateData.outstanding_balance * 100);
+        if (updateData.monthly_installment != null) updateData.monthly_installment = Math.round(updateData.monthly_installment * 100);
+        const doc = await payload.update({ collection: 'loans' as any, id, data: updateData, overrideAccess: true });
+        return mapLoanDoc(doc);
+    } catch (e) { console.error('[updateLoan] Error:', e); return null; }
+};
+
+export const recordLoanRepayment = async (loanId: string, amountNaira: number, narration?: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        const loan: any = await payload.findByID({ collection: 'loans' as any, id: loanId, overrideAccess: true });
+        if (!loan) throw new Error('Loan not found');
+
+        const amountKobo = Math.round(amountNaira * 100);
+        const newOutstanding = Math.max(0, (loan.outstanding_balance ?? 0) - amountKobo);
+
+        // Advance next payment date by 1 month
+        const currentNextPayment = loan.next_payment_date ? new Date(loan.next_payment_date) : new Date();
+        currentNextPayment.setMonth(currentNextPayment.getMonth() + 1);
+
+        const txRef = `REPAY-${loanId.substring(0, 8).toUpperCase()}-${Date.now()}`;
+
+        await payload.create({
+            collection: 'transactions' as any,
+            data: {
+                reference: txRef,
+                type: 'repayment',
+                amount: amountKobo,
+                status: 'successful',
+                narration: narration || `Loan Repayment — ${txRef}`,
+                user_id: loan.user_id,
+                customer: loan.customer,
+                metadata: { loan_id: loanId, source: 'manual_repayment' }
+            },
+            overrideAccess: true,
+        });
+
+        await payload.update({
+            collection: 'loans' as any,
+            id: loanId,
+            data: {
+                outstanding_balance: newOutstanding,
+                next_payment_date: currentNextPayment.toISOString(),
+                status: newOutstanding === 0 ? 'repaid' : loan.status,
+            },
+            overrideAccess: true,
+        });
+
+        return true;
+    } catch (e) { console.error('[recordLoanRepayment] Error:', e); return false; }
+};
+
+export const getAccountTransactionSummary = async (accountId: string, days = 7): Promise<{ totalCredits: number; totalDebits: number; series: { date: string; credit: number; debit: number }[] }> => {
+    try {
+        const payload = await initPayload();
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        const { docs } = await payload.find({
+            collection: 'transactions' as any,
+            where: {
+                and: [
+                    { or: [{ from_account: { equals: accountId } }, { to_account: { equals: accountId } }] },
+                    { createdAt: { greater_than: since } },
+                ]
+            },
+            depth: 0,
+            limit: 500,
+            sort: 'createdAt',
+            overrideAccess: true,
+        });
+
+        const seriesMap: Record<string, { date: string; credit: number; debit: number }> = {};
+        let totalCredits = 0;
+        let totalDebits = 0;
+
+        for (const doc of docs as any[]) {
+            const dateKey = new Date(doc.createdAt || doc.date).toLocaleDateString('en-CA');
+            if (!seriesMap[dateKey]) seriesMap[dateKey] = { date: dateKey, credit: 0, debit: 0 };
+            const amountNaira = (doc.amount ?? 0) / 100;
+            const isCredit = doc.to_account === accountId || doc.type === 'credit';
+            if (isCredit) { seriesMap[dateKey].credit += amountNaira; totalCredits += amountNaira; }
+            else { seriesMap[dateKey].debit += amountNaira; totalDebits += amountNaira; }
+        }
+
+        return { totalCredits, totalDebits, series: Object.values(seriesMap) };
+    } catch (e) { return { totalCredits: 0, totalDebits: 0, series: [] }; }
+};
+
+export const withdrawApplication = async (id: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        await payload.update({ collection: 'product-applications' as any, id, data: { status: 'withdrawn' } as any, overrideAccess: true });
+        return true;
+    } catch (e) { return false; }
+};
+
+export const getAllTransactionsPaginated = async (page = 1, limit = 50, filters?: { type?: string; status?: string; fromDate?: string; toDate?: string }): Promise<{ docs: Transaction[]; totalDocs: number; totalPages: number; page: number }> => {
+    try {
+        const payload = await initPayload();
+        const andClauses: any[] = [];
+        if (filters?.type && filters.type !== 'all') andClauses.push({ type: { equals: filters.type } });
+        if (filters?.status && filters.status !== 'all') andClauses.push({ status: { equals: filters.status } });
+        if (filters?.fromDate) andClauses.push({ createdAt: { greater_than_equal: filters.fromDate } });
+        if (filters?.toDate) andClauses.push({ createdAt: { less_than_equal: filters.toDate } });
+
+        const result = await payload.find({
+            collection: 'transactions' as any,
+            where: andClauses.length > 0 ? { and: andClauses } : {},
+            limit,
+            page,
+            sort: '-createdAt',
+            overrideAccess: true,
+            depth: 0,
+        });
+
+        const docs = (result.docs as any[]).map((doc: any) => ({
+            id: String(doc.id),
+            user_id: doc.user_id,
+            amount: (doc.amount ?? 0) / 100,
+            type: doc.type || 'debit',
+            status: doc.status || 'successful',
+            reference: doc.reference || '',
+            narration: doc.narration,
+            category: doc.category,
+            balance_after: doc.balance_after != null ? doc.balance_after / 100 : undefined,
+            from_account: doc.from_account,
+            to_account: doc.to_account,
+            metadata: doc.metadata,
+            created_at: doc.createdAt || doc.date,
+        } as Transaction));
+
+        return {
+            docs,
+            totalDocs: result.totalDocs,
+            totalPages: result.totalPages,
+            page: result.page ?? page,
+        };
+    } catch (e) { return { docs: [], totalDocs: 0, totalPages: 0, page }; }
 };

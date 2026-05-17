@@ -89,22 +89,11 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
             const cust = await api.getCustomerById(id);
             if (cust) {
                 setCustomer(cust);
-                // Bilateral Lookup: Fetch accounts/loans by both Customer ID and Digital UUID/Email
-                const [allAccounts, allLoans] = await Promise.all([
-                    api.getAllAccounts(),
-                    api.getAllLoans()
+                // Use targeted customer-scoped queries — no O(n) full-table scans
+                const [linkedAccounts, linkedLoans] = await Promise.all([
+                    api.getCustomerAccounts(id),
+                    api.getCustomerLoans(id),
                 ]);
-
-                const linkedAccounts = allAccounts.filter(acc => 
-                    (typeof acc.customer === 'object' ? acc.customer?.id === id : acc.customer === id) ||
-                    (acc.user_id === cust.email || acc.user_id === cust.supabase_id)
-                );
-                
-                const linkedLoans = allLoans.filter(loan => 
-                    (typeof loan.customer === 'object' ? loan.customer?.id === id : loan.customer === id) ||
-                    (loan.user_id === cust.email || loan.user_id === cust.supabase_id)
-                );
-
                 setAccounts(linkedAccounts);
                 setLoans(linkedLoans);
             }

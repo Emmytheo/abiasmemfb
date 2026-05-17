@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -278,16 +278,51 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
                         <Card className="border shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-lg">Amortization Schedule</CardTitle>
-                                <CardDescription>Your expected monthly repayment breakdown.</CardDescription>
+                                <CardDescription>Month-by-month breakdown of principal and interest repayments.</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-xl bg-muted/10">
-                                    <Calendar className="h-10 w-10 text-muted-foreground/50 mb-4" />
-                                    <h3 className="text-lg font-medium mb-1">Schedule Generation Pending</h3>
-                                    <p className="text-sm text-muted-foreground max-w-sm">
-                                        Your detailed month-by-month amortization schedule will appear here once your first repayment cycle begins.
-                                    </p>
-                                </div>
+                            <CardContent className="p-0 overflow-x-auto">
+                                {loan.duration_months > 0 && loan.amount > 0 ? (() => {
+                                    const rows: { month: number; date: string; payment: number; principal: number; interest: number; balance: number }[] = [];
+                                    const monthlyRate = (loan.interest_rate ?? 0) / 100 / 12;
+                                    let balance = loan.amount;
+                                    const start = new Date(loan.created_at);
+                                    for (let i = 1; i <= loan.duration_months; i++) {
+                                        const interest = balance * monthlyRate;
+                                        const payment = monthlyRate === 0 ? loan.amount / loan.duration_months : (loan.amount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -loan.duration_months));
+                                        const principalPart = payment - interest;
+                                        balance = Math.max(0, balance - principalPart);
+                                        const d = new Date(start); d.setMonth(d.getMonth() + i);
+                                        rows.push({ month: i, date: d.toLocaleDateString('en-NG', { month: 'short', year: 'numeric' }), payment: Math.round(payment * 100) / 100, principal: Math.round(principalPart * 100) / 100, interest: Math.round(interest * 100) / 100, balance: Math.round(balance * 100) / 100 });
+                                    }
+                                    return (
+                                        <table className="w-full text-xs md:text-sm">
+                                            <thead className="bg-muted/30 border-b">
+                                                <tr className="text-left">
+                                                    {['#', 'Month', 'Payment', 'Principal', 'Interest', 'Balance'].map(h => (
+                                                        <th key={h} className="px-3 md:px-4 py-3 font-bold text-muted-foreground uppercase tracking-wider text-[10px] md:text-xs">{h}</th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {rows.map(row => (
+                                                    <tr key={row.month} className={`hover:bg-muted/10 ${row.balance === 0 ? 'bg-emerald-500/5' : ''}`}>
+                                                        <td className="px-3 md:px-4 py-2.5 font-mono text-muted-foreground">{row.month}</td>
+                                                        <td className="px-3 md:px-4 py-2.5">{row.date}</td>
+                                                        <td className="px-3 md:px-4 py-2.5 font-semibold">₦{row.payment.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+                                                        <td className="px-3 md:px-4 py-2.5 text-primary">₦{row.principal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+                                                        <td className="px-3 md:px-4 py-2.5 text-amber-600">₦{row.interest.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+                                                        <td className="px-3 md:px-4 py-2.5 font-mono">₦{row.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    );
+                                })() : (
+                                    <div className="flex flex-col items-center justify-center p-12 text-center">
+                                        <Calendar className="h-10 w-10 text-muted-foreground/50 mb-4" />
+                                        <p className="text-muted-foreground text-sm">Loan parameters insufficient to compute schedule.</p>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>

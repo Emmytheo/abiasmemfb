@@ -7,8 +7,9 @@ import { api } from "@/lib/api";
 import { ProductApplication, ProductType, Account } from "@/lib/api/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Check, X, AlertCircle, Clock, CheckCircle2, XCircle, Banknote, ShieldCheck } from "lucide-react";
+import { Loader2, ArrowLeft, Check, X, AlertCircle, Clock, CheckCircle2, XCircle, Banknote, ShieldCheck, FileDown } from "lucide-react";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 
 // Generate a pseudo-random account number
 function generateAccountNumber() {
@@ -27,6 +28,8 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [isRejecting, setIsRejecting] = useState(false);
+    const [rejectReason, setRejectReason] = useState("");
 
     useEffect(() => {
         async function loadData() {
@@ -100,14 +103,25 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
 
     const handleReject = async () => {
         if (!app) return;
+        if (!isRejecting) {
+            setIsRejecting(true);
+            return;
+        }
+        if (!rejectReason.trim()) {
+            toast.error("Please provide a reason for rejection.");
+            return;
+        }
+
         setActionLoading(true);
         setActionError(null);
         try {
             const updatedApp = await api.updateApplication(String(app.id), {
                 status: 'rejected',
+                metadata: { ...app.metadata, rejection_reason: rejectReason }
             });
             setApp(updatedApp);
             toast.success("Application rejected.");
+            setIsRejecting(false);
         } catch (e: any) {
             console.error("Reject error:", e);
             setActionError(e?.message || "Failed to reject application.");
@@ -260,11 +274,23 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
                                 return (
                                     <div key={key} className="space-y-1">
                                         <p className="text-xs text-muted-foreground font-medium capitalize">{label}</p>
-                                        <p className="text-sm font-semibold break-words">
+                                        <div className="text-sm font-semibold break-words mt-1">
                                             {fieldDef?.type === 'file' ? (
-                                                <Button variant="outline" size="sm" className="h-8 mt-1 font-normal"><Check className="h-4 w-4 mr-2 text-emerald-500" /> Document.pdf</Button>
+                                                typeof value === 'string' && value.startsWith('http') ? (
+                                                    <div className="relative inline-block border rounded overflow-hidden">
+                                                        {value.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                                                            <img src={value} alt={label} className="h-32 w-auto object-cover" />
+                                                        ) : (
+                                                            <a href={value} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-primary transition-colors">
+                                                                <FileDown className="h-4 w-4" /> View Document
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <Button variant="outline" size="sm" className="h-8 font-normal cursor-default"><Check className="h-4 w-4 mr-2 text-emerald-500" /> File Attached</Button>
+                                                )
                                             ) : String(value) || '—'}
-                                        </p>
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -317,28 +343,60 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
                                     )}
 
                                     <div className="pt-2 space-y-3">
-                                        <Button
-                                            className="w-full h-11 shadow-md"
-                                            disabled={actionLoading}
-                                            onClick={handleAdvanceStage}
-                                        >
-                                            {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                            {nextStage ? `Advance to "${nextStage}"` : (
-                                                <>
-                                                    {/* <Banknote className="mr-2 h-4 w-4" /> */}
-                                                    Final Approve & Create {isLoanProduct ? 'Loan' : 'Account'}
-                                                </>
-                                            )}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive h-11"
-                                            disabled={actionLoading}
-                                            onClick={handleReject}
-                                        >
-                                            <X className="mr-2 h-4 w-4" />
-                                            Reject Application
-                                        </Button>
+                                        {!isRejecting ? (
+                                            <>
+                                                <Button
+                                                    className="w-full h-11 shadow-md"
+                                                    disabled={actionLoading}
+                                                    onClick={handleAdvanceStage}
+                                                >
+                                                    {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                                    {nextStage ? `Advance to "${nextStage}"` : (
+                                                        <>
+                                                            Final Approve & Create {isLoanProduct ? 'Loan' : 'Account'}
+                                                        </>
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive h-11"
+                                                    disabled={actionLoading}
+                                                    onClick={handleReject}
+                                                >
+                                                    <X className="mr-2 h-4 w-4" />
+                                                    Reject Application
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <div className="space-y-3 p-3 bg-destructive/5 border border-destructive/20 rounded-lg animate-in slide-in-from-top-2">
+                                                <label className="text-xs font-bold text-destructive uppercase tracking-widest">Reason for Rejection</label>
+                                                <Textarea 
+                                                    placeholder="Provide details to the customer..."
+                                                    className="bg-background min-h-[80px]"
+                                                    value={rejectReason}
+                                                    onChange={(e) => setRejectReason(e.target.value)}
+                                                    disabled={actionLoading}
+                                                />
+                                                <div className="flex gap-2 pt-1">
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        className="flex-1" 
+                                                        onClick={handleReject}
+                                                        disabled={actionLoading}
+                                                    >
+                                                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirm'}
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        className="flex-1"
+                                                        onClick={() => { setIsRejecting(false); setRejectReason(""); }}
+                                                        disabled={actionLoading}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
