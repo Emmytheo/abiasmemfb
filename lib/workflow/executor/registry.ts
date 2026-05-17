@@ -23,6 +23,7 @@ import { InterBankTransferExecutor } from './InterBankTransferExecutor'
 import { InternationalTransferExecutor } from './InternationalTransferExecutor'
 import { FundAccountExecutor } from './FundAccountExecutor'
 import { RegistrySyncExecutor } from './RegistrySyncExecutor'
+import { AutoRepaymentCollectorExecutor } from './AutoRepaymentCollectorExecutor'
 
 import {
     LoopExecutor,
@@ -147,4 +148,5 @@ export const ExecutorRegistry: RegistryType = {
     QORE_INTRA_BANK_TRANSFER: QoreIntraBankTransferExecutor,
     QORE_INTER_BANK_TRANSFER: QoreInterBankTransferExecutor,
     REGISTRY_SYNC: RegistrySyncExecutor,
+    AUTO_REPAYMENT_COLLECTION: AutoRepaymentCollectorExecutor,
 }

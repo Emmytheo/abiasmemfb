@@ -141,33 +141,37 @@ export const getAccountById = async (id: string): Promise<Account | null> => {
     const localAcc = await PayloadAdapter.getAccountById(id);
     if (!localAcc) return null;
 
-    if (localAcc.source !== 'qore' && !localAcc.account_number.startsWith('30')) {
+    if (localAcc.source !== 'qore') {
         return localAcc;
     }
 
-    try {
-        let hasQoreId = false;
-        if (localAcc.customer) {
-            const customerId = typeof localAcc.customer === 'object' ? localAcc.customer.id : localAcc.customer;
-            const customer = await PayloadAdapter.getCustomerById(customerId);
-            if (customer && customer.qore_customer_id) {
-                hasQoreId = true;
+    // Perform balance synchronization asynchronously in the background to prevent blocking Next.js page loads
+    Promise.resolve().then(async () => {
+        try {
+            let hasQoreId = false;
+            if (localAcc.customer) {
+                const customerId = typeof localAcc.customer === 'object' ? localAcc.customer.id : localAcc.customer;
+                const customer = await PayloadAdapter.getCustomerById(customerId);
+                if (customer && customer.qore_customer_id) {
+                    hasQoreId = true;
+                }
             }
-        }
 
-        if (!hasQoreId) {
-            console.log(`[Qore Adapter] Skipping getAccountSummary for account ${localAcc.account_number}: Customer has no qore_customer_id.`);
-            return localAcc;
-        }
+            if (!hasQoreId) return;
 
-        const qoreRes = await getAccountSummary(localAcc.account_number);
-        return {
-            ...localAcc,
-            balance: qoreRes.Payload?.AvailableBalance || qoreRes.Payload?.AccountBalance || localAcc.balance,
-        };
-    } catch (e) {
-        return localAcc;
-    }
+            const qoreRes = await getAccountSummary(localAcc.account_number);
+            const freshBalance = qoreRes.Payload?.AvailableBalance || qoreRes.Payload?.AccountBalance;
+            if (freshBalance !== undefined && freshBalance !== null && freshBalance !== localAcc.balance) {
+                await PayloadAdapter.updateAccount(id, {
+                    balance: freshBalance
+                });
+            }
+        } catch (err: any) {
+            console.error(`[Qore Adapter] Background balance sync failed for account ${localAcc.account_number}: ${err.message}`);
+        }
+    });
+
+    return localAcc;
 };
 
 export const getAllAccounts = async (): Promise<Account[]> => PayloadAdapter.getAllAccounts();
@@ -200,9 +204,12 @@ export const processAccountFunding = async (targetAccountId: string, amountNaira
     if (!localAcc) throw new Error('Target account not found locally');
 
     try {
+        const settings = await PayloadAdapter.getSiteSettings();
+        const fromAccount = (settings?.sync as any)?.systemMasterFundingAccount || 'SYSTEM_FUND_ACC';
+
         const amountKobo = Math.round(amountNaira * 100);
         const res = await intraBankTransfer({
-            FromAccountNumber: 'SYSTEM_FUND_ACC', // Needs valid system source
+            FromAccountNumber: fromAccount,
             ToAccountNumber: localAcc.account_number,
             Amount: String(amountKobo),
             Narration: 'Account Funding',

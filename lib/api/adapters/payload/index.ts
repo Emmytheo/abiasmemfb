@@ -84,6 +84,7 @@ export const PayloadAdapter: ApiAdapter = {
     getServiceCategories: (...args) => actions.getServiceCategories(...args),
     getServicesByCategory: (...args) => actions.getServicesByCategory(...args),
     getAllServices: (...args) => actions.getAllServices(...args),
+    getServiceById: (...args) => actions.getServiceById(...args),
     createServiceCategory: (...args) => actions.createServiceCategory(...args),
     updateServiceCategory: (...args) => actions.updateServiceCategory(...args),
     deleteServiceCategory: (...args) => actions.deleteServiceCategory(...args),

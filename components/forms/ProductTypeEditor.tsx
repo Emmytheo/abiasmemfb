@@ -64,6 +64,36 @@ export function ProductTypeEditor({ initialData, isEdit }: ProductTypeEditorProp
         }
     };
 
+    const handleTogglePublish = async () => {
+        if (!name) return toast.error("Name is required");
+        const newStatus = status === 'active' ? 'draft' : 'active';
+        setLoading(true);
+        try {
+            const payload: any = {
+                id: initialData?.id || `pt_${Date.now()}`,
+                name,
+                category,
+                tagline,
+                description,
+                image_url: imageUrl,
+                status: newStatus,
+                workflow_stages: workflowStages.split(",").map(s => s.trim()).filter(Boolean),
+                form_schema: formSchema,
+                financial_terms: initialData?.financial_terms || [],
+                created_at: initialData?.created_at || new Date().toISOString()
+            };
+
+            await api.saveProductType(payload);
+            setStatus(newStatus);
+            toast.success(`Product type has been ${newStatus === 'active' ? 'published successfully' : 'reverted to draft'}`);
+            router.push("/products/types");
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to change publication status");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-5xl animate-in fade-in duration-500 pb-24">
             <div className="flex items-center justify-between">
@@ -80,6 +110,24 @@ export function ProductTypeEditor({ initialData, isEdit }: ProductTypeEditorProp
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => router.back()} disabled={loading}>Cancel</Button>
+                    <Button
+                        type="button"
+                        onClick={handleTogglePublish}
+                        disabled={loading}
+                        className={`shadow-md font-semibold select-none transition-all duration-300 ${
+                            status === 'active'
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 hover:text-amber-700 dark:hover:text-amber-300'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600'
+                        }`}
+                    >
+                        {loading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : status === 'active' ? (
+                            "Revert to Draft"
+                        ) : (
+                            "Publish Product"
+                        )}
+                    </Button>
                     <Button onClick={handleSave} disabled={loading} className="shadow-md">
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Product

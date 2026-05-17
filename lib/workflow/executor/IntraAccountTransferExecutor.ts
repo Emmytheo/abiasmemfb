@@ -131,55 +131,61 @@ export async function IntraAccountTransferExecutor(
         const newDestBalance = (destDoc.balance ?? 0) + amountKobo
         const transferRef = generateTransferRef('TRF_INT')
 
-        // Update Source
-        await payload.update({
-            collection: 'accounts',
-            id: actualSourceId,
-            data: { balance: newSourceBalance, last_transaction_at: timestamp },
-        })
+        await payload.db.transaction(async (req: any) => {
+            // Update Source
+            await payload.update({
+                collection: 'accounts',
+                id: actualSourceId,
+                data: { balance: newSourceBalance, last_transaction_at: timestamp },
+                req,
+            })
 
-        // Update Dest
-        await payload.update({
-            collection: 'accounts',
-            id: actualDestId,
-            data: { balance: newDestBalance, last_transaction_at: timestamp },
-        })
+            // Update Dest
+            await payload.update({
+                collection: 'accounts',
+                id: actualDestId,
+                data: { balance: newDestBalance, last_transaction_at: timestamp },
+                req,
+            })
 
-        // 4. Double-Entry Transactions
-        // Source Debit
-        await payload.create({
-            collection: 'transactions',
-            data: {
-                reference: `${transferRef}_DB`,
-                type: 'transfer',
-                amount: amountKobo,
-                currency: 'NGN',
-                from_account: actualSourceId,
-                to_account: actualDestId,
-                status: 'successful',
-                narration: narration,
-                channel: 'workflow',
-                balance_after: newSourceBalance,
-                workflow_execution: env.executionId,
-            },
-        })
+            // 4. Double-Entry Transactions
+            // Source Debit
+            await payload.create({
+                collection: 'transactions',
+                data: {
+                    reference: `${transferRef}_DB`,
+                    type: 'transfer',
+                    amount: amountKobo,
+                    currency: 'NGN',
+                    from_account: actualSourceId,
+                    to_account: actualDestId,
+                    status: 'successful',
+                    narration: narration,
+                    channel: 'workflow',
+                    balance_after: newSourceBalance,
+                    workflow_execution: env.executionId,
+                },
+                req,
+            })
 
-        // Dest Credit
-        await payload.create({
-            collection: 'transactions',
-            data: {
-                reference: `${transferRef}_CR`,
-                type: 'credit', // Inward transfer
-                amount: amountKobo,
-                currency: 'NGN',
-                from_account: actualSourceId,
-                to_account: actualDestId,
-                status: 'successful',
-                narration: narration,
-                channel: 'workflow',
-                balance_after: newDestBalance,
-                workflow_execution: env.executionId,
-            },
+            // Dest Credit
+            await payload.create({
+                collection: 'transactions',
+                data: {
+                    reference: `${transferRef}_CR`,
+                    type: 'credit', // Inward transfer
+                    amount: amountKobo,
+                    currency: 'NGN',
+                    from_account: actualSourceId,
+                    to_account: actualDestId,
+                    status: 'successful',
+                    narration: narration,
+                    channel: 'workflow',
+                    balance_after: newDestBalance,
+                    workflow_execution: env.executionId,
+                },
+                req,
+            })
         })
 
         env.log.info(`INTRA_ACCOUNT_TRANSFER: Success. Ref: ${transferRef}`)

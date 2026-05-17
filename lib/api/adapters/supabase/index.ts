@@ -210,6 +210,9 @@ export const SupabaseAdapter: ApiAdapter = {
     getAllServices: async () => {
         throw new Error("Supabase Adapter not fully implemented");
     },
+    getServiceById: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
     createServiceCategory: async () => {
         throw new Error("Supabase Adapter not fully implemented");
     },

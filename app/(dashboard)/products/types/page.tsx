@@ -44,6 +44,21 @@ export default function ProductTypesPage() {
         }
     };
 
+    const handleToggleStatus = async (item: ProductType) => {
+        const newStatus = item.status === 'active' ? 'draft' : 'active';
+        try {
+            setTypes(prev => prev.map(t => t.id === item.id ? { ...t, status: newStatus } : t));
+            await api.saveProductType({
+                ...item,
+                status: newStatus
+            });
+            toast.success(`Product type "${item.name}" is now ${newStatus}`);
+        } catch (e: any) {
+            setTypes(prev => prev.map(t => t.id === item.id ? { ...t, status: item.status } : t));
+            toast.error(e?.message || "Failed to update status");
+        }
+    };
+
     if (loading && types.length === 0) {
         return <div className="flex justify-center p-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
     }
@@ -88,9 +103,22 @@ export default function ProductTypesPage() {
                         header: "Status",
                         accessorKey: "status",
                         cell: (item) => (
-                            <Badge variant={item.status === 'active' ? 'default' : item.status === 'draft' ? 'secondary' : 'destructive'} className="capitalize">
-                                {item.status}
-                            </Badge>
+                            <button
+                                onClick={() => handleToggleStatus(item)}
+                                className="group relative flex items-center gap-1 focus:outline-none transition-transform duration-200 active:scale-95"
+                                title={`Click to change status to ${item.status === 'active' ? 'draft' : 'active'}`}
+                            >
+                                <Badge 
+                                    className={`capitalize cursor-pointer select-none transition-all duration-300 font-semibold px-2.5 py-1 flex items-center gap-1.5 ${
+                                        item.status === 'active' 
+                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.1)]' 
+                                            : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-500/20 border border-zinc-500/20 shadow-none'
+                                    }`}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
+                                    {item.status}
+                                </Badge>
+                            </button>
                         )
                     },
                     {

@@ -40,8 +40,8 @@ export default function EditPromotionPage({ params }: { params: Promise<{ id: st
                     setFormData({
                         title: promo.title || "",
                         description: promo.description || "",
-                        imageSource: (promo as any).imageSource || (promo.image?.url ? "media" : "url"),
-                        imageUrl: (promo as any).externalUrl || promo.image?.url || "",
+                        imageSource: (promo as any).imageSource || ((promo as any).image?.url ? "media" : "url"),
+                        imageUrl: (promo as any).externalUrl || (promo as any).image?.url || "",
                         link: promo.link || "",
                         placement: promo.placement || "hero",
                         isActive: promo.isActive,

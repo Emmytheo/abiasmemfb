@@ -1445,6 +1445,25 @@ export const getAllServices = async (): Promise<Service[]> => {
     })) as any;
 };
 
+export const getServiceById = async (id: string): Promise<Service | null> => {
+    const payload = await initPayload();
+    const doc = await payload.findByID({ collection: 'services' as any, id, depth: 1 }).catch(() => null);
+    if (!doc) return null;
+    return {
+        id: String(doc.id),
+        name: doc.name,
+        status: doc.status,
+        fee_type: doc.fee_type,
+        fee_value: doc.fee_value,
+        form_schema: doc.form_schema || [],
+        provider_service_code: doc.provider_service_code,
+        category: typeof doc.category === 'object' ? (doc.category as any)?.name : doc.category,
+        category_id: typeof doc.category === 'object' ? String((doc.category as any)?.id) : String(doc.category),
+        validation_workflow: doc.validation_workflow,
+        execution_workflow: doc.execution_workflow,
+    } as any;
+};
+
 export const createServiceCategory = async (data: Omit<ServiceCategory, 'id' | 'created_at'>): Promise<ServiceCategory> => {
     const payload = await initPayload();
     const doc = await payload.create({ collection: 'service-categories' as any, data: data as any });

@@ -170,12 +170,13 @@ export interface ProductApplication {
     id: string;
     user_id: string;
     product_type_id: string;
-    status: 'pending' | 'approved' | 'rejected' | 'under_review';
+    status: 'pending' | 'approved' | 'rejected' | 'under_review' | 'withdrawn';
     workflow_stage: string;
     submitted_data: Record<string, any>;
     requested_amount?: number;
     created_at: string;
     updated_at: string;
+    metadata?: any;
 }
 
 export interface Transaction {

@@ -440,6 +440,10 @@ export const DummyAdapter: ApiAdapter = {
         await delay(300);
         return [];
     },
+    getServiceById: async (id) => {
+        await delay(350);
+        return null;
+    },
     createServiceCategory: async (data) => {
         await delay(400);
         return { ...data, id: `scat_${Date.now()}`, created_at: new Date().toISOString() } as any;

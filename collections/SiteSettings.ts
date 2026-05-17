@@ -35,6 +35,13 @@ export const SiteSettings: GlobalConfig = {
             },
             fields: [
                 {
+                    name: 'systemMasterFundingAccount',
+                    type: 'text',
+                    label: 'System Master Funding Account',
+                    defaultValue: '3086167603',
+                    admin: { description: 'The official core banking NUBAN account used for deposits, funding, and disbursements.' }
+                },
+                {
                     name: 'baselineAccounts',
                     type: 'array',
                     label: 'Sync Discovery Accounts',

@@ -83,54 +83,60 @@ export async function InterBankTransferExecutor(
 
         // 3. Deduct from Source Account atomically
         const newSourceBalance = sourceBalance - totalDebitKobo
-        await payload.update({
-            collection: 'accounts',
-            id: actualSourceId,
-            data: { balance: newSourceBalance, last_transaction_at: timestamp },
-            overrideAccess: true,
-        })
 
-        // 4. Record the double-entry Transactions
-        // Debit Principal
-        await payload.create({
-            collection: 'transactions',
-            overrideAccess: true,
-            data: {
-                reference: transferRef,
-                type: 'debit',
-                amount: amountKobo,
-                currency: 'NGN',
-                from_account: actualSourceId,
-                status: 'successful',
-                narration: `TRF TO ${destinationName || destinationAccount} / ${destinationBank} | ${narration}`,
-                channel: 'workflow',
-                balance_after: newSourceBalance,
-                workflow_execution: env.executionId,
-                metadata: {
-                    direction: 'outbound_nip',
-                    destinationAccount,
-                    destinationBank,
-                    nipProviderId,
-                },
-            } as any,
-        })
+        await payload.db.transaction(async (req: any) => {
+            await payload.update({
+                collection: 'accounts',
+                id: actualSourceId,
+                data: { balance: newSourceBalance, last_transaction_at: timestamp },
+                overrideAccess: true,
+                req,
+            })
 
-        // Debit Fee
-        await payload.create({
-            collection: 'transactions',
-            overrideAccess: true,
-            data: {
-                reference: `${transferRef}-FEE`,
-                type: 'fee',
-                amount: feeKobo,
-                currency: 'NGN',
-                from_account: actualSourceId,
-                status: 'successful',
-                narration: 'NIP Transfer Fee',
-                channel: 'workflow',
-                balance_after: newSourceBalance,
-                workflow_execution: env.executionId,
-            } as any,
+            // 4. Record the double-entry Transactions
+            // Debit Principal
+            await payload.create({
+                collection: 'transactions',
+                overrideAccess: true,
+                data: {
+                    reference: transferRef,
+                    type: 'debit',
+                    amount: amountKobo,
+                    currency: 'NGN',
+                    from_account: actualSourceId,
+                    status: 'successful',
+                    narration: `TRF TO ${destinationName || destinationAccount} / ${destinationBank} | ${narration}`,
+                    channel: 'workflow',
+                    balance_after: newSourceBalance,
+                    workflow_execution: env.executionId,
+                    metadata: {
+                        direction: 'outbound_nip',
+                        destinationAccount,
+                        destinationBank,
+                        nipProviderId,
+                    },
+                } as any,
+                req,
+            })
+
+            // Debit Fee
+            await payload.create({
+                collection: 'transactions',
+                overrideAccess: true,
+                data: {
+                    reference: `${transferRef}-FEE`,
+                    type: 'fee',
+                    amount: feeKobo,
+                    currency: 'NGN',
+                    from_account: actualSourceId,
+                    status: 'successful',
+                    narration: 'NIP Transfer Fee',
+                    channel: 'workflow',
+                    balance_after: newSourceBalance,
+                    workflow_execution: env.executionId,
+                } as any,
+                req,
+            })
         })
 
         // NOTE: In a real environment, you'd only commit the ledger IF the external API call succeeds, 

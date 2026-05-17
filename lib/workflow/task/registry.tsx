@@ -1492,4 +1492,16 @@ export const TaskRegistry: Registry = {
             { name: 'success', type: TaskParamType.BOOLEAN },
         ],
     },
+    AUTO_REPAYMENT_COLLECTION: {
+        type: TaskType.AUTO_REPAYMENT_COLLECTION,
+        label: 'Auto Repayment Collection',
+        icon: Clock,
+        category: TaskCategory.DATA,
+        description: 'Processes outstanding amortizations and debits borrower savings accounts atomically.',
+        inputs: [],
+        outputs: [
+            { name: 'repayments_collected', type: TaskParamType.NUMBER },
+            { name: 'repayments_failed', type: TaskParamType.NUMBER },
+        ],
+    },
 }

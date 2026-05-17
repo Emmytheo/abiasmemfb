@@ -184,6 +184,7 @@ export const ProductApplications: CollectionConfig = {
                 { label: 'Under Review', value: 'under_review' },
                 { label: 'Approved', value: 'approved' },
                 { label: 'Rejected', value: 'rejected' },
+                { label: 'Withdrawn', value: 'withdrawn' },
             ],
         },
         {
@@ -206,6 +207,13 @@ export const ProductApplications: CollectionConfig = {
             defaultValue: {},
             admin: {
                 description: 'The JSON snapshot of the application form filled by the user.'
+            }
+        },
+        {
+            name: 'metadata',
+            type: 'json',
+            admin: {
+                description: 'Additional application metadata, e.g., rejection reasons.'
             }
         },
     ],

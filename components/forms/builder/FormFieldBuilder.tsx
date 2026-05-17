@@ -18,6 +18,20 @@ interface FormFieldBuilderProps {
 
 export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: FormFieldBuilderProps) {
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+    const keysRef = React.useRef<string[]>([])
+
+    // Align key reference list with incoming fields length
+    const fieldsCount = (fields || []).length
+    if (keysRef.current.length !== fieldsCount) {
+        if (keysRef.current.length < fieldsCount) {
+            const needed = fieldsCount - keysRef.current.length
+            for (let i = 0; i < needed; i++) {
+                keysRef.current.push(`key_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+            }
+        } else {
+            keysRef.current = keysRef.current.slice(0, fieldsCount)
+        }
+    }
 
     const addField = () => {
         const newField: any = {
@@ -28,6 +42,7 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
             validations: [],
             events: []
         }
+        keysRef.current.push(`key_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
         onChange([...fields, newField])
     }
 
@@ -38,6 +53,7 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
     }
 
     const removeField = (index: number) => {
+        keysRef.current.splice(index, 1)
         onChange(fields.filter((_, i) => i !== index))
     }
 
@@ -50,6 +66,12 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
     const handleDragOver = (e: React.DragEvent, index: number) => {
         e.preventDefault()
         if (draggedIndex === null || draggedIndex === index) return
+        
+        // Swap keysRef
+        const tempKey = keysRef.current[draggedIndex]
+        keysRef.current[draggedIndex] = keysRef.current[index]
+        keysRef.current[index] = tempKey
+
         const newFields = [...fields]
         const draggedItem = newFields[draggedIndex]
         newFields.splice(draggedIndex, 1)
@@ -62,7 +84,7 @@ export function FormFieldBuilder({ fields, endpoints, onChange, idKey = 'id' }: 
         <div className="space-y-4">
             {(fields || []).map((field, index) => (
                 <div
-                    key={field[idKey] || field.id || index}
+                    key={keysRef.current[index] || index}
                     draggable
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={(e) => handleDragOver(e, index)}

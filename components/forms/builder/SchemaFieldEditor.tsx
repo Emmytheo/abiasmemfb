@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { FormField } from "@/lib/api/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, GripVertical, Settings2, X } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trash2, Plus, GripVertical, Settings2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -17,7 +16,20 @@ interface SchemaFieldEditorProps {
 }
 
 export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) {
-    const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const keysRef = useRef<string[]>([]);
+
+    // Align key reference list with incoming fields length
+    if (keysRef.current.length !== fields.length) {
+        if (keysRef.current.length < fields.length) {
+            const needed = fields.length - keysRef.current.length;
+            for (let i = 0; i < needed; i++) {
+                keysRef.current.push(`key_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+            }
+        } else {
+            keysRef.current = keysRef.current.slice(0, fields.length);
+        }
+    }
 
     const handleAddField = () => {
         const newField: FormField = {
@@ -26,28 +38,51 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
             type: "text",
             required: false,
         };
+        keysRef.current.push(`key_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
         onChange([...fields, newField]);
     };
 
-    const handleRemoveField = (id: string) => {
-        onChange(fields.filter(f => f.id !== id));
+    const handleRemoveField = (index: number) => {
+        keysRef.current.splice(index, 1);
+        onChange(fields.filter((_, i) => i !== index));
+        if (editingIndex === index) {
+            setEditingIndex(null);
+        } else if (editingIndex !== null && editingIndex > index) {
+            setEditingIndex(editingIndex - 1);
+        }
     };
 
-    const handleUpdateField = (id: string, updates: Partial<FormField>) => {
-        onChange(fields.map(f => f.id === id ? { ...f, ...updates } : f));
+    const handleUpdateField = (index: number, updates: Partial<FormField>) => {
+        const newFields = [...fields];
+        newFields[index] = { ...newFields[index], ...updates };
+        onChange(newFields);
     };
 
     const moveField = (index: number, direction: 'up' | 'down') => {
         const newIndex = direction === 'up' ? index - 1 : index + 1;
         if (newIndex < 0 || newIndex >= fields.length) return;
+
+        // Swap stable key references
+        const tempKey = keysRef.current[index];
+        keysRef.current[index] = keysRef.current[newIndex];
+        keysRef.current[newIndex] = tempKey;
+
         const newFields = [...fields];
         const temp = newFields[index];
         newFields[index] = newFields[newIndex];
         newFields[newIndex] = temp;
+
         onChange(newFields);
+
+        // Adjust editing index if active
+        if (editingIndex === index) {
+            setEditingIndex(newIndex);
+        } else if (editingIndex === newIndex) {
+            setEditingIndex(index);
+        }
     };
 
-    const editingField = fields.find(f => f.id === editingFieldId);
+    const editingField = editingIndex !== null ? fields[editingIndex] : null;
 
     return (
         <div className="space-y-4">
@@ -65,7 +100,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                     </div>
                 ) : (
                     fields.map((field, index) => (
-                        <div key={field.id} className="flex items-center gap-3 p-3 bg-card border rounded-lg shadow-sm group">
+                        <div key={keysRef.current[index] || index} className="flex items-center gap-3 p-3 bg-card border rounded-lg shadow-sm group">
                             <div className="flex flex-col gap-1 cursor-ns-resize opacity-30 hover:opacity-100 transition-opacity">
                                 <Button type="button" variant="ghost" size="icon" className="h-4 w-4" onClick={() => moveField(index, 'up')} disabled={index === 0}>
                                     <GripVertical className="h-3 w-3" />
@@ -76,7 +111,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                 <div className="col-span-4">
                                     <Input 
                                         value={field.label} 
-                                        onChange={(e) => handleUpdateField(field.id, { label: e.target.value })}
+                                        onChange={(e) => handleUpdateField(index, { label: e.target.value })}
                                         className="h-8 text-sm"
                                         placeholder="Field Label"
                                     />
@@ -84,7 +119,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                 <div className="col-span-3">
                                     <Input 
                                         value={field.id} 
-                                        onChange={(e) => handleUpdateField(field.id, { id: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
+                                        onChange={(e) => handleUpdateField(index, { id: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
                                         className="h-8 text-sm font-mono"
                                         placeholder="field_id"
                                     />
@@ -92,7 +127,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                 <div className="col-span-3">
                                     <Select 
                                         value={field.type} 
-                                        onValueChange={(val: any) => handleUpdateField(field.id, { type: val })}
+                                        onValueChange={(val: any) => handleUpdateField(index, { type: val })}
                                     >
                                         <SelectTrigger className="h-8 text-sm">
                                             <SelectValue />
@@ -113,7 +148,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                         variant="ghost" 
                                         size="icon" 
                                         className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                        onClick={() => setEditingFieldId(field.id)}
+                                        onClick={() => setEditingIndex(index)}
                                     >
                                         <Settings2 className="h-4 w-4" />
                                     </Button>
@@ -122,7 +157,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                         variant="ghost" 
                                         size="icon" 
                                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                        onClick={() => handleRemoveField(field.id)}
+                                        onClick={() => handleRemoveField(index)}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -133,7 +168,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                 )}
             </div>
 
-            <Dialog open={!!editingFieldId} onOpenChange={(open) => !open && setEditingFieldId(null)}>
+            <Dialog open={editingIndex !== null} onOpenChange={(open) => !open && setEditingIndex(null)}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Field Settings</DialogTitle>
@@ -144,7 +179,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                 <Checkbox 
                                     id="required" 
                                     checked={editingField.required}
-                                    onCheckedChange={(checked) => handleUpdateField(editingField.id, { required: !!checked })}
+                                    onCheckedChange={(checked) => handleUpdateField(editingIndex!, { required: !!checked })}
                                 />
                                 <Label htmlFor="required">Required Field</Label>
                             </div>
@@ -153,7 +188,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                 <Label>Placeholder Text</Label>
                                 <Input 
                                     value={editingField.placeholder || ''} 
-                                    onChange={(e) => handleUpdateField(editingField.id, { placeholder: e.target.value })}
+                                    onChange={(e) => handleUpdateField(editingIndex!, { placeholder: e.target.value })}
                                 />
                             </div>
 
@@ -161,7 +196,7 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                 <Label>Helper Description</Label>
                                 <Input 
                                     value={editingField.description || ''} 
-                                    onChange={(e) => handleUpdateField(editingField.id, { description: e.target.value })}
+                                    onChange={(e) => handleUpdateField(editingIndex!, { description: e.target.value })}
                                 />
                             </div>
 
@@ -170,20 +205,19 @@ export function SchemaFieldEditor({ fields, onChange }: SchemaFieldEditorProps) 
                                     <Label>Options (comma separated)</Label>
                                     <Input 
                                         value={(editingField.options || []).join(', ')} 
-                                        onChange={(e) => handleUpdateField(editingField.id, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                                        onChange={(e) => handleUpdateField(editingIndex!, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                                         placeholder="Option 1, Option 2, Option 3"
                                     />
                                 </div>
                             )}
 
-                            {/* Complex validations & events can be expanded here later */}
                             <div className="p-3 bg-muted/50 rounded-lg border border-dashed">
                                 <p className="text-xs text-muted-foreground">Advanced validations and conditional events are supported by the schema but are configured via JSON in the current version.</p>
                             </div>
                         </div>
                     )}
                     <div className="flex justify-end">
-                        <Button onClick={() => setEditingFieldId(null)}>Done</Button>
+                        <Button onClick={() => setEditingIndex(null)}>Done</Button>
                     </div>
                 </DialogContent>
             </Dialog>
