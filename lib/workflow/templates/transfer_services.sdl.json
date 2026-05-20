@@ -42,9 +42,9 @@
                             "trigger": "onCondition",
                             "condition": { "type": "length", "value": 10 },
                             "action": "EXECUTE_ENDPOINT",
-                            "endpointId": "Account Enquiry",
+                            "endpointId": 2,
                             "mappingConfig": {
-                                "fullName": "destination_name"
+                                "AccountName": "destination_name"
                             }
                         }
                     ]
@@ -106,7 +106,11 @@
                     "id": "destination_bank_code",
                     "name": "destination_bank_code",
                     "label": "Destination Bank",
-                    "type": "destination_bank_lookup",
+                    "type": "api_select",
+                    "options_endpoint": 36,
+                    "options_text_key": "BankName",
+                    "options_value_key": "BankCode",
+                    "options_data_path": "CommercialBanks",
                     "required": true
                 },
                 {
@@ -121,7 +125,7 @@
                             "trigger": "onCondition",
                             "condition": { "type": "length", "value": 10 },
                             "action": "EXECUTE_ENDPOINT",
-                            "endpointId": "Inter-Bank Name Enquiry",
+                            "endpointId": 37,
                             "mappingConfig": {
                                 "AccountName": "destination_name"
                             }

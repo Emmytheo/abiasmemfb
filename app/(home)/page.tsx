@@ -1,6 +1,7 @@
+import { ExpandingReach } from "@/components/home/expanding-reach";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, FileText, CheckSquare, ShieldCheck, Apple, Play, Battery, Wifi, Signal, Menu, UserCircle, Send, ArrowDownLeft, Receipt, CreditCard, Hash, Store } from "lucide-react";
+import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, FileText, CheckSquare, ShieldCheck, Apple, Play, Battery, Wifi, Signal, Menu, UserCircle, Send, ArrowDownLeft, Receipt, CreditCard, Hash, Store, Zap } from "lucide-react";
 import { Newsletter } from "@/components/newsletter";
 import { SuccessStories } from "@/components/home/success-stories";
 import { NewsInsights } from "@/components/home/news-insights";
@@ -39,7 +40,7 @@ async function HomeContent() {
 
       {/* Dismissible Banner Promotion */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-40">
-          <BannerPromotion />
+        <BannerPromotion />
       </div>
 
       {/* Featured Offers & Promotions Strip */}
@@ -48,25 +49,23 @@ async function HomeContent() {
       <ProductsShowcase />
 
       {/* Spotlight with Right Rail Promotions */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {activeSidebar.length > 0 ? (
+      {activeSidebar.length > 0 ? (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col lg:flex-row gap-8">
-            <div className="flex-1">
-                <SpotlightSection />
+            <div className="flex-1 rounded-[2rem] overflow-hidden border shadow-xl">
+              <SpotlightSection />
             </div>
             <div className="w-full lg:w-[320px] shrink-0 space-y-6">
-                <div className="sticky top-24">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-4">Special Offers</h3>
-                    <SidebarPromotionsWidget initialData={activeSidebar} />
-                </div>
+              <div className="sticky top-24">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-4">Special Offers</h3>
+                <SidebarPromotionsWidget initialData={activeSidebar} />
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="w-full">
-              <SpotlightSection />
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <SpotlightSection />
+      )}
 
       {/* App Section */}
       <section className="py-24 bg-muted overflow-hidden">
@@ -116,6 +115,34 @@ async function HomeContent() {
                         </div>
                       </div>
 
+                      {/* Dynamic Esusu & Active Card Widgets (Interactive Marketing addition) */}
+                      <div className="space-y-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex justify-between items-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                          <span>Active Systems</span>
+                          <span className="text-emerald-500 font-extrabold animate-pulse">● LIVE</span>
+                        </div>
+
+                        {/* Esusu Cycle */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-bold text-gray-800">Ajo Cycle: Ariaria Trade Union</span>
+                            <span className="font-mono text-gray-500">₦250K/₦500K</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-primary h-full w-1/2 rounded-full"></div>
+                          </div>
+                        </div>
+
+                        {/* Card Indicator */}
+                        <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-gray-100 text-[10px]">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span className="font-mono font-bold text-slate-800">Verve Card •• 4912</span>
+                          </div>
+                          <span className="bg-emerald-50 text-emerald-600 font-extrabold px-1.5 py-0.5 rounded text-[8px]">ACTIVE</span>
+                        </div>
+                      </div>
+
                       {/* Quick Actions */}
                       <div className="grid grid-cols-4 gap-2">
                         <div className="flex flex-col items-center gap-1.5 cursor-pointer">
@@ -126,21 +153,21 @@ async function HomeContent() {
                         </div>
                         <div className="flex flex-col items-center gap-1.5 cursor-pointer">
                           <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                            <ArrowDownLeft size={20} />
+                            <Users size={20} />
                           </div>
-                          <span className="text-[10px] font-bold text-gray-600">Receive</span>
+                          <span className="text-[10px] font-bold text-gray-600">Esusu</span>
                         </div>
                         <div className="flex flex-col items-center gap-1.5 cursor-pointer">
                           <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                            <Receipt size={20} />
+                            <Store size={20} />
                           </div>
-                          <span className="text-[10px] font-bold text-gray-600">Bills</span>
+                          <span className="text-[10px] font-bold text-gray-600">Agency</span>
                         </div>
                         <div className="flex flex-col items-center gap-1.5 cursor-pointer">
                           <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                            <Smartphone size={20} />
+                            <CreditCard size={20} />
                           </div>
-                          <span className="text-[10px] font-bold text-gray-600">Airtime</span>
+                          <span className="text-[10px] font-bold text-gray-600">Cards</span>
                         </div>
                       </div>
 
@@ -364,56 +391,28 @@ async function HomeContent() {
         </div>
       </section>
 
-      {/* Upcoming Channels */}
-      <section className="py-24 bg-background pattern-dots">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-accent font-semibold tracking-wide uppercase text-sm mb-3">Expanding Our Reach</h2>
-            <h3 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-6">
-              More Ways to Bank <span className="text-muted-foreground font-light text-2xl md:text-3xl">(Coming Soon)</span>
+      {/* Expanded Modern Channels Showcase */}
+      <section className="py-24 bg-background pattern-dots relative overflow-hidden">
+        {/* Soft Background Accent */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[160px] pointer-events-none"></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-20">
+            <div className="inline-flex items-center gap-2 py-1.5 px-3.5 rounded-full bg-primary/10 border border-primary/20 mb-4 animate-pulse">
+              <Zap size={12} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">Unprecedented Access</span>
+            </div>
+            <h2 className="text-accent font-black tracking-widest uppercase text-xs mb-3">Expanding Our Channels</h2>
+            <h3 className="text-3xl md:text-5xl font-display font-black text-foreground mb-6 tracking-tight">
+              State-of-the-Art Digital Reach
             </h3>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              We are constantly innovating to bring AbiaSMEMFB closer to you. Our upcoming channels are designed to ensure you have 24/7 access to your funds and our services.
+            <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg leading-relaxed">
+              We are constantly innovating to bring digital-first solutions closer to you. Experience premium card options, completely offline USSD banking, and neighborhood POS agency banking cashpoints.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Cards */}
-            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-sm border border-border/50 relative overflow-hidden group">
-              <div className="absolute top-4 right-4 bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold px-2 py-1 rounded">Soon</div>
-              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center text-foreground mb-6 opacity-70 group-hover:opacity-100 transition-opacity">
-                <CreditCard size={24} />
-              </div>
-              <h4 className="text-xl font-bold text-foreground mb-3 opacity-80 group-hover:opacity-100 transition-opacity">ATM & Virtual Cards</h4>
-              <p className="text-muted-foreground leading-relaxed text-sm">
-                Request physical or virtual debit cards. Manage your spending limits, pick your custom PIN securely, and freeze your card instantly from your app.
-              </p>
-            </div>
-
-            {/* USSD */}
-            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-sm border border-border/50 relative overflow-hidden group">
-              <div className="absolute top-4 right-4 bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold px-2 py-1 rounded">Soon</div>
-              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center text-foreground mb-6 opacity-70 group-hover:opacity-100 transition-opacity">
-                <Hash size={24} />
-              </div>
-              <h4 className="text-xl font-bold text-foreground mb-3 opacity-80 group-hover:opacity-100 transition-opacity">USSD Banking (*xxx#)</h4>
-              <p className="text-muted-foreground leading-relaxed text-sm">
-                No internet? No problem. Check balances, buy airtime, and transfer funds seamlessly with our dedicated USSD code from any basic mobile phone.
-              </p>
-            </div>
-
-            {/* Agency Banking */}
-            <div className="bg-card text-card-foreground p-8 rounded-2xl shadow-sm border border-border/50 relative overflow-hidden group">
-              <div className="absolute top-4 right-4 bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold px-2 py-1 rounded">Soon</div>
-              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center text-foreground mb-6 opacity-70 group-hover:opacity-100 transition-opacity">
-                <Store size={24} />
-              </div>
-              <h4 className="text-xl font-bold text-foreground mb-3 opacity-80 group-hover:opacity-100 transition-opacity">Agency Banking (POS)</h4>
-              <p className="text-muted-foreground leading-relaxed text-sm">
-                Access cash deposits and withdrawals right in your neighborhood through our extensive network of authorized POS agents across the state.
-              </p>
-            </div>
-          </div>
+          {/* Interactive Client Channels Component */}
+          <ExpandingReach />
         </div>
       </section>
 

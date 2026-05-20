@@ -26,7 +26,7 @@ export default async function HomeLayout({
   const userRole: AppRole | null = user ? (user.user_metadata?.role || "user") : null;
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen marketing-scale">
         <Suspense fallback={null}>
             <Navbar userRole={userRole} />
         </Suspense>

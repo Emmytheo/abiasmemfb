@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type BlogPost } from "@/lib/api";
 import { BlogCard } from "@/components/blog/blog-card";
 import { Search } from "lucide-react";
+import { EDUCATIONAL_POSTS } from "@/lib/constants/educational-posts";
 
 export default function BlogListingPage() {
     const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -13,7 +14,12 @@ export default function BlogListingPage() {
         async function fetchPosts() {
             try {
                 const data = await api.getBlogPosts();
-                setPosts(data);
+                const filteredEdu = EDUCATIONAL_POSTS.filter(
+                    (ep) => !data.some((d) => d.slug === ep.slug)
+                );
+                setPosts([...filteredEdu, ...data]);
+            } catch (e) {
+                setPosts(EDUCATIONAL_POSTS);
             } finally {
                 setLoading(false);
             }

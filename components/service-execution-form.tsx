@@ -72,8 +72,11 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
             });
             const data = await res.json();
             const rawData = data?.data ?? data?.Payload ?? data ?? [];
+            // Support custom data path for nested arrays (e.g. CommercialBanks key in NIP response)
+            const dataPath = (field as any).options_data_path;
+            const finalData = dataPath ? (rawData?.[dataPath] ?? rawData) : rawData;
             const opts = normalizeOptionsData(
-                rawData,
+                finalData,
                 (field as any).options_text_key || 'name',
                 (field as any).options_value_key || 'id'
             );

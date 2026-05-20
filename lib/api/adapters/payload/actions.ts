@@ -411,8 +411,8 @@ export const updateAccount = async (id: string, data: Partial<Account>): Promise
     const payload = await initPayload();
     const existing = await payload.findByID({ collection: 'accounts' as any, id, depth: 1 });
     
-    // External Parity Orchestration
-    if (existing.external_status === 'core_synced' || existing.is_mirrored) {
+    // External Parity Orchestration: only mirror to core banking if account is Qore-sourced
+    if (existing.source === 'qore') {
         try {
             const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
             const sync = settings?.sync;

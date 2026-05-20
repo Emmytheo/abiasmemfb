@@ -53,7 +53,7 @@ export function Footer() {
                         </div>
                         <div>
                             <h4 className="text-accent font-bold uppercase tracking-wider text-xs mb-6">
-                                Products
+                                Solutions
                             </h4>
                             <ul className="space-y-3">
                                 <li>
@@ -69,23 +69,39 @@ export function Footer() {
                                         className="text-white/80 hover:text-white text-sm transition-colors"
                                         href="/business"
                                     >
-                                        Personal Loans
+                                        Business & SME Loans
                                     </Link>
                                 </li>
                                 <li>
                                     <Link
                                         className="text-white/80 hover:text-white text-sm transition-colors"
-                                        href="/business"
+                                        href="/business#cooperative-thrift"
                                     >
-                                        SME Loans
+                                        Esusu & Co-op Wallets
                                     </Link>
                                 </li>
                                 <li>
                                     <Link
                                         className="text-white/80 hover:text-white text-sm transition-colors"
-                                        href="/business"
+                                        href="/business#agency-banking"
                                     >
-                                        Salary Advance
+                                        Agency Banking Network
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link
+                                        className="text-white/80 hover:text-white text-sm transition-colors"
+                                        href="/business#merchant-solutions"
+                                    >
+                                        Merchant POS Terminals
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link
+                                        className="text-white/80 hover:text-white text-sm transition-colors"
+                                        href="/business#smart-cards"
+                                    >
+                                        Debit & Virtual Cards
                                     </Link>
                                 </li>
                             </ul>

@@ -61,7 +61,7 @@ export function Navbar({ userRole }: NavbarProps) {
                             href="/business"
                             className={`${linkBaseClass} ${isActive("/business") ? activeClass : inactiveClass}`}
                         >
-                            Business
+                            Business & Unions
                         </Link>
                         <Link
                             href="/company"
@@ -139,7 +139,7 @@ export function Navbar({ userRole }: NavbarProps) {
                             onClick={() => setIsOpen(false)}
                             className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-primary dark:hover:text-accent hover:bg-muted"
                         >
-                            Business
+                            Business & Unions
                         </Link>
                         <Link
                             href="/company"

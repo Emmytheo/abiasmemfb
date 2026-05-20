@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import {
     ArrowLeft, Loader2, Copy, Check, ShieldCheck,
     Smartphone, ArrowUpRight, ArrowDownLeft, Building,
-    Activity, CreditCard, Bell, Settings, Tag, Target, Snowflake, ExternalLink
+    Activity, CreditCard, Bell, Settings, Tag, Target, Snowflake, ExternalLink, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { Account, Transaction } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +32,14 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
     const [emailAlerts, setEmailAlerts] = useState(true);
     const [smsAlerts, setSmsAlerts] = useState(false);
 
+    // Card management state
+    const [cardType, setCardType] = useState<string>('Verve');
+    const [cardRequestLoading, setCardRequestLoading] = useState(false);
+    const [cardRequestDone, setCardRequestDone] = useState(false);
+    const [activateCardNumber, setActivateCardNumber] = useState('');
+    const [activateLoading, setActivateLoading] = useState(false);
+    const [activateDone, setActivateDone] = useState(false);
+
     useEffect(() => {
         async function loadData() {
             try {
@@ -46,8 +55,22 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                     api.getAccountTransactions(accountId)
                 ]);
 
-                // Ensure the account exists and belongs to the user
-                if (!accData || accData.user_id !== supaUser.id) {
+                if (!accData) {
+                    router.push('/my-products');
+                    return;
+                }
+
+                // Ensure the account belongs to the user.
+                // Qore-synced accounts don't carry user_id — ownership goes through
+                // customer.supabase_id, so we check both paths.
+                const customerSupaId =
+                    typeof (accData as any).customer === 'object'
+                        ? (accData as any).customer?.supabase_id
+                        : null;
+                const isOwner =
+                    accData.user_id === supaUser.id ||
+                    customerSupaId === supaUser.id;
+                if (!isOwner) {
                     router.push('/my-products');
                     return;
                 }
@@ -69,6 +92,59 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
         navigator.clipboard.writeText(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleCardRequest = async () => {
+        if (!account) return;
+        setCardRequestLoading(true);
+        try {
+            const res = await fetch('/api/endpoints/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpointId: 25,
+                    dynamicPayload: { AccountNumber: account.account_number, CardType: cardType }
+                })
+            });
+            const data = await res.json();
+            if (res.ok && (data?.IsSuccessful !== false)) {
+                setCardRequestDone(true);
+                toast.success(`${cardType} card requested! Processing within 5 business days.`);
+            } else {
+                toast.error(data?.Message || data?.error || 'Card request failed. Please try again.');
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Network error. Try again.');
+        } finally {
+            setCardRequestLoading(false);
+        }
+    };
+
+    const handleCardActivation = async () => {
+        if (!activateCardNumber.trim()) { toast.error('Please enter your card number.'); return; }
+        setActivateLoading(true);
+        try {
+            const res = await fetch('/api/endpoints/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpointId: 26,
+                    dynamicPayload: { CardNumber: activateCardNumber.replace(/\s/g, '') }
+                })
+            });
+            const data = await res.json();
+            if (res.ok && (data?.IsSuccessful !== false)) {
+                setActivateDone(true);
+                setActivateCardNumber('');
+                toast.success('Card activated successfully!');
+            } else {
+                toast.error(data?.Message || data?.error || 'Activation failed. Check the card number and try again.');
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Network error. Try again.');
+        } finally {
+            setActivateLoading(false);
+        }
     };
 
     if (loading) {
@@ -270,60 +346,140 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                     {/* CARDS & CHANNELS TAB */}
                     <TabsContent value="cards" className="m-0 focus-visible:outline-none focus-visible:ring-0">
                         <div className="grid gap-6 md:grid-cols-2">
+                            {/* Card Request Panel */}
                             <Card className="border shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="text-lg flex items-center gap-2">
                                         <CreditCard className="h-5 w-5 text-primary" />
-                                        Linked Cards
+                                        Request a Debit Card
                                     </CardTitle>
-                                    <CardDescription>Manage your ATM and Virtual debit cards for this account.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-muted/20 text-center gap-3">
-                                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                                            <CreditCard className="h-6 w-6 text-primary" />
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-foreground">No Cards Request</p>
-                                            <p className="text-sm text-muted-foreground max-w-[250px] mx-auto mt-1">You haven't requested a debit card for this account yet.</p>
-                                        </div>
-                                        <Button className="mt-2" variant="outline">Request Virtual Card</Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border shadow-sm">
-                                <CardHeader>
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        <Smartphone className="h-5 w-5 text-primary" />
-                                        Supported Channels
-                                    </CardTitle>
-                                    <CardDescription>Operational services configured for this account.</CardDescription>
+                                    <CardDescription>Order a physical or virtual debit card for this account.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                                        <div className="space-y-0.5">
-                                            <p className="font-medium text-sm">USSD Banking</p>
-                                            <p className="text-xs text-muted-foreground">Dial *887# to transact</p>
+                                    {cardRequestDone ? (
+                                        <div className="flex flex-col items-center justify-center p-6 text-center gap-3">
+                                            <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                                                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                                            </div>
+                                            <p className="font-semibold text-foreground">Card Request Submitted</p>
+                                            <p className="text-sm text-muted-foreground">Your {cardType} card will be ready within 5 business days.</p>
+                                            <Button variant="ghost" size="sm" className="text-primary" onClick={() => setCardRequestDone(false)}>Request another</Button>
                                         </div>
-                                        <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-0">ACTIVE</Badge>
-                                    </div>
-                                    <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                                        <div className="space-y-0.5">
-                                            <p className="font-medium text-sm">Internet Banking</p>
-                                            <p className="text-xs text-muted-foreground">App and Web access</p>
-                                        </div>
-                                        <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-0">ACTIVE</Badge>
-                                    </div>
-                                    <div className="flex items-center justify-between p-3 rounded-lg border bg-card opacity-50">
-                                        <div className="space-y-0.5">
-                                            <p className="font-medium text-sm">Cheque Book</p>
-                                            <p className="text-xs text-muted-foreground">For Current Accounts and Corporates</p>
-                                        </div>
-                                        <Badge variant="outline" className="text-muted-foreground border-border">UNAVAILABLE</Badge>
-                                    </div>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Card Network</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {['Verve', 'Visa', 'Mastercard'].map(t => (
+                                                        <button
+                                                            key={t}
+                                                            type="button"
+                                                            onClick={() => setCardType(t)}
+                                                            className={`py-2.5 px-3 rounded-lg border text-sm font-medium transition-all ${
+                                                                cardType === t
+                                                                    ? 'border-primary bg-primary/10 text-primary'
+                                                                    : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                                                            }`}
+                                                        >
+                                                            {t}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="p-3 rounded-lg bg-muted/40 border text-sm text-muted-foreground space-y-1">
+                                                <p className="font-medium text-foreground text-xs uppercase tracking-wider">Card Details</p>
+                                                <p>Account: <span className="font-mono text-foreground">{account.account_number}</span></p>
+                                                <p>Type: <span className="text-foreground">{cardType} Debit</span></p>
+                                            </div>
+                                        </>
+                                    )}
                                 </CardContent>
+                                {!cardRequestDone && (
+                                    <CardFooter className="pt-0">
+                                        <Button
+                                            className="w-full gap-2"
+                                            onClick={handleCardRequest}
+                                            disabled={cardRequestLoading}
+                                        >
+                                            {cardRequestLoading ? (
+                                                <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
+                                            ) : (
+                                                <><CreditCard className="h-4 w-4" /> Request {cardType} Card</>
+                                            )}
+                                        </Button>
+                                    </CardFooter>
+                                )}
                             </Card>
+
+                            {/* Card Activation + Channels */}
+                            <div className="space-y-4">
+                                <Card className="border shadow-sm">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-base flex items-center gap-2">
+                                            <ShieldCheck className="h-4 w-4 text-primary" />
+                                            Activate a Card
+                                        </CardTitle>
+                                        <CardDescription className="text-xs">Enter your 16-digit card number to activate.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {activateDone ? (
+                                            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 text-emerald-600">
+                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                                <p className="text-sm font-medium">Card activated successfully!</p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    placeholder="1234 5678 9012 3456"
+                                                    value={activateCardNumber}
+                                                    onChange={e => setActivateCardNumber(e.target.value)}
+                                                    maxLength={19}
+                                                    className="font-mono tracking-widest"
+                                                />
+                                                <Button
+                                                    size="sm"
+                                                    onClick={handleCardActivation}
+                                                    disabled={activateLoading || !activateCardNumber.trim()}
+                                                >
+                                                    {activateLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Activate'}
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border shadow-sm">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-base flex items-center gap-2">
+                                            <Smartphone className="h-4 w-4 text-primary" />
+                                            Supported Channels
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                            <div className="space-y-0.5">
+                                                <p className="font-medium text-sm">USSD Banking</p>
+                                                <p className="text-xs text-muted-foreground">Dial *887# to transact</p>
+                                            </div>
+                                            <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-0">ACTIVE</Badge>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                            <div className="space-y-0.5">
+                                                <p className="font-medium text-sm">Internet Banking</p>
+                                                <p className="text-xs text-muted-foreground">App and Web access</p>
+                                            </div>
+                                            <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-0">ACTIVE</Badge>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 rounded-lg border bg-card opacity-50">
+                                            <div className="space-y-0.5">
+                                                <p className="font-medium text-sm">Cheque Book</p>
+                                                <p className="text-xs text-muted-foreground">For Current Accounts</p>
+                                            </div>
+                                            <Badge variant="outline" className="text-muted-foreground border-border">UNAVAILABLE</Badge>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </div>
                     </TabsContent>
 

@@ -10,26 +10,32 @@ import { ReadingProgress } from "@/components/blog/post/reading-progress";
 import { draftMode } from "next/headers";
 import { getPayload } from "payload";
 import configPromise from "@payload-config";
+import { EDUCATIONAL_POSTS } from "@/lib/constants/educational-posts";
 
 export async function generateStaticParams() {
     try {
         const posts = await api.getBlogPosts();
-        if (!posts || posts.length === 0) {
-            return [{ slug: 'example-post' }];
-        }
-        return posts.map((post) => ({
+        const allPosts = [...EDUCATIONAL_POSTS, ...(posts || [])];
+        return allPosts.map((post) => ({
             slug: post.slug,
         }));
     } catch (e) {
-        return [{ slug: 'example-post' }];
+        return EDUCATIONAL_POSTS.map((post) => ({
+            slug: post.slug,
+        }));
     }
 }
 
 async function BlogPostPageContent({ params }: { params: { slug: string } }) {
     const { slug } = await params as any;
 
-    // 1. Try the published API first
-    let post: BlogPost | undefined = await api.getBlogPostBySlug(slug);
+    // Check educational posts first for perfect instant delivery
+    let post: BlogPost | undefined = EDUCATIONAL_POSTS.find((ep) => ep.slug === slug);
+
+    // 1. Try the published API if not matched
+    if (!post) {
+        post = await api.getBlogPostBySlug(slug);
+    }
 
     // 2. Fallback: if not found (draft/unpublished), fetch directly from Payload with draft:true.
     //    This lets the Payload live-preview iframe show brand-new posts without requiring
