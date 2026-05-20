@@ -25,34 +25,57 @@ export async function RegistryBulkSyncExecutor() {
     };
 
     try {
-        // 1. Fetch products from Qore Core (DYNAMIC ENDPOINT RESOLUTION)
-        // prioritize by name "Get Products" then fallback to path
-        let endpoints = await payload.find({
-            collection: 'endpoints',
-            where: {
-                name: { equals: 'Get Products' }
-            },
-            limit: 1,
+        // Load the site settings first to get the configured endpoints
+        const settings = await payload.findGlobal({
+            slug: 'site-settings',
+            overrideAccess: true,
             depth: 2
-        });
+        }) as any;
 
-        if (endpoints.docs.length === 0) {
-            endpoints = await payload.find({
+        let endpointDoc: any = null;
+
+        if (settings?.sync?.productSyncEndpoint) {
+            const epId = typeof settings.sync.productSyncEndpoint === 'object' ? settings.sync.productSyncEndpoint.id : settings.sync.productSyncEndpoint;
+            endpointDoc = await payload.findByID({
+                collection: 'endpoints',
+                id: epId,
+                depth: 2,
+                overrideAccess: true
+            });
+        }
+
+        if (!endpointDoc) {
+            // 1. Fallback: Fetch products from Qore Core (DYNAMIC ENDPOINT RESOLUTION)
+            // prioritize by name "Get Products" then fallback to path
+            let endpoints = await payload.find({
                 collection: 'endpoints',
                 where: {
-                    path: { contains: 'Product/Get' }
+                    name: { equals: 'Get Products' }
                 },
                 limit: 1,
                 depth: 2
             });
+
+            if (endpoints.docs.length === 0) {
+                endpoints = await payload.find({
+                    collection: 'endpoints',
+                    where: {
+                        path: { contains: 'Product/Get' }
+                    },
+                    limit: 1,
+                    depth: 2
+                });
+            }
+
+            if (endpoints.docs.length > 0) {
+                endpointDoc = endpoints.docs[0];
+            }
         }
 
-        if (endpoints.docs.length === 0) {
-            throw new Error("Registry Sync failed: No 'Get Products' endpoint found in CMS. Please ensure the endpoint exists and is named correctly.");
+        if (!endpointDoc) {
+            throw new Error("Registry Sync failed: No Product Sync endpoint configured or found in CMS.");
         }
 
-        const endpointDoc = endpoints.docs[0];
-        
         // Resolve Institution Code from provider metadata if available
         const provider = typeof endpointDoc.provider === 'object' ? endpointDoc.provider : null;
         const institutionCode = provider?.metadata?.institutionCode || "0017"; 
@@ -61,11 +84,27 @@ export async function RegistryBulkSyncExecutor() {
             query: { mfbCode: institutionCode }
         });
 
-        const fetchRes = await fetch(resolved.url, {
-            method: resolved.method,
-            headers: resolved.headers,
-            body: resolved.method !== 'GET' ? JSON.stringify(resolved.body) : undefined
-        });
+        console.log(`[RegistryBulkSyncExecutor] Fetching Qore Products from: ${resolved.url}`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        let fetchRes;
+        try {
+            fetchRes = await fetch(resolved.url, {
+                method: resolved.method,
+                headers: resolved.headers,
+                body: resolved.method !== 'GET' ? JSON.stringify(resolved.body) : undefined,
+                signal: controller.signal
+            });
+        } catch (fetchErr: any) {
+            if (fetchErr.name === 'AbortError') {
+                throw new Error("Core banking sync request timed out (8s limit exceeded). Please check upstream Qore sandbox availability.");
+            }
+            throw fetchErr;
+        } finally {
+            clearTimeout(timeoutId);
+        }
 
         if (!fetchRes.ok) {
             const errText = await fetchRes.text();

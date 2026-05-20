@@ -62,6 +62,21 @@ export default function ProductTypesPage() {
         }
     };
 
+    const handleToggleStatus = async (item: ProductType) => {
+        const newStatus = item.status === 'active' ? 'draft' : 'active';
+        try {
+            setData(prev => prev.map(t => t.id === item.id ? { ...t, status: newStatus as any } : t));
+            await api.saveProductType({
+                ...item,
+                status: newStatus as any
+            });
+            toast.success(`Product type "${item.name}" is now ${newStatus}`);
+        } catch (e: any) {
+            setData(prev => prev.map(t => t.id === item.id ? { ...t, status: item.status } : t));
+            toast.error(e?.message || "Failed to update status");
+        }
+    };
+
     const handleExport = async () => {
         const res = await exportRegistryProductsAction();
         if (res.success) {
@@ -178,7 +193,28 @@ export default function ProductTypesPage() {
                             return <span className="block max-w-[150px] md:max-w-[250px] lg:max-w-[400px] truncate" title={text}>{text}</span>;
                         }
                     },
-                    { header: "Status", accessorKey: "status", cell: (item) => <span className="capitalize text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs">{item.status}</span> },
+                    {
+                        header: "Status",
+                        accessorKey: "status",
+                        cell: (item) => (
+                            <button
+                                onClick={() => handleToggleStatus(item)}
+                                className="group relative flex items-center gap-1 focus:outline-none transition-transform duration-200 active:scale-95"
+                                title={`Click to change status to ${item.status === 'active' ? 'draft' : 'active'}`}
+                            >
+                                <span 
+                                    className={`capitalize cursor-pointer select-none transition-all duration-300 font-semibold px-2.5 py-1 flex items-center gap-1.5 rounded-full text-xs ${
+                                        item.status === 'active' 
+                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.1)]' 
+                                            : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-500/20 border border-zinc-500/20 shadow-none'
+                                    }`}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
+                                    {item.status}
+                                </span>
+                            </button>
+                        )
+                    },
                     actionColumn
                 ]}
                 gridRenderItem={(item) => (

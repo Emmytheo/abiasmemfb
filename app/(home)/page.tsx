@@ -4,7 +4,7 @@ import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, Fil
 import { Newsletter } from "@/components/newsletter";
 import { SuccessStories } from "@/components/home/success-stories";
 import { NewsInsights } from "@/components/home/news-insights";
-import { HeroPromotionsShowcase } from "@/components/home/promotions-showcase";
+import { HeroPromotionsShowcase, BannerPromotion, SidebarPromotionsWidget } from "@/components/home/promotions-showcase";
 import { ProductsShowcase } from "@/components/home/products-showcase";
 import { HeroExpository } from "@/components/home/hero-expository";
 import { SpotlightSection } from "@/components/home/spotlight-section";
@@ -23,26 +23,50 @@ async function HomeContent() {
     );
   }
 
+  // Server-side pre-fetch promotions for perfect SSR and CLS elimination
+  const [heroPromos, sidebarPromos] = await Promise.all([
+    api.getPromotions('hero').catch(() => []),
+    api.getPromotions('sidebar').catch(() => [])
+  ]);
+
+  const activeHero = (heroPromos || []).filter(p => p.isActive);
+  const activeSidebar = (sidebarPromos || []).filter(p => p.isActive);
+
   return (
     <main className="flex flex-col min-h-screen overflow-x-hidden">
       {/* Grand Hero/Expository Section */}
       <HeroExpository />
 
-      {/* Featured Offers & Promotions Strip */}
-      <div className="relative z-30 bg-background pt-12 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-4 mb-8">
-                <div className="h-[1px] flex-1 bg-border"></div>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground whitespace-nowrap">Current Highlights</h3>
-                <div className="h-[1px] flex-1 bg-border"></div>
-            </div>
-        </div>
-        <HeroPromotionsShowcase />
+      {/* Dismissible Banner Promotion */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-40">
+          <BannerPromotion />
       </div>
+
+      {/* Featured Offers & Promotions Strip */}
+      <HeroPromotionsShowcase initialData={activeHero} />
 
       <ProductsShowcase />
 
-      <SpotlightSection />
+      {/* Spotlight with Right Rail Promotions */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {activeSidebar.length > 0 ? (
+          <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex-1">
+                <SpotlightSection />
+            </div>
+            <div className="w-full lg:w-[320px] shrink-0 space-y-6">
+                <div className="sticky top-24">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-4">Special Offers</h3>
+                    <SidebarPromotionsWidget initialData={activeSidebar} />
+                </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full">
+              <SpotlightSection />
+          </div>
+        )}
+      </div>
 
       {/* App Section */}
       <section className="py-24 bg-muted overflow-hidden">

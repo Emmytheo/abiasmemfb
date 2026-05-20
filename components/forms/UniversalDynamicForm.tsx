@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
-import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle2, Upload, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { runWorkflow, executeEndpointAction } from '@/app/(dashboard)/workflows/[id]/edit/actions'
 import { FormField, FieldEvent } from '@/lib/api/types'
+import { NIGERIAN_BANKS } from '@/lib/data/nigerian-banks'
 
 // Re-export for compatibility or use locally
 export type FormFieldSchema = FormField & {
@@ -47,7 +48,13 @@ export function UniversalDynamicForm({
     }, [fields])
 
     const resolvePath = (obj: any, path: string) => {
-        return path.split('.').reduce((prev, curr) => prev?.[curr], obj)
+        return path.split('.').reduce((prev, curr) => {
+            if (!prev) return undefined;
+            if (prev[curr] !== undefined) return prev[curr];
+            const currLower = curr.toLowerCase();
+            const match = Object.keys(prev).find(k => k.toLowerCase() === currLower);
+            return match !== undefined ? prev[match] : undefined;
+        }, obj)
     }
 
     const parseOptions = (options: any): { label: string, value: any }[] => {
@@ -132,8 +139,17 @@ export function UniversalDynamicForm({
     }
 
     const handleEvent = async (field: FormFieldSchema, event: any, value: any) => {
-        if (event.action === 'SET_VALUE' && event.mappingConfig) {
-            // Simple static set or calculation if needed, but usually it's mapping from API
+        // SET_VALUE / SET_VALUES: apply mappingConfig values directly to form state
+        if ((event.action === 'SET_VALUE' || event.action === 'SET_VALUES') && event.mappingConfig) {
+            const newUpdates: Record<string, any> = {}
+            Object.entries(event.mappingConfig).forEach(([staticValOrApiKey, formKey]) => {
+                // Static values are set directly; API responses handled in EXECUTE_ENDPOINT below
+                newUpdates[formKey as string] = staticValOrApiKey
+            })
+            if (Object.keys(newUpdates).length > 0) {
+                setFormData(prev => ({ ...prev, ...newUpdates }))
+            }
+            return
         }
 
         if (event.action === 'EXECUTE_ENDPOINT' && event.endpointId) {
@@ -141,7 +157,8 @@ export function UniversalDynamicForm({
             setActiveValidations(prev => ({ ...prev, [field.id]: true }))
             
             try {
-                const result = await executeEndpointAction(eid, { body: { [field.id]: value }, query: { [field.id]: value } })
+                const enquiryPayload = { ...formData, [field.id]: value }
+                const result = await executeEndpointAction(eid, { body: enquiryPayload, query: enquiryPayload })
                 if (result.success && result.data && event.mappingConfig) {
                     // Apply mappings: mappingConfig is { "api.path": "formFieldName" }
                     const newMappings: Record<string, any> = {}
@@ -294,7 +311,51 @@ export function UniversalDynamicForm({
                                 )}
                             </div>
 
-                            {field.type === 'select' ? (
+                            {field.type === 'file' ? (
+                                <div className="relative">
+                                    <label
+                                        htmlFor={`udf-file-${field.id}`}
+                                        className={`flex items-center gap-3 h-11 w-full rounded-xl border px-4 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors ${
+                                            hasError ? 'border-rose-500/50' : 'border-input group-hover:border-primary/30'
+                                        }`}
+                                    >
+                                        <Upload size={14} className="text-muted-foreground shrink-0" />
+                                        <span className="text-muted-foreground truncate">
+                                            {formData[field.id]?.name || field.placeholder || 'Choose file...'}
+                                        </span>
+                                    </label>
+                                    <input
+                                        id={`udf-file-${field.id}`}
+                                        type="file"
+                                        className="sr-only"
+                                        disabled={isSubmitting}
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) handleChange(field, file)
+                                        }}
+                                    />
+                                </div>
+                            ) : field.type === 'destination_bank_lookup' ? (
+                                <div className="relative">
+                                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                                    <select
+                                        className={`flex h-11 w-full rounded-xl border bg-background/50 pl-9 pr-3 py-2 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/10 ${
+                                            hasError ? 'border-rose-500/50 bg-rose-50/10' : 'border-input group-hover:border-primary/30'
+                                        }`}
+                                        value={formData[field.id] || ''}
+                                        onChange={(e) => handleChange(field, e.target.value)}
+                                        disabled={isValidating || isSubmitting}
+                                        onBlur={() => handleBlur(field)}
+                                    >
+                                        <option value="" disabled>Select bank...</option>
+                                        {NIGERIAN_BANKS.map(bank => (
+                                            <option key={bank.code} value={bank.code}>
+                                                {bank.name} ({bank.code})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : field.type === 'select' ? (
                                 <select
                                     className={`flex h-11 w-full rounded-xl border bg-background/50 px-3 py-2 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/10 ${hasError ? 'border-rose-500/50 bg-rose-50/10' : 'border-input group-hover:border-primary/30'}`}
                                     value={formData[field.id] || ''}
@@ -309,9 +370,19 @@ export function UniversalDynamicForm({
                                         </option>
                                     ))}
                                 </select>
+                            ) : field.type === 'beneficiary_select' ? (
+                                <Input
+                                    type="text"
+                                    value={formData[field.id] || ''}
+                                    onChange={(e) => handleChange(field, e.target.value)}
+                                    placeholder={field.placeholder || "Enter account number..."}
+                                    disabled={isValidating || isSubmitting}
+                                    onBlur={() => handleBlur(field)}
+                                    className={`h-11 rounded-xl px-4 transition-all ${hasError ? 'border-rose-500/50 focus-visible:ring-rose-500/10' : 'focus-visible:ring-primary/10'}`}
+                                />
                             ) : (
                                 <Input
-                                    type={field.type === 'number' ? 'number' : 'text'}
+                                    type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : 'text'}
                                     value={formData[field.id] || ''}
                                     onChange={(e) => handleChange(field, e.target.value)}
                                     placeholder={field.placeholder || field.label}

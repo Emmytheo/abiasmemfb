@@ -42,8 +42,10 @@ export async function executeEndpoint(
     if (!endpoint) throw new Error('Endpoint not found');
 
     // 1. Resolve absolute URL, headers and body using the unified logic
+    const isGet = endpoint.method === 'GET' || !endpoint.method;
     const resolved = await resolveEndpoint(endpoint, {
-        body: inputData,
+        body: isGet ? undefined : inputData,
+        query: isGet ? inputData : undefined,
         overrides: overrides
     });
 
@@ -92,7 +94,16 @@ export async function executeEndpoint(
 
     if (!isSuccessful) {
         console.error(`[Adapter][Execute] Failed:`, result);
-        const errorMsg = result.message || result.Message || result.ResponseMessage || (result.isBvnValid === false ? "Invalid BVN" : 'External sync failed');
+        let errorMsg = 'External sync failed';
+        if (result.message && typeof result.message === 'string') errorMsg = result.message;
+        else if (result.Message) {
+            if (typeof result.Message === 'string') errorMsg = result.Message;
+            else if (result.Message.CreationMessage) errorMsg = result.Message.CreationMessage;
+            else errorMsg = JSON.stringify(result.Message);
+        }
+        else if (result.ResponseMessage) errorMsg = result.ResponseMessage;
+        else if (result.isBvnValid === false) errorMsg = 'Invalid BVN';
+        
         throw new Error(errorMsg);
     }
 

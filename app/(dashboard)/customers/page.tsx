@@ -158,7 +158,7 @@ export default function AdminCustomersPage() {
                         accessorKey: "is_associated",
                         cell: (item) => (
                             <div className="flex items-center gap-2">
-                                {item.is_associated ? (
+                                {item.is_associated && item.email && !item.email.endsWith('.internal') ? (
                                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                         <UserCheck className="h-3 w-3 mr-1" /> Linked
                                     </Badge>
@@ -213,7 +213,7 @@ export default function AdminCustomersPage() {
                             </div>
                             <div>
                                 <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-widest font-black opacity-60">Identity Status</p>
-                                {item.is_associated ? (
+                                {item.is_associated && item.email && !item.email.endsWith('.internal') ? (
                                     <span className="text-[11px] text-emerald-600 flex items-center font-black">
                                         <UserCheck className="h-3 w-3 mr-1" /> AUTH LINKED
                                     </span>

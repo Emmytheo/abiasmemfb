@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Upload, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { runWorkflow } from '@/app/(dashboard)/workflows/[id]/edit/actions'
+import { NIGERIAN_BANKS } from '@/lib/data/nigerian-banks'
 
 import { FieldValidation, FieldEvent } from '@/lib/api/types'
 
@@ -121,22 +122,44 @@ export function DynamicServiceForm({
         if (!events || events.length === 0) return
 
         for (const event of events) {
+            // SET_VALUES: apply static mappingConfig values directly into form state
+            if (event.action === 'SET_VALUES' && event.mappingConfig) {
+                const newUpdates: Record<string, any> = {}
+                Object.entries(event.mappingConfig).forEach(([staticVal, formKey]) => {
+                    newUpdates[formKey as string] = staticVal
+                })
+                setFormData(prev => ({ ...prev, ...newUpdates }))
+                continue
+            }
+
             if (event.action === 'EXECUTE_ENDPOINT' && event.endpointId) {
                 setIsEvaluating(field.name)
                 onEvent?.({ type: 'api_event', field: field.name, status: 'start', message: `Executing endpoint ${event.endpointId}` })
                 try {
-                    const endpointRes = await fetch(`/api/endpoints/execute/${event.endpointId}`, {
+                    // Correct: POST body with endpointId + dynamicPayload (not path param)
+                    const endpointRes = await fetch('/api/endpoints/execute', {
                         method: 'POST',
-                        body: JSON.stringify({ ...formData, [field.name]: value })
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            endpointId: event.endpointId,
+                            dynamicPayload: { ...formData, [field.name]: value }
+                        })
                     })
                     const apiData = await endpointRes.json()
                     
                     if (apiData.success && event.mappingConfig) {
                         const newUpdates: Record<string, any> = {}
+                        const responseData = apiData.data || apiData
                         Object.entries(event.mappingConfig).forEach(([apiKey, formKey]) => {
-                            if (apiData.data[apiKey] !== undefined) {
-                                newUpdates[formKey] = apiData.data[apiKey]
-                            }
+                            // Support dot-path like 'Payload.accountName' case-insensitively
+                            const val = apiKey.split('.').reduce((acc: any, part) => {
+                                if (!acc) return undefined;
+                                if (acc[part] !== undefined) return acc[part];
+                                const partLower = part.toLowerCase();
+                                const match = Object.keys(acc).find(k => k.toLowerCase() === partLower);
+                                return match !== undefined ? acc[match] : undefined;
+                            }, responseData)
+                            if (val !== undefined) newUpdates[formKey as string] = val
                         })
                         setFormData(prev => ({ ...prev, ...newUpdates }))
                         onEvent?.({ type: 'api_event', field: field.name, status: 'success', message: `Mapped ${Object.keys(newUpdates).length} fields` })
@@ -230,8 +253,54 @@ export function DynamicServiceForm({
                             {field.required && <span className="text-destructive">*</span>}
                             {isLoading && <Loader2 size={12} className="animate-spin text-muted-foreground ml-2" />}
                         </label>
-                        
-                        {field.type === 'select' ? (
+
+                        {/* File upload field */}
+                        {field.type === 'file' ? (
+                            <div className="relative">
+                                <label
+                                    htmlFor={`file-${field.name}`}
+                                    className={`flex items-center gap-3 h-10 w-full rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors ${
+                                        fieldErrors[field.name] ? 'border-destructive' : 'border-input'
+                                    }`}
+                                >
+                                    <Upload size={14} className="text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground truncate">
+                                        {formData[field.name]?.name || field.placeholder || 'Choose file...'}
+                                    </span>
+                                </label>
+                                <input
+                                    id={`file-${field.name}`}
+                                    type="file"
+                                    className="sr-only"
+                                    disabled={isSubmitting}
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) handleChange(field.name, file)
+                                    }}
+                                />
+                            </div>
+                        ) : field.type === 'destination_bank_lookup' ? (
+                            /* Nigerian bank selector */
+                            <div className="relative">
+                                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                                <select
+                                    className={`flex h-10 w-full rounded-md border bg-transparent pl-8 pr-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+                                        fieldErrors[field.name] ? 'border-destructive' : 'border-input'
+                                    }`}
+                                    value={formData[field.name] || ''}
+                                    onChange={(e) => handleChange(field.name, e.target.value)}
+                                    disabled={isSubmitting}
+                                    onBlur={() => handleBlur(field)}
+                                >
+                                    <option value="" disabled>Select bank...</option>
+                                    {NIGERIAN_BANKS.map(bank => (
+                                        <option key={bank.code} value={bank.code}>
+                                            {bank.name} ({bank.code})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : field.type === 'select' ? (
                             <select
                                 className={`flex h-10 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors[field.name] ? 'border-destructive' : 'border-input'}`}
                                 value={formData[field.name] || ''}
@@ -253,9 +322,19 @@ export function DynamicServiceForm({
                                     ))
                                 ) : null}
                             </select>
+                        ) : field.type === 'beneficiary_select' ? (
+                            <Input
+                                type="text"
+                                value={formData[field.name] || ''}
+                                onChange={(e) => handleChange(field.name, e.target.value)}
+                                placeholder={field.placeholder || 'Enter account number...'}
+                                disabled={field.name === isEvaluating || isSubmitting}
+                                onBlur={() => handleBlur(field)}
+                                className={`${isLoading ? 'pr-8 border-primary/50 ring-1 ring-primary/20' : ''} ${fieldErrors[field.name] ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                            />
                         ) : (
                             <Input
-                                type={field.type === 'number' ? 'number' : 'text'}
+                                type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : 'text'}
                                 value={formData[field.name] || ''}
                                 onChange={(e) => handleChange(field.name, e.target.value)}
                                 placeholder={field.placeholder || ''}

@@ -165,8 +165,8 @@ const navGroups = [
             },
             {
                 title: "Provider Mappings",
-                url: "/admin/collections/provider-mappings",
-                icon: Building, // Ensure Building is imported from lucide-react, wait, let's use Database or just Tag
+                url: "/settings/mappings",
+                icon: Building, 
             },
             {
                 title: "Service Vault",

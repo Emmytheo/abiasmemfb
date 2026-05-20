@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ProductType, FormField } from "@/lib/api/types";
 import { api } from "@/lib/api";
@@ -36,12 +36,36 @@ export function ProductTypeEditor({ initialData, isEdit }: ProductTypeEditorProp
     
     const [formSchema, setFormSchema] = useState<FormField[]>(initialData?.form_schema || []);
 
+    const [mapping, setMapping] = useState<any>(null);
+    const [externalCode, setExternalCode] = useState("");
+
+    useEffect(() => {
+        if (isEdit && initialData?.id) {
+            fetch('/api/admin/provider-mappings')
+                .then(res => res.json())
+                .then(data => {
+                    const match = (data.docs || []).find((m: any) => {
+                        const val = typeof m.relatedEntity === 'object' 
+                            ? (typeof m.relatedEntity.value === 'object' ? m.relatedEntity.value?.id : m.relatedEntity.value) 
+                            : m.relatedEntity;
+                        return String(val) === String(initialData.id);
+                    });
+                    if (match) {
+                        setMapping(match);
+                        setExternalCode(match.externalCode || "");
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [isEdit, initialData?.id]);
+
     const handleSave = async () => {
         if (!name) return toast.error("Name is required");
         setLoading(true);
         try {
+            const ptId = initialData?.id || `pt_${Date.now()}`;
             const payload: any = {
-                id: initialData?.id || `pt_${Date.now()}`,
+                id: ptId,
                 name,
                 category,
                 tagline,
@@ -55,6 +79,28 @@ export function ProductTypeEditor({ initialData, isEdit }: ProductTypeEditorProp
             };
 
             await api.saveProductType(payload);
+
+            // Save or create provider mapping if externalCode is set
+            if (externalCode.trim()) {
+                if (mapping?.id) {
+                    await fetch(`/api/admin/provider-mappings/${mapping.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ externalCode: externalCode.trim() })
+                    });
+                } else {
+                    await fetch(`/api/admin/provider-mappings`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            internalName: `${name} Qore Mapping`,
+                            externalCode: externalCode.trim(),
+                            productTypeId: ptId
+                        })
+                    });
+                }
+            }
+
             toast.success(`Product type ${isEdit ? 'updated' : 'created'} successfully`);
             router.push("/products/types");
         } catch (error: any) {
@@ -69,8 +115,9 @@ export function ProductTypeEditor({ initialData, isEdit }: ProductTypeEditorProp
         const newStatus = status === 'active' ? 'draft' : 'active';
         setLoading(true);
         try {
+            const ptId = initialData?.id || `pt_${Date.now()}`;
             const payload: any = {
-                id: initialData?.id || `pt_${Date.now()}`,
+                id: ptId,
                 name,
                 category,
                 tagline,
@@ -84,6 +131,28 @@ export function ProductTypeEditor({ initialData, isEdit }: ProductTypeEditorProp
             };
 
             await api.saveProductType(payload);
+
+            // Save or create provider mapping if externalCode is set
+            if (externalCode.trim()) {
+                if (mapping?.id) {
+                    await fetch(`/api/admin/provider-mappings/${mapping.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ externalCode: externalCode.trim() })
+                    });
+                } else {
+                    await fetch(`/api/admin/provider-mappings`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            internalName: `${name} Qore Mapping`,
+                            externalCode: externalCode.trim(),
+                            productTypeId: ptId
+                        })
+                    });
+                }
+            }
+
             setStatus(newStatus);
             toast.success(`Product type has been ${newStatus === 'active' ? 'published successfully' : 'reverted to draft'}`);
             router.push("/products/types");
@@ -216,6 +285,29 @@ export function ProductTypeEditor({ initialData, isEdit }: ProductTypeEditorProp
                                     className="min-h-[100px] text-sm"
                                 />
                                 <p className="text-xs text-muted-foreground">These are the sequential steps an application will go through.</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="shadow-sm border-amber-500/15 bg-amber-500/[0.01]">
+                        <CardHeader className="bg-muted/20 border-b">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                🔗 Qore Integration
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="externalCode">Qore ProductCode</Label>
+                                <Input 
+                                    id="externalCode"
+                                    value={externalCode} 
+                                    onChange={e => setExternalCode(e.target.value)} 
+                                    placeholder="e.g. 101, SAVINGS_01, 10" 
+                                    className="font-mono text-sm"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    The unique identifier for this product on the core banking system. Accounts cannot be provisioned without this.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>

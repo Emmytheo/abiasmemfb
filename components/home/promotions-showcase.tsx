@@ -12,23 +12,28 @@ import { ChevronLeft, ChevronRight, Play, Pause, ExternalLink } from "lucide-rea
 // progress bar, pause-on-hover & keyboard nav.
 // =============================================
 
-export function HeroPromotionsShowcase() {
-    const [promotions, setPromotions] = useState<Promotion[]>([]);
+export function HeroPromotionsShowcase({ initialData }: { initialData?: Promotion[] }) {
+    const [promotions, setPromotions] = useState<Promotion[]>(initialData || []);
     const [activeIdx, setActiveIdx] = useState(0);
     const [paused, setPaused] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [loaded, setLoaded] = useState(false);
+    const [loaded, setLoaded] = useState(initialData !== undefined);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const progressRef = useRef<NodeJS.Timeout | null>(null);
     const DURATION = 5000; // ms per slide
     const TICK = 50;
 
     useEffect(() => {
+        if (initialData !== undefined) {
+            setPromotions(initialData);
+            setLoaded(true);
+            return;
+        }
         api.getPromotions('hero').then(p => {
             setPromotions(p.filter(x => x.isActive));
             setLoaded(true);
         }).catch(() => setLoaded(true));
-    }, []);
+    }, [initialData]);
 
     const clearTimers = useCallback(() => {
         if (intervalRef.current) clearTimeout(intervalRef.current);
@@ -71,7 +76,9 @@ export function HeroPromotionsShowcase() {
     // Loading / empty states
     if (!loaded) {
         return (
-            <div className="relative h-[520px] md:h-[620px] bg-gradient-to-br from-[hsl(36,85%,52%)] to-[hsl(25,80%,40%)] animate-pulse rounded-2xl overflow-hidden" />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
+                <div className="relative h-[520px] md:h-[620px] bg-gradient-to-br from-[hsl(36,85%,52%)] to-[hsl(25,80%,40%)] animate-pulse rounded-2xl overflow-hidden" />
+            </div>
         );
     }
     if (promotions.length === 0) return null;
@@ -79,112 +86,122 @@ export function HeroPromotionsShowcase() {
     const current = promotions[activeIdx];
 
     return (
-        <section
-            className="relative h-[520px] md:h-[620px] rounded-2xl overflow-hidden shadow-2xl group select-none"
-            onMouseEnter={() => setPaused(true)}
-            onMouseLeave={() => setPaused(false)}
-        >
-            {/* Slides */}
-            {promotions.map((promo, idx) => (
-                <div
-                    key={promo.id}
-                    className={`absolute inset-0 transition-opacity duration-700 ${idx === activeIdx ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+        <div className="relative z-30 bg-background pt-12 overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 animate-in fade-in duration-700">
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="h-[1px] flex-1 bg-border"></div>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground whitespace-nowrap">Current Highlights</h3>
+                    <div className="h-[1px] flex-1 bg-border"></div>
+                </div>
+                
+                <section
+                    className="relative h-[520px] md:h-[620px] rounded-2xl overflow-hidden shadow-2xl group select-none"
+                    onMouseEnter={() => setPaused(true)}
+                    onMouseLeave={() => setPaused(false)}
                 >
-                    {promo.resolvedImageUrl ? (
-                        <Image
-                            src={promo.resolvedImageUrl}
-                            alt={promo.title}
-                            fill
-                            className="object-cover"
-                            priority={idx === 0}
-                            sizes="(max-width: 1280px) 100vw, 1280px"
-                        />
-                    ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(36,85%,42%)] via-[hsl(30,70%,35%)] to-[hsl(20,65%,25%)]" />
-                    )}
-                    {/* Overlay gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                </div>
-            ))}
-
-            {/* Content */}
-            <div className="relative z-20 h-full flex flex-col justify-end p-8 md:p-12">
-                <div className="max-w-2xl">
-                    {/* Animated pill tag */}
-                    <span className="inline-block px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-black text-amber-300 bg-amber-300/15 border border-amber-300/30 rounded-full mb-4 backdrop-blur-sm">
-                        Featured Offer
-                    </span>
-                    <h2 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3 drop-shadow-lg">
-                        {current.title}
-                    </h2>
-                    {current.description && (
-                        <p className="text-white/80 text-base md:text-lg leading-relaxed mb-6 max-w-xl line-clamp-2">
-                            {current.description}
-                        </p>
-                    )}
-                    {current.link && (
-                        <Link
-                            href={current.link}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-amber-500/30 text-sm"
-                        >
-                            Learn More <ExternalLink className="h-4 w-4" />
-                        </Link>
-                    )}
-                </div>
-
-                {/* Progress bar */}
-                {promotions.length > 1 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                    {/* Slides */}
+                    {promotions.map((promo, idx) => (
                         <div
-                            className="h-full bg-amber-400 transition-none"
-                            style={{ width: `${progress}%` }}
-                        />
-                    </div>
-                )}
-            </div>
-
-            {/* Nav arrows */}
-            {promotions.length > 1 && (
-                <>
-                    <button
-                        onClick={prev}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
-                        aria-label="Previous"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button
-                        onClick={next}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
-                        aria-label="Next"
-                    >
-                        <ChevronRight className="h-5 w-5" />
-                    </button>
-
-                    {/* Pause/play + dot indicators */}
-                    <div className="absolute top-4 right-4 z-30 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                            onClick={() => setPaused(p => !p)}
-                            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center hover:bg-black/70"
-                            aria-label={paused ? "Play" : "Pause"}
+                            key={promo.id}
+                            className={`absolute inset-0 transition-opacity duration-700 ${idx === activeIdx ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
                         >
-                            {paused ? <Play className="h-3 w-3 fill-current" /> : <Pause className="h-3 w-3" />}
-                        </button>
+                            {promo.resolvedImageUrl ? (
+                                <Image
+                                    src={promo.resolvedImageUrl}
+                                    alt={promo.title}
+                                    fill
+                                    className="object-cover"
+                                    priority={idx === 0}
+                                    sizes="(max-width: 1280px) 100vw, 1280px"
+                                />
+                            ) : (
+                                <div className="absolute inset-0 bg-gradient-to-br from-[hsl(36,85%,42%)] via-[hsl(30,70%,35%)] to-[hsl(20,65%,25%)]" />
+                            )}
+                            {/* Overlay gradient */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                        </div>
+                    ))}
+
+                    {/* Content */}
+                    <div className="relative z-20 h-full flex flex-col justify-end p-8 md:p-12">
+                        <div className="max-w-2xl">
+                            {/* Animated pill tag */}
+                            <span className="inline-block px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-black text-amber-300 bg-amber-300/15 border border-amber-300/30 rounded-full mb-4 backdrop-blur-sm">
+                                Featured Offer
+                            </span>
+                            <h2 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3 drop-shadow-lg">
+                                {current.title}
+                            </h2>
+                            {current.description && (
+                                <p className="text-white/80 text-base md:text-lg leading-relaxed mb-6 max-w-xl line-clamp-2">
+                                    {current.description}
+                                </p>
+                            )}
+                            {current.link && (
+                                <Link
+                                    href={current.link}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-amber-500/30 text-sm"
+                                >
+                                    Learn More <ExternalLink className="h-4 w-4" />
+                                </Link>
+                            )}
+                        </div>
+
+                        {/* Progress bar */}
+                        {promotions.length > 1 && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                                <div
+                                    className="h-full bg-amber-400 transition-none"
+                                    style={{ width: `${progress}%` }}
+                                />
+                            </div>
+                        )}
                     </div>
 
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-                        {promotions.map((_, idx) => (
+                    {/* Nav arrows */}
+                    {promotions.length > 1 && (
+                        <>
                             <button
-                                key={idx}
-                                onClick={() => goTo(idx)}
-                                className={`transition-all duration-300 rounded-full ${idx === activeIdx ? 'w-6 h-2 bg-amber-400' : 'w-2 h-2 bg-white/40 hover:bg-white/70'}`}
-                                aria-label={`Go to slide ${idx + 1}`}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
-        </section>
+                                onClick={prev}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
+                                aria-label="Previous"
+                            >
+                                <ChevronLeft className="h-5 w-5" />
+                            </button>
+                            <button
+                                onClick={next}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
+                                aria-label="Next"
+                            >
+                                <ChevronRight className="h-5 w-5" />
+                            </button>
+
+                            {/* Pause/play + dot indicators */}
+                            <div className="absolute top-4 right-4 z-30 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={() => setPaused(p => !p)}
+                                    className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center hover:bg-black/70"
+                                    aria-label={paused ? "Play" : "Pause"}
+                                >
+                                    {paused ? <Play className="h-3 w-3 fill-current" /> : <Pause className="h-3 w-3" />}
+                                </button>
+                            </div>
+
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+                                {promotions.map((_, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => goTo(idx)}
+                                        className={`transition-all duration-300 rounded-full ${idx === activeIdx ? 'w-6 h-2 bg-amber-400' : 'w-2 h-2 bg-white/40 hover:bg-white/70'}`}
+                                        aria-label={`Go to slide ${idx + 1}`}
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </section>
+            </div>
+        </div>
     );
 }
 
@@ -254,21 +271,25 @@ export function BannerPromotion() {
 // Compact card stack for sidebar injection
 // =============================================
 
-export function SidebarPromotionsWidget() {
-    const [promotions, setPromotions] = useState<Promotion[]>([]);
+export function SidebarPromotionsWidget({ initialData }: { initialData?: Promotion[] }) {
+    const [promotions, setPromotions] = useState<Promotion[]>(initialData || []);
     const [activeIdx, setActiveIdx] = useState(0);
 
     useEffect(() => {
-        api.getPromotions('sidebar').then(p => {
-            setPromotions(p.filter(x => x.isActive));
-        }).catch(() => {});
+        if (initialData !== undefined) {
+            setPromotions(initialData);
+        } else {
+            api.getPromotions('sidebar').then(p => {
+                setPromotions(p.filter(x => x.isActive));
+            }).catch(() => {});
+        }
 
         // Auto-rotate sidebar promos every 7 seconds
         const timer = setInterval(() => {
             setActiveIdx(prev => prev + 1); // wraps in render
         }, 7000);
         return () => clearInterval(timer);
-    }, []);
+    }, [initialData]);
 
     if (promotions.length === 0) return null;
 

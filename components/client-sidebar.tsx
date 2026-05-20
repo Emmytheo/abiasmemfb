@@ -46,6 +46,7 @@ import { NavUser } from "@/components/nav-user";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
 import { ServiceCategory } from "@/lib/api/types";
+import { Megaphone } from "lucide-react";
 
 type NavGroup = {
     title: string;
@@ -152,6 +153,7 @@ interface ClientSidebarProps extends React.ComponentProps<typeof Sidebar> {
     userEmail?: string;
     serviceCategories?: ServiceCategory[];
     onboardingStatus?: 'pending' | 'skipped' | 'completed';
+    sidebarPromotion?: { title: string; description: string; link?: string; ctaText?: string };
 }
 
 export function ClientSidebar({ 
@@ -160,6 +162,7 @@ export function ClientSidebar({
     userEmail, 
     serviceCategories = [], 
     onboardingStatus = 'completed',
+    sidebarPromotion,
     ...props 
 }: ClientSidebarProps) {
     const roleLevel = ROLE_LEVEL[userRole] ?? 0;
@@ -210,10 +213,10 @@ export function ClientSidebar({
                     </SidebarMenuItem>
                 </SidebarMenu>
 
-                {/* Action Carousel (Profile Incomplete + Personal Advisor) */}
+                {/* Action Carousel (Profile Incomplete + Promo + Personal Advisor) */}
                 <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                     <SidebarGroupContent>
-                        <SidebarActionCarousel isPendingOnboarding={isPendingOnboarding} />
+                        <SidebarActionCarousel isPendingOnboarding={isPendingOnboarding} sidebarPromotion={sidebarPromotion} />
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarHeader>
@@ -231,7 +234,7 @@ export function ClientSidebar({
     );
 }
 
-function SidebarActionCarousel({ isPendingOnboarding }: { isPendingOnboarding: boolean }) {
+function SidebarActionCarousel({ isPendingOnboarding, sidebarPromotion }: { isPendingOnboarding: boolean; sidebarPromotion?: { title: string; description: string; link?: string; ctaText?: string } }) {
     const [index, setIndex] = React.useState(0);
     const slides = React.useMemo(() => {
         const items = [];
@@ -248,6 +251,23 @@ function SidebarActionCarousel({ isPendingOnboarding }: { isPendingOnboarding: b
                     <Button size="sm" variant="link" asChild className="p-0 h-auto text-orange-600 font-bold hover:text-orange-700 text-xs flex items-center gap-1 no-underline">
                         <a href="/onboarding">Complete Now <ArrowRight className="h-3 w-3" /></a>
                     </Button>
+                </div>
+            );
+        }
+        // Sidebar promotion slide from CMS
+        if (sidebarPromotion) {
+            items.push(
+                <div key="promo" className="bg-primary/5 border border-primary/15 p-4 rounded-xl space-y-2.5 mx-2">
+                    <div className="flex items-center gap-2 text-primary">
+                        <Megaphone className="h-4 w-4 shrink-0" />
+                        <span className="text-xs font-bold uppercase tracking-tight truncate">{sidebarPromotion.title}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{sidebarPromotion.description}</p>
+                    {sidebarPromotion.link && (
+                        <Button size="sm" variant="link" asChild className="p-0 h-auto text-primary font-bold text-xs flex items-center gap-1 no-underline">
+                            <a href={sidebarPromotion.link}>{sidebarPromotion.ctaText || 'Learn More'} <ArrowRight className="h-3 w-3" /></a>
+                        </Button>
+                    )}
                 </div>
             );
         }

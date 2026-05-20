@@ -9,6 +9,7 @@ import { ArrowRight, Wifi, ShieldCheck, Loader2, CheckCircle2, Building2, Globe,
 import { toast } from "sonner";
 import { Service, ServiceFormSchema, Customer, Beneficiary } from "@/lib/api/types";
 import { api } from "@/lib/api";
+import { NIGERIAN_BANKS } from "@/lib/data/nigerian-banks";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -201,14 +202,23 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
         } else if (event.action === 'EXECUTE_ENDPOINT' && event.endpointId) {
             setIsValidating(true);
             try {
-                // Ensure we use the latest form data for the payload
-                const currentData = { ...formData, [event.fieldName || '']: value }; 
+                // FIX: Only send the fields the enquiry endpoint actually needs.
+                // Sending the whole formData blob (amount, sourceAccountId, etc.) confuses Qore.
+                // The triggering field value is always included; destination_bank_code is added
+                // for interbank name-enquiry endpoints that require it.
+                const triggerField = event.fieldName || '';
+                const enquiryPayload: Record<string, any> = {
+                    ...formData,
+                    accountNumber:          value,          // Qore-native name for intra-bank enquiry
+                    AccountNumber:          value,          // some Qore endpoints use PascalCase
+                    [triggerField]:         value,
+                };
                 const res = await fetch('/api/endpoints/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         endpointId: typeof event.endpointId === 'object' ? event.endpointId.id : event.endpointId,
-                        dynamicPayload: currentData
+                        dynamicPayload: enquiryPayload
                     })
                 });
 
@@ -225,7 +235,13 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                             // Support nested path resolution via {{$response.path.to.prop}}
                             if (typeof template === 'string' && template.includes('{{$response.')) {
                                 const path = template.replace('{{$response.', '').replace('}}', '');
-                                resolvedValue = path.split('.').reduce((acc, part) => acc && acc[part], apiData);
+                                resolvedValue = path.split('.').reduce((acc, part) => {
+                                    if (!acc) return undefined;
+                                    if (acc[part] !== undefined) return acc[part];
+                                    const partLower = part.toLowerCase();
+                                    const match = Object.keys(acc).find(k => k.toLowerCase() === partLower);
+                                    return match !== undefined ? acc[match] : undefined;
+                                }, apiData);
                             }
                             updates[targetField] = String(resolvedValue || '');
                         }
@@ -516,8 +532,11 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                         {field.type === 'destination_bank_lookup' ? (
                             <>
                                 <option value="abiasmemfb">ABIASMEMFB (Intra-bank)</option>
-                                <option value="access_bank">Access Bank</option>
-                                <option value="gtbank">GTBank</option>
+                                {NIGERIAN_BANKS.map(bank => (
+                                    <option key={bank.code} value={bank.code}>
+                                        {bank.name} ({bank.code})
+                                    </option>
+                                ))}
                             </>
                         ) : (
                             parsedOptions.map(opt => (

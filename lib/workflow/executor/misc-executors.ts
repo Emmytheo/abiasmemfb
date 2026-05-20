@@ -22,6 +22,39 @@ export async function ValidateDataExecutor(env: ExecutionEnvironment<any>): Prom
     return true
 }
 
+function resolveField(key: string, data: any): any {
+    if (!data || typeof data !== 'object') return undefined;
+    if (data[key] !== undefined) return data[key];
+    const keyLower = key.toLowerCase();
+    
+    // Check case-insensitively
+    const match = Object.keys(data).find(k => k.toLowerCase() === keyLower);
+    if (match !== undefined) return data[match];
+    
+    // Check aliases
+    const aliases: Record<string, string[]> = {
+        sourceaccountid: ['source_account_id', 'sourceaccount', 'source_account', 'fromaccount', 'from_account', 'fromaccountnumber'],
+        destinationaccountid: ['destination_account_id', 'destination_account', 'destinationaccount', 'toaccountnumber', 'to_account_number', 'toaccount', 'to_account', 'destination_account_number'],
+        destinationaccount: ['destination_account_id', 'destinationaccountid', 'toaccountnumber', 'to_account_number', 'toaccount', 'to_account', 'destination_account_number'],
+        amountnaira: ['amount', 'amount_naira', 'amountnaira'],
+        amount: ['amountnaira', 'amount_naira'],
+        destinationbank: ['destination_bank_code', 'destinationbankcode', 'bank_code', 'bankcode', 'receiverbankcode', 'destination_bank'],
+        destinationname: ['destination_name', 'destinationname', 'accountname', 'account_name', 'fullName', 'fullname'],
+        swift: ['swift_code', 'swiftcode', 'swift'],
+        swiftcode: ['swift_code', 'swiftcode', 'swift'],
+        biller_code: ['billercode', 'billerCode'],
+        billercode: ['biller_code', 'billerCode'],
+        customerid: ['customer_id', 'customerId', 'smartcard_number', 'smartcardnumber', 'meter_number', 'meternumber', 'phone_number', 'phonenumber']
+    };
+    
+    const mapped = aliases[keyLower] || [];
+    for (const alias of mapped) {
+        const aliasMatch = Object.keys(data).find(k => k.toLowerCase() === alias);
+        if (aliasMatch !== undefined) return data[aliasMatch];
+    }
+    return undefined;
+}
+
 export async function MapFieldsExecutor(env: ExecutionEnvironment<any>): Promise<boolean> {
     const schema = env.getInput('schema')
 
@@ -49,7 +82,7 @@ export async function MapFieldsExecutor(env: ExecutionEnvironment<any>): Promise
     if (Array.isArray(schema)) {
         // Array mode: extract specified keys from inputData as-is
         for (const key of schema) {
-            const val = inputData[key]
+            const val = resolveField(key, inputData)
             mapped[key] = val
             env.setOutput(key, val)
         }
@@ -57,7 +90,11 @@ export async function MapFieldsExecutor(env: ExecutionEnvironment<any>): Promise
         // Object mode: { outputKey: sourceKey } — look up inputData[sourceKey]
         for (const [key, sourcePath] of Object.entries(schema)) {
             // Support dot-notation paths like "user.id"
-            const val = String(sourcePath).split('.').reduce((obj: any, seg: string) => obj?.[seg], inputData)
+            const segments = String(sourcePath).split('.')
+            let val: any = inputData
+            for (const seg of segments) {
+                val = resolveField(seg, val || {})
+            }
             mapped[key] = val ?? null
             env.setOutput(key, val ?? null)
         }

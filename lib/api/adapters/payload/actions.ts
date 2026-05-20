@@ -1107,9 +1107,37 @@ export const getProductTypeById = async (id: string): Promise<ProductType | null
 
 export const saveProductType = async (data: ProductType): Promise<ProductType> => {
     const payload = await initPayload();
+    
+    // Map string workflow_stages to DB format: { stage: string }[]
+    // Also cast category to a real number if it is a numeric string (PostgreSQL integer compatibility)
+    let categoryVal: any = data.category;
+    if (categoryVal !== undefined && categoryVal !== null) {
+        if (typeof categoryVal === 'string' && !isNaN(Number(categoryVal))) {
+            categoryVal = Number(categoryVal);
+        }
+    }
+
+    const formattedData = {
+        ...data,
+        category: categoryVal,
+        workflow_stages: data.workflow_stages?.map((stage: any) => 
+            typeof stage === 'string' ? { stage } : stage
+        )
+    };
+
     let doc;
-    if (data.id && !String(data.id).startsWith('type_')) { doc = await payload.update({ collection: 'product-types' as any, id: data.id, data: data as any }); }
-    else { doc = await payload.create({ collection: 'product-types' as any, data: data as any }); }
+    if (formattedData.id && !String(formattedData.id).startsWith('type_')) { 
+        doc = await payload.update({ 
+            collection: 'product-types' as any, 
+            id: formattedData.id, 
+            data: formattedData as any 
+        }); 
+    } else { 
+        doc = await payload.create({ 
+            collection: 'product-types' as any, 
+            data: formattedData as any 
+        }); 
+    }
     return { id: String(doc.id), name: (doc as any).name } as any;
 };
 
@@ -1125,40 +1153,38 @@ export const deleteProductType = async (id: string): Promise<boolean> => {
 // PRODUCT APPLICATIONS
 // ==========================================
 
+const mapApplication = (doc: any): ProductApplication => ({
+    id: String(doc.id),
+    user_id: doc.user_id,
+    product_type_id: typeof doc.product_type_id === 'object' ? doc.product_type_id.id : doc.product_type_id,
+    status: doc.status,
+    workflow_stage: doc.workflow_stage,
+    created_at: doc.createdAt,
+    metadata: doc.metadata
+} as any);
+
 export const createProductApplication = async (data: Omit<ProductApplication, 'id' | 'created_at' | 'updated_at'>): Promise<ProductApplication> => {
     const payload = await initPayload();
     const doc = await payload.create({ collection: 'product-applications' as any, data: data as any });
-    return { id: doc.id, user_id: (doc as any).user_id, status: (doc as any).status } as any;
+    return mapApplication(doc);
 };
 
 export const updateApplication = async (id: string, data: Partial<ProductApplication>): Promise<ProductApplication> => {
     const payload = await initPayload();
     const doc = await payload.update({ collection: 'product-applications' as any, id, data: data as any });
-    return { id: String(doc.id), status: (doc as any).status } as any;
+    return mapApplication(doc);
 };
 
 export const getUserApplications = async (userId: string): Promise<ProductApplication[]> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'product-applications' as any, where: { user_id: { equals: userId } }, depth: 1, overrideAccess: true });
-    return docs.map((doc: any) => ({
-        id: doc.id,
-        user_id: doc.user_id,
-        product_type_id: typeof doc.product_type_id === 'object' ? doc.product_type_id.id : doc.product_type_id,
-        status: doc.status,
-        created_at: doc.createdAt,
-        metadata: doc.metadata
-    } as any)) as ProductApplication[];
+    return docs.map(mapApplication);
 };
 
 export const getAllApplications = async (): Promise<ProductApplication[]> => {
     const payload = await initPayload();
     const { docs } = await payload.find({ collection: 'product-applications' as any, depth: 1 });
-    return docs.map((doc: any) => ({ 
-        id: doc.id, 
-        user_id: doc.user_id, 
-        product_type_id: typeof doc.product_type_id === 'object' ? doc.product_type_id.id : doc.product_type_id,
-        status: doc.status 
-    })) as any;
+    return docs.map(mapApplication);
 };
 
 // ==========================================
@@ -1251,22 +1277,31 @@ async function syncAccountTransactions(accountNumber: string, userId: string, cu
     }
 
     const settings: any = await payload.findGlobal({ slug: 'site-settings', overrideAccess: true });
-    const endpointId = settings?.sync?.acctMgmt?.stmt; // Reusing statement endpoint if it provides history
+    // Prioritize history endpoint, fallback to stmt if accidentally mapped there
+    const endpointId = settings?.sync?.acctMgmt?.history || settings?.sync?.acctMgmt?.stmt; 
     
-    if (!endpointId) return; // No sync endpoint configured
-
     const today = new Date().toISOString().split('T')[0];
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     try {
-        const res: any = await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
-            accountNumber,
-            fromDate: thirtyDaysAgo,
-            toDate: today
-        });
+        let externalTxns: any[] = [];
 
-        const externalTxns = res.transactions || res.Transactions || [];
-        if (!Array.isArray(externalTxns)) return;
+        if (endpointId) {
+            // Use CMS Registry mapped endpoint
+            const res: any = await executeEndpoint(typeof endpointId === 'object' ? endpointId.id : endpointId, {
+                accountNumber,
+                fromDate: thirtyDaysAgo,
+                toDate: today
+            });
+            externalTxns = Array.isArray(res) ? res : (res.transactions || res.Transactions || []);
+        } else {
+            // Fallback to native Qore direct API if no dynamic endpoint is mapped
+            const qoreActions = await import('../qore/actions');
+            const res = await qoreActions.getQoreAccountTransactions(accountNumber, thirtyDaysAgo, today);
+            externalTxns = Array.isArray(res) ? res : ((res as any)?.transactions || (res as any)?.Transactions || []);
+        }
+
+        if (!Array.isArray(externalTxns) || externalTxns.length === 0) return;
 
         for (const ext of externalTxns) {
             const ref = ext.reference || ext.Reference || ext.TransactionReference || `EXT_${ext.id || Date.now()}`;
@@ -2078,6 +2113,64 @@ export const backfillTransactionHistory = async (payload: any, accountId: string
     }
 };
 
+const healPendingApplications = async (
+    payload: any,
+    targetUserId: string,
+    createdAccId: string,
+    nuban: string,
+    accountType: string
+) => {
+    if (!targetUserId) return;
+    try {
+        const pendingApps = await payload.find({
+            collection: 'product-applications',
+            where: {
+                and: [
+                    { user_id: { equals: targetUserId } },
+                    { status: { equals: 'approved' } },
+                    { workflow_stage: { not_equals: 'Provisioned' } }
+                ]
+            },
+            depth: 2,
+            limit: 10
+        });
+
+        if (pendingApps.docs.length > 0) {
+            const accTypeLower = (accountType || '').toLowerCase();
+            let bestApp = pendingApps.docs.find((app: any) => {
+                const prodTypeName = (app.product_type_id?.name || '').toLowerCase();
+                const prodTypeCat = (app.product_type_id?.category || '').toLowerCase();
+                if (accTypeLower.includes('savings') && (prodTypeName.includes('savings') || prodTypeCat.includes('savings'))) return true;
+                if (accTypeLower.includes('current') && (prodTypeName.includes('current') || prodTypeCat.includes('current'))) return true;
+                if (accTypeLower.includes('fixed') && (prodTypeName.includes('fixed') || prodTypeCat.includes('fixed'))) return true;
+                return false;
+            });
+
+            if (!bestApp) {
+                bestApp = pendingApps.docs[0];
+            }
+
+            await payload.update({
+                collection: 'product-applications',
+                id: bestApp.id,
+                data: {
+                    workflow_stage: 'Provisioned',
+                    metadata: {
+                        ...(bestApp.metadata || {}),
+                        provisioned_account_id: String(createdAccId),
+                        provisioned_account_number: nuban,
+                        provisioning_error: null,
+                        completed_at: new Date().toISOString()
+                    }
+                }
+            });
+            console.log(`[Self-Healing] Linked Account ${nuban} (${accountType}) to pending Application #${bestApp.id} and marked as Provisioned!`);
+        }
+    } catch (e: any) {
+        console.error('[Self-Healing] Error linking pending application:', e.message);
+    }
+};
+
 export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId: string | null, accounts: any[], loserId?: string) => {
     try {
         const payload = await initPayload();
@@ -2143,6 +2236,11 @@ export const mirrorSelectedAccounts = async (winnerId: string, winnerSupabaseId:
             } else {
                 const created = await payload.create({ collection: 'accounts', data: accountData, overrideAccess: true });
                 targetAccountId = created.id;
+            }
+
+            // Heal any pending applications for this account
+            if (winnerSupabaseId) {
+                await healPendingApplications(payload, winnerSupabaseId, String(targetAccountId), accountNo, normalizedType);
             }
 
             // 3. Initiate Transaction Backfill

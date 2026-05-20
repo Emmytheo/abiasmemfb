@@ -1,0 +1,17 @@
+{
+  "name": "Intra-Account Transfer",
+  "description": "Standard internal transfer between accounts within the bank.",
+  "trigger": "MANUAL",
+  "steps": [
+    {
+      "id": "execute_intra_transfer",
+      "type": "INTRA_ACCOUNT_TRANSFER",
+      "inputs": {
+        "sourceAccountId": "{{TRIGGER_PAYLOAD.sourceAccountId}}",
+        "destinationAccountId": "{{TRIGGER_PAYLOAD.destination_account || TRIGGER_PAYLOAD.toAccountNumber || TRIGGER_PAYLOAD.destinationAccountId}}",
+        "amount": "{{TRIGGER_PAYLOAD.amount}}",
+        "narration": "{{TRIGGER_PAYLOAD.narration}}"
+      }
+    }
+  ]
+}

@@ -100,7 +100,7 @@ export interface FieldEvent {
 export interface FormField {
     id: string;
     label: string;
-    type: 'text' | 'number' | 'email' | 'select' | 'file' | 'destination_bank_lookup';
+    type: 'text' | 'number' | 'email' | 'select' | 'file' | 'destination_bank_lookup' | 'beneficiary_select';
     required: boolean;
     options?: string[]; // For select fields
     placeholder?: string;
@@ -231,6 +231,7 @@ export interface SiteSyncConfig {
         upload?: string | any;
         tier?: string | any;
         txStatus?: string | any;
+        history?: string | any;
         create?: string | any;
         defaultAccountOfficerCode?: string;
     };
@@ -473,7 +474,7 @@ export interface ServiceFormSchema {
     id: string;
     name: string; // Internal variable name
     label: string; // UI label
-    type: 'text' | 'number' | 'email' | 'select' | 'destination_bank_lookup' | 'beneficiary_select';
+    type: 'text' | 'number' | 'email' | 'select' | 'file' | 'destination_bank_lookup' | 'beneficiary_select';
     required: boolean;
     placeholder?: string;
     options?: string; // Comma-separated options for 'select'

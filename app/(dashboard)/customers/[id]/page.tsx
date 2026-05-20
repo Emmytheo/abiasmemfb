@@ -27,7 +27,11 @@ import {
     ArchiveRestore,
     Shield,
     Globe,
-    Link2
+    Link2,
+    FileText,
+    RotateCcw,
+    AlertCircle,
+    Tag
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -74,8 +78,13 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loans, setLoans] = useState<any[]>([]);
+    const [applications, setApplications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [overrideAppId, setOverrideAppId] = useState<string | null>(null);
+    const [overrideProductTypes, setOverrideProductTypes] = useState<any[]>([]);
+    const [overrideSelectedTypeId, setOverrideSelectedTypeId] = useState('');
+    const [overrideLoading, setOverrideLoading] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editData, setEditData] = useState<Partial<Customer>>({});
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
@@ -90,12 +99,14 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
             if (cust) {
                 setCustomer(cust);
                 // Use targeted customer-scoped queries — no O(n) full-table scans
-                const [linkedAccounts, linkedLoans] = await Promise.all([
+                const [linkedAccounts, linkedLoans, linkedApps] = await Promise.all([
                     api.getCustomerAccounts(id),
                     api.getCustomerLoans(id),
+                    cust.supabase_id ? api.getUserApplications(cust.supabase_id) : Promise.resolve([]),
                 ]);
                 setAccounts(linkedAccounts);
                 setLoans(linkedLoans);
+                setApplications(linkedApps);
             }
         } catch (error) {
             toast.error("Failed to load customer details.");
@@ -248,6 +259,8 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     if (loading) return <div className="p-8">Loading profile...</div>;
     if (!customer) return <div className="p-8">Customer not found.</div>;
 
+    const isLinked = !!(customer.is_associated && customer.email && !customer.email.endsWith('.internal'));
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
             {/* Header - Stacked on Mobile */}
@@ -276,11 +289,11 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                         Edit Profile
                     </Button>
                     <Button 
-                        variant={customer.is_associated ? "secondary" : "outline"}
+                        variant={isLinked ? "secondary" : "outline"}
                         onClick={() => setIsLinkDialogOpen(true)}
                         className="w-full md:w-auto md:flex-none gap-2"
                     >
-                        {customer.is_associated ? (
+                        {isLinked ? (
                             <><ShieldCheck className="h-4 w-4" /> Manage Identity</>
                         ) : (
                             <><Link2 className="h-4 w-4" /> Link Identity</>
@@ -292,7 +305,7 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                         isOpen={isLinkDialogOpen}
                         onClose={() => setIsLinkDialogOpen(false)}
                         onSuccess={loadData}
-                        isLinked={customer.is_associated} 
+                        isLinked={isLinked} 
                     />
 
                     <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -426,7 +439,9 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                                 <span className="capitalize font-medium">{customer.risk_tier}</span>
 
                                 <span className="text-muted-foreground">Supabase Link</span>
-                                <span className="truncate text-xs text-primary">{customer.supabase_id ? 'Linked ✅' : 'None (Shadow)'}</span>
+                                <span className="truncate text-xs text-primary">
+                                    {customer.supabase_id && customer.email && !customer.email.endsWith('.internal') ? 'Linked ✅' : 'None (Shadow)'}
+                                </span>
                             </div>
 
                             {customer.address && (
@@ -523,6 +538,14 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                             </TabsTrigger>
                             <TabsTrigger value="loans" className="flex items-center gap-2 rounded-lg py-2 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <DollarSign className="h-4 w-4" /> Credit Products
+                            </TabsTrigger>
+                            <TabsTrigger value="applications" className="flex items-center gap-2 rounded-lg py-2 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <FileText className="h-4 w-4" /> Applications
+                                {applications.filter(a => a.status === 'approved' && !customer?.qore_customer_id).length > 0 && (
+                                    <span className="ml-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-black flex items-center justify-center">
+                                        {applications.filter(a => a.status === 'approved' && !customer?.qore_customer_id).length}
+                                    </span>
+                                )}
                             </TabsTrigger>
                             <TabsTrigger value="activity" className="flex items-center gap-2 rounded-lg py-2 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <History className="h-4 w-4" /> Audit Activity
@@ -656,6 +679,165 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                                     account={selectedAccount}
                                     onConfirm={handleUpdateLien}
                                 />
+                            )}
+                        </TabsContent>
+
+                        <TabsContent value="applications" className="space-y-4">
+                            {applications.length === 0 ? (
+                                <div className="text-center py-12 border-2 border-dashed rounded-2xl text-muted-foreground bg-muted/10">
+                                    <FileText className="h-8 w-8 mx-auto mb-3 opacity-30" />
+                                    <p className="font-medium">No product applications found.</p>
+                                    <p className="text-xs mt-1">This customer has not submitted any applications.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {applications.map((app) => {
+                                        // Ground truth: if approved but workflow stage is not 'Provisioned', the account is stuck
+                                        const isStuck = app.status === 'approved' && app.workflow_stage !== 'Provisioned';
+                                        return (
+                                            <Card key={app.id} className={`rounded-2xl overflow-hidden transition-all ${
+                                                isStuck ? 'border-destructive/30 bg-destructive/5' : 'border-primary/5'
+                                            }`}>
+                                                <div className="p-4 sm:p-5">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                        <div className="space-y-1 min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <Badge variant={app.status === 'approved' ? 'default' : app.status === 'rejected' ? 'destructive' : 'secondary'} className="capitalize text-[10px]">
+                                                                    {app.status}
+                                                                </Badge>
+                                                                {isStuck && (
+                                                                    <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive gap-1">
+                                                                        <AlertCircle className="h-3 w-3" />
+                                                                        {!customer?.qore_customer_id ? 'No Qore Account' : 'Provisioning Pending'}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm font-bold truncate">App #{String(app.id).substring(0, 8).toUpperCase()}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Stage: <span className={`font-semibold ${isStuck ? 'text-destructive' : ''}`}>{app.workflow_stage || 'Submitted'}</span>
+                                                                {app.created_at && <> &bull; {new Date(app.created_at).toLocaleDateString()}</>}
+                                                            </p>
+                                                            {app.metadata?.provisioning_error && (
+                                                                <p className="text-[10px] text-destructive mt-1 font-mono truncate" title={app.metadata.provisioning_error}>
+                                                                    Error: {app.metadata.provisioning_error}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        {isStuck && (
+                                                            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                                                {/* Override Product button */}
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="gap-1.5 text-xs h-9 border-amber-500/40 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                                                                    onClick={async () => {
+                                                                        setOverrideAppId(String(app.id));
+                                                                        setOverrideSelectedTypeId(String(app.product_type_id || ''));
+                                                                        if (overrideProductTypes.length === 0) {
+                                                                            setOverrideLoading(true);
+                                                                            try {
+                                                                                const pt = await fetch('/api/admin/product-types').then(r => r.json());
+                                                                                setOverrideProductTypes(pt.docs || []);
+                                                                            } catch {}
+                                                                            setOverrideLoading(false);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Tag className="h-3.5 w-3.5" />
+                                                                    Change Product
+                                                                </Button>
+                                                                {/* Retry button */}
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="gap-2 text-xs h-9 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                                                    disabled={actionLoading === `retry-${app.id}`}
+                                                                    onClick={async () => {
+                                                                        setActionLoading(`retry-${app.id}`);
+                                                                        try {
+                                                                            const res = await fetch('/api/admin/retry-provision', {
+                                                                                method: 'POST',
+                                                                                headers: { 'Content-Type': 'application/json' },
+                                                                                body: JSON.stringify({ applicationId: String(app.id) })
+                                                                            });
+                                                                            const data = await res.json();
+                                                                            if (data.success) {
+                                                                                toast.success('Provisioning completed!', { description: 'Account has been created on Qore.' });
+                                                                                loadData();
+                                                                            } else {
+                                                                                toast.error('Retry failed', { description: data.message || data.error });
+                                                                            }
+                                                                        } catch {
+                                                                            toast.error('Network error during retry');
+                                                                        } finally {
+                                                                            setActionLoading(null);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {actionLoading === `retry-${app.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                                                    Retry Provisioning
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {/* Override Product inline panel */}
+                                                    {overrideAppId === String(app.id) && (
+                                                        <div className="mt-3 pt-3 border-t border-amber-500/20 space-y-3">
+                                                            <p className="text-xs font-bold text-amber-700 uppercase tracking-widest">Change Product Type</p>
+                                                            <p className="text-xs text-muted-foreground">Select a different product type for this application. This will update the mapping and ProductCode used for provisioning.</p>
+                                                            {overrideLoading ? (
+                                                                <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading product types...</div>
+                                                            ) : (
+                                                                <div className="flex gap-2">
+                                                                    <select
+                                                                        className="flex-1 h-9 rounded-md border bg-background text-sm px-3 outline-none focus:ring-1 focus:ring-primary"
+                                                                        value={overrideSelectedTypeId}
+                                                                        onChange={e => setOverrideSelectedTypeId(e.target.value)}
+                                                                    >
+                                                                        <option value="">Select product type...</option>
+                                                                        {overrideProductTypes.map((pt: any) => (
+                                                                            <option key={pt.id} value={String(pt.id)}>{pt.name} ({pt.category})</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-9 shrink-0"
+                                                                        disabled={!overrideSelectedTypeId || overrideLoading}
+                                                                        onClick={async () => {
+                                                                            setOverrideLoading(true);
+                                                                            try {
+                                                                                const res = await fetch(`/api/admin/applications/${String(app.id)}`, {
+                                                                                    method: 'PATCH',
+                                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                                    body: JSON.stringify({ productTypeId: overrideSelectedTypeId })
+                                                                                });
+                                                                                if (res.ok) {
+                                                                                    toast.success('Product type updated. You can now retry provisioning.');
+                                                                                    setOverrideAppId(null);
+                                                                                    loadData();
+                                                                                } else {
+                                                                                    const err = await res.json();
+                                                                                    toast.error(err.error || 'Failed to update');
+                                                                                }
+                                                                            } catch {
+                                                                                toast.error('Network error');
+                                                                            } finally {
+                                                                                setOverrideLoading(false);
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {overrideLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Apply'}
+                                                                    </Button>
+                                                                    <Button size="sm" variant="ghost" className="h-9" onClick={() => setOverrideAppId(null)}>Cancel</Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
                             )}
                         </TabsContent>
 

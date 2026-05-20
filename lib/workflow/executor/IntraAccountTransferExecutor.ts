@@ -21,11 +21,11 @@ export async function IntraAccountTransferExecutor(
         return false
     }
 
-    const sourceAccountId: string = env.getInput('sourceAccountId') || ''
-    const destinationAccountId: string = env.getInput('destinationAccountId') || ''
+    const sourceAccountId: string = env.getInput('sourceAccountId') || env.getInput('source_account_id') || env.getInput('source_account') || ''
+    const destinationAccountId: string = env.getInput('destinationAccountId') || env.getInput('destination_account_id') || env.getInput('destination_account') || ''
     // Allow forms to send either "amountNaira" or generic "amount"
-    const amountNaira: number = Number(env.getInput('amountNaira') || env.getInput('amount') || 0)
-    const narration: string = env.getInput('narration') || 'Internal Transfer'
+    const amountNaira: number = Number(env.getInput('amountNaira') || env.getInput('amount') || env.getInput('amount_naira') || 0)
+    const narration: string = env.getInput('narration') || env.getInput('Narration') || 'Internal Transfer'
 
     // Optional integration flags
     const externalApiUrl: string = env.getInput('externalApiUrl') || ''

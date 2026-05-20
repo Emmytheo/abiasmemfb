@@ -119,6 +119,7 @@ export const SiteSettings: GlobalConfig = {
                         { name: 'unlien', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Remove Lien.' } },
                         { name: 'lienStatus', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Check Lien Status.' } },
                         { name: 'notifPref', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Update Notification Preference.' } },
+                        { name: 'history', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Fetch Account Transaction History.' } },
                         { name: 'stmt', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Generate Account Statement.' } },
                         { name: 'close', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Close Account.' } },
                         { name: 'upload', type: 'relationship', relationTo: 'endpoints', admin: { description: 'API to Upload Supporting Document.' } },

@@ -46,6 +46,32 @@ async function getQoreOverrides(env: ExecutionEnvironment<any>): Promise<QoreOve
     return overrides;
 }
 
+async function resolveNuban(env: any, identifier: string | undefined): Promise<string> {
+    if (!identifier) return '';
+    const payload = env.payload;
+    if (!payload) return identifier;
+
+    // Check if it's already a 10-digit NUBAN number
+    if (/^\d{10}$/.test(identifier)) {
+        return identifier;
+    }
+
+    const isSafeInteger = !isNaN(Number(identifier)) && Number(identifier) > 0 && Number(identifier) < 2147483647;
+    if (isSafeInteger) {
+        const doc = await payload.findByID({ collection: 'accounts', id: Number(identifier) }).catch(() => null);
+        if (doc?.account_number) return doc.account_number;
+    }
+
+    // Fallback: search by ID or account number
+    const res = await payload.find({
+        collection: 'accounts',
+        where: { or: [{ id: { equals: identifier } }, { account_number: { equals: identifier } }] },
+        limit: 1
+    }).catch(() => ({ docs: [] }));
+    
+    return res.docs[0]?.account_number || identifier;
+}
+
 export const QoreRequestCardExecutor = async (env: ExecutionEnvironment<WorkflowTask & { type: TaskType.QORE_REQUEST_CARD }>): Promise<boolean> => {
     try {
         const userId = env.getInput('userId');
@@ -121,8 +147,8 @@ export const QoreManageLienExecutor = async (env: ExecutionEnvironment<WorkflowT
 
 export const QoreValidateBillExecutor = async (env: ExecutionEnvironment<WorkflowTask & { type: TaskType.QORE_VALIDATE_BILL }>): Promise<boolean> => {
     try {
-        const billerCode = env.getInput('billerCode');
-        const customerId = env.getInput('customerId');
+        const billerCode = env.getInput('billerCode') || env.getInput('biller_code');
+        const customerId = env.getInput('customerId') || env.getInput('customer_id') || env.getInput('smartcard_number') || env.getInput('meter_number') || env.getInput('phone_number');
         const overrides = await getQoreOverrides(env);
         const res = await qoreActions.validateBill(billerCode, customerId, overrides);
         env.setOutput('isValid', true);
@@ -137,10 +163,11 @@ export const QoreValidateBillExecutor = async (env: ExecutionEnvironment<Workflo
 
 export const QorePayBillExecutor = async (env: ExecutionEnvironment<WorkflowTask & { type: TaskType.QORE_PAY_BILL }>): Promise<boolean> => {
     try {
-        const billerCode = env.getInput('billerCode');
-        const amount = env.getInput('amount');
-        const accountId = env.getInput('accountId');
-        const customerId = env.getInput('customerId');
+        const billerCode = env.getInput('billerCode') || env.getInput('biller_code');
+        const amount = env.getInput('amount') || env.getInput('amountNaira') || env.getInput('amount_naira');
+        const rawAccountId = env.getInput('accountId') || env.getInput('sourceAccountId') || env.getInput('source_account_id') || env.getInput('fromAccountNumber');
+        const accountId = await resolveNuban(env, rawAccountId);
+        const customerId = env.getInput('customerId') || env.getInput('customer_id') || env.getInput('smartcard_number') || env.getInput('meter_number') || env.getInput('phone_number');
         const overrides = await getQoreOverrides(env);
         const res = await qoreActions.payBill(billerCode, Number(amount), accountId, customerId, overrides);
         env.setOutput('success', true);
@@ -688,15 +715,21 @@ export const QoreIntraBankTransferExecutor = async (
     env: ExecutionEnvironment<WorkflowTask & { type: TaskType.QORE_INTRA_BANK_TRANSFER }>
 ): Promise<boolean> => {
     try {
-        const amountNaira = Number(env.getInput('amount'));
+        const amountNaira = Number(env.getInput('amount') || env.getInput('amountNaira') || env.getInput('amount_naira') || 0);
         const amountKobo = Math.round(amountNaira * 100);
         const narration = env.getInput('narration') || 'Intra-bank Transfer';
         const retrievalReference = env.getInput('retrievalReference') || `TX-${Date.now()}`.slice(0, 12);
         const overrides = await getQoreOverrides(env);
 
+        const rawFrom = env.getInput('fromAccountNumber') || env.getInput('sourceAccountId') || env.getInput('source_account_id') || env.getInput('accountId');
+        const rawTo = env.getInput('toAccountNumber') || env.getInput('destinationAccountId') || env.getInput('destination_account_id') || env.getInput('destination_account');
+
+        const fromAccountNumber = await resolveNuban(env, rawFrom);
+        const toAccountNumber = await resolveNuban(env, rawTo);
+
         const res = await qoreActions.intraBankTransfer({
-            FromAccountNumber: env.getInput('fromAccountNumber'),
-            ToAccountNumber: env.getInput('toAccountNumber'),
+            FromAccountNumber: fromAccountNumber,
+            ToAccountNumber: toAccountNumber,
             Amount: String(amountKobo),
             Narration: narration,
             RetrievalReference: retrievalReference,
@@ -717,7 +750,7 @@ export const QoreIntraBankTransferExecutor = async (
                         type: 'transfer',
                         status: 'successful',
                         reference: res.TransactionReference || retrievalReference,
-                        narration: env.getInput('narration') || 'Intra-bank Transfer',
+                        narration: narration,
                     } as any,
                 });
             } catch (syncErr) { /* non-critical */ }
@@ -734,18 +767,25 @@ export const QoreInterBankTransferExecutor = async (
     env: ExecutionEnvironment<WorkflowTask & { type: TaskType.QORE_INTER_BANK_TRANSFER }>
 ): Promise<boolean> => {
     try {
-        const amountNaira = Number(env.getInput('amount'));
+        const amountNaira = Number(env.getInput('amount') || env.getInput('amountNaira') || env.getInput('amount_naira') || 0);
         const amountKobo = Math.round(amountNaira * 100);
         const retrievalReference = env.getInput('retrievalReference') || `TX-${Date.now()}`.slice(0, 12);
 
+        const rawFrom = env.getInput('fromAccountNumber') || env.getInput('sourceAccountId') || env.getInput('source_account_id') || env.getInput('accountId');
+        const rawTo = env.getInput('toAccountNumber') || env.getInput('destinationAccountId') || env.getInput('destination_account_id') || env.getInput('destination_account');
+        const rawBank = env.getInput('destinationBankCode') || env.getInput('destinationBank') || env.getInput('destination_bank') || env.getInput('destination_bank_code');
+
+        const fromAccountNumber = await resolveNuban(env, rawFrom);
+        const toAccountNumber = await resolveNuban(env, rawTo);
+
         const overrides = await getQoreOverrides(env);
         const res = await qoreActions.interBankTransfer({
-            FromAccountNumber: env.getInput('fromAccountNumber'),
-            ToAccountNumber: env.getInput('toAccountNumber'),
+            FromAccountNumber: fromAccountNumber,
+            ToAccountNumber: toAccountNumber,
             Amount: String(amountKobo),
             Narration: env.getInput('narration') || 'Inter-bank Transfer',
             RetrievalReference: retrievalReference,
-            DestinationBankCode: env.getInput('destinationBankCode'),
+            DestinationBankCode: rawBank,
         }, overrides);
 
         env.setOutput('isSuccessful', res.IsSuccessful ?? true);

@@ -207,6 +207,9 @@ export const Services: CollectionConfig = {
                 { label: 'Intra-bank Transfer', value: 'transfer_intra' },
                 { label: 'Inter-bank Transfer', value: 'transfer_interbank' },
                 { label: 'International Transfer', value: 'transfer_international' },
+                { label: 'Airtime Recharge', value: 'bill_airtime' },
+                { label: 'Cable TV Subscription', value: 'bill_cable' },
+                { label: 'Electricity Bill Payment', value: 'bill_electricity' },
             ],
             admin: {
                 description: 'Used by the UI to place this service in specialized layouts (like Transfer Tabs).',

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Plus, Eye, Trash, Code, Settings2, ShieldAlert, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { FormFieldBuilder } from "@/components/forms/builder/FormFieldBuilder";
+import { SchemaFieldEditor } from "@/components/forms/builder/SchemaFieldEditor";
 
 import { api } from "@/lib/api";
 import { Service, ServiceCategory } from "@/lib/api/types";
@@ -324,7 +324,7 @@ export default function ServicesPage() {
                                         <Code className="h-4 w-4 text-primary" />
                                         <Label className="text-xs font-bold uppercase tracking-widest">Service Form Schema</Label>
                                     </div>
-                                    <FormFieldBuilder 
+                                    <SchemaFieldEditor 
                                         idKey="name"
                                         fields={newServiceSchema}
                                         endpoints={endpoints}
@@ -500,7 +500,7 @@ export default function ServicesPage() {
                                     <Code className="h-4 w-4 text-primary" />
                                     <Label className="text-xs font-bold uppercase tracking-widest">Edit Form Schema</Label>
                                 </div>
-                                <FormFieldBuilder 
+                                <SchemaFieldEditor 
                                     idKey="name"
                                     fields={selectedItem.form_schema}
                                     endpoints={endpoints}

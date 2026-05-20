@@ -16,7 +16,10 @@ import {
     FileText,
     RefreshCw,
     Lock,
-    UserCheck
+    UserCheck,
+    Sparkles,
+    Wallet,
+    SparklesIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, Account, Loan, Transaction, User, ProductApplication, ServiceCategory, Customer } from "@/lib/api";
@@ -187,16 +190,58 @@ export default function ClientDashboard() {
         return result;
     }, [chartData.labels]);
 
+    // Compute time-aware greeting
+    const greeting = useMemo(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good morning';
+        if (hour < 17) return 'Good afternoon';
+        return 'Good evening';
+    }, []);
+
     if (loading) {
-        return <div className="max-w-7xl mx-auto p-10 flex justify-center text-muted-foreground">Loading dashboard...</div>;
+        return (
+            <div className="max-w-7xl mx-auto p-4 md:p-10 space-y-10 animate-pulse">
+                {/* Header skeleton */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-2">
+                        <div className="h-5 w-36 bg-muted rounded-md" />
+                        <div className="h-10 w-52 bg-muted rounded-lg" />
+                    </div>
+                    <div className="h-10 w-48 bg-muted rounded-lg" />
+                </div>
+                {/* Stats skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[...Array(3)].map((_, i) => (
+                        <div key={i} className="bg-card border rounded-xl p-6 space-y-3">
+                            <div className="h-8 w-8 rounded-lg bg-muted" />
+                            <div className="h-4 w-28 bg-muted rounded" />
+                            <div className="h-7 w-36 bg-muted rounded" />
+                        </div>
+                    ))}
+                </div>
+                {/* Account cards skeleton */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div className="bg-muted/30 rounded-2xl h-48" />
+                    <div className="lg:col-span-3 flex gap-4 overflow-hidden">
+                        {[...Array(2)].map((_, i) => (
+                            <div key={i} className="min-w-[280px] bg-muted/20 rounded-xl h-36" />
+                        ))}
+                    </div>
+                </div>
+                {/* Chart skeleton */}
+                <div className="bg-card border rounded-2xl h-72" />
+            </div>
+        );
     }
+
+
 
     return (
         <div className="max-w-7xl mx-auto p-1 md:p-10 space-y-10 animate-in fade-in duration-500">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h2 className="text-muted-foreground text-base md:text-lg font-medium">Good evening, {user?.full_name?.split(' ')[0] || 'User'}</h2>
+                    <h2 className="text-muted-foreground text-base md:text-lg font-medium">{greeting}, {user?.full_name?.split(' ')[0] || 'User'}</h2>
                     <h3 className="text-4xl md:text-6xl font-black tracking-tight mt-1">Dashboard</h3>
                 </div>
                 <div className="flex items-end gap-10">
@@ -227,7 +272,7 @@ export default function ClientDashboard() {
                     <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="space-y-2 text-center md:text-left">
                             <h4 className="text-2xl md:text-3xl font-black tracking-tight flex items-center justify-center md:justify-start gap-2">
-                                Welcome to the Family! <SparklesIcon className="h-6 w-6" />
+                                Welcome to the Family! <Sparkles className="h-6 w-6" />
                             </h4>
                             <p className="text-primary-foreground/80 font-medium max-w-xl">
                                 Your premium account is active. Fund your account with at least ₦1,000 today to activate your virtual card and start earning 5% p.a. interest.
@@ -253,7 +298,7 @@ export default function ClientDashboard() {
                 <div className="bg-card p-6 rounded-xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-2 bg-primary/10 rounded-lg">
-                            <WalletIcon className="h-5 w-5 text-primary" />
+                            <Wallet className="h-5 w-5 text-primary" />
                         </div>
                         <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
                             <TrendingUp className="h-3 w-3" /> 2.4%
@@ -312,7 +357,9 @@ export default function ClientDashboard() {
                             </div>
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">BVN Verified</span>
-                                <span className="font-bold text-emerald-600">Yes ✅</span>
+                                <span className={`font-bold ${customer?.bvn ? 'text-emerald-600' : 'text-amber-500'}`}>
+                                    {customer?.bvn ? 'Yes ✅' : 'Pending ⏳'}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -538,32 +585,37 @@ export default function ClientDashboard() {
                         </div>
 
                         <div className="bg-card rounded-2xl border flex flex-col divide-y shadow-sm">
-                            {applications.slice(0, 3).map(app => (
-                                <Link key={app.id} href={`/applications/${app.id}`} className="block">
-                                    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/50 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                                <FileText className="h-5 w-5" />
+                            {applications.slice(0, 3).map(app => {
+                                const isProvisionPending = app.status === 'approved' && app.workflow_stage !== 'Provisioned';
+                                return (
+                                    <Link key={app.id} href={`/applications/${app.id}`} className="block">
+                                        <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/50 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                                    <FileText className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold">Product Application #{String(app.id).substring(0, 8)}</p>
+                                                    <p className="text-xs text-muted-foreground">Submitted on {new Date(app.created_at).toLocaleDateString()}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-bold">Product Application #{String(app.id).substring(0, 8)}</p>
-                                                <p className="text-xs text-muted-foreground">Submitted on {new Date(app.created_at).toLocaleDateString()}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            {app.requested_amount != null && app.requested_amount > 0 && (
-                                                <p className="text-sm font-bold">₦{app.requested_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                                            )}
-                                            <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                app.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                            <div className="flex items-center gap-4">
+                                                {app.requested_amount != null && app.requested_amount > 0 && (
+                                                    <p className="text-sm font-bold">₦{app.requested_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                )}
+                                                <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${
+                                                    isProvisionPending ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                    app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                    app.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20' :
                                                     'bg-accent/50 text-muted-foreground border-border'
                                                 }`}>
-                                                {app.status === 'pending' ? (app.workflow_stage || 'Pending') : app.status}
-                                            </span>
+                                                    {isProvisionPending ? 'Finalising Setup' : app.status === 'pending' ? (app.workflow_stage || 'Pending') : app.status}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                </Link>
-                            ))}
+                                    </Link>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -583,45 +635,3 @@ export default function ClientDashboard() {
     );
 }
 
-function SparklesIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-            <path d="M5 3v4" />
-            <path d="M19 17v4" />
-            <path d="M3 5h4" />
-            <path d="M17 19h4" />
-        </svg>
-    )
-}
-
-function WalletIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a8 8 0 0 1-5 7.59l-9.74-1.51A2 2 0 0 1 2 19V9a2 2 0 0 1 2-2h15Z" />
-            <path d="M22 10v6" />
-        </svg>
-    )
-}

@@ -1,6 +1,5 @@
 import { api } from "@/lib/api";
 import {
-    UploadCloud,
     Wallet,
     TrendingUp,
     TrendingDown,
@@ -8,13 +7,14 @@ import {
     Users,
     AlertTriangle,
     MoreVertical,
-    Edit3
+    ArrowRight
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Suspense } from "react";
 import { VolumeChart } from "@/components/dashboard/volume-chart";
+import { UpdateLiveSiteButton, QuickCommandWidget } from "./DashboardWidgets";
 
 async function DashboardOverviewContent() {
     const accounts = await api.getAllAccounts();
@@ -45,10 +45,7 @@ async function DashboardOverviewContent() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button className="font-bold shadow-lg shadow-primary/20 flex items-center gap-2 px-6">
-                        <UploadCloud className="h-5 w-5" />
-                        Update Live Site
-                    </Button>
+                    <UpdateLiveSiteButton />
                 </div>
             </div>
 
@@ -134,7 +131,7 @@ async function DashboardOverviewContent() {
                             </div>
                          </div>
                          <Button variant="ghost" size="icon" className="group-hover:translate-x-1 transition-transform">
-                            <TrendingUp className="h-5 w-5" />
+                            <ArrowRight className="h-5 w-5" />
                          </Button>
                     </Card>
                 </Link>
@@ -150,8 +147,37 @@ async function DashboardOverviewContent() {
                             </div>
                          </div>
                          <Button variant="ghost" size="icon" className="group-hover:translate-x-1 transition-transform">
-                            <TrendingUp className="h-5 w-5" />
+                            <ArrowRight className="h-5 w-5" />
                          </Button>
+                    </Card>
+                </Link>
+                {/* Quick links to new product pages */}
+                <Link href="/settings/product/types" className="block group">
+                    <Card className="bg-muted/30 border-border p-4 rounded-2xl flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer shadow-none">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-background text-primary">
+                                <FileText className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-sm text-foreground">Product Types</h3>
+                                <p className="text-xs text-muted-foreground">Manage catalog and publish product types.</p>
+                            </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    </Card>
+                </Link>
+                <Link href="/services" className="block group">
+                    <Card className="bg-muted/30 border-border p-4 rounded-2xl flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer shadow-none">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-background text-primary">
+                                <TrendingUp className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-sm text-foreground">Services Hub</h3>
+                                <p className="text-xs text-muted-foreground">Configure service forms and intents.</p>
+                            </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                     </Card>
                 </Link>
             </div>
@@ -233,46 +259,7 @@ async function DashboardOverviewContent() {
                 {/* Right Column: Quick Commands & Status */}
                 <div className="space-y-8">
 
-                    {/* Quick Command Widget */}
-                    <Card className="bg-card border-border rounded-2xl p-6 relative overflow-hidden shadow-[0_0_15px_rgba(var(--primary),0.05)] border-primary/20">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <Edit3 className="h-24 w-24 text-primary rotate-12" />
-                        </div>
-                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2 relative z-10">
-                            <Edit3 className="text-primary h-5 w-5" />
-                            Quick Command
-                        </h3>
-
-                        <div className="space-y-5 relative z-10">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Hero Banner Headline</label>
-                                <input
-                                    className="w-full bg-background border-border rounded-lg px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary focus:border-primary"
-                                    type="text"
-                                    defaultValue="Secure Your Future with AbiaSMEMFB"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Call to Action Link</label>
-                                <input
-                                    className="w-full bg-background border-border rounded-lg px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary focus:border-primary"
-                                    type="text"
-                                    defaultValue="AbiaSMEMFB.com/apply-now"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Site Status Message</label>
-                                <textarea
-                                    className="w-full bg-background border-border rounded-lg px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none"
-                                    rows={2}
-                                    defaultValue="Our interest rates just dropped! Explore the new SME loan offers today."
-                                />
-                            </div>
-                            <Button className="w-full bg-primary/10 border border-primary/30 text-primary py-3 rounded-xl font-bold text-sm hover:bg-primary/20 transition-all shadow-none">
-                                Publish Updates
-                            </Button>
-                        </div>
-                    </Card>
+                    <QuickCommandWidget />
 
                     {/* Site Health Card */}
                     <Card className="bg-muted/30 border-border rounded-2xl p-6 shadow-sm">

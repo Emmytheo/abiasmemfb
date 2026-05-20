@@ -18,13 +18,15 @@ import {
     Underline,
     List,
     Link as LinkIcon,
-    ChevronDown
+    ChevronDown,
+    CheckSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { ProductCategory } from "@/lib/api/types";
+import { ProductCategory, FormField } from "@/lib/api/types";
 import { DualRangeSlider } from "@/components/ui/dual-range-slider";
+import { SchemaFieldEditor } from "@/components/forms/builder/SchemaFieldEditor";
 
 export default function CreateProductTypePage() {
     const router = useRouter();
@@ -37,6 +39,10 @@ export default function CreateProductTypePage() {
     const [maxDuration, setMaxDuration] = React.useState<number>(12);
     const [currentStep, setCurrentStep] = React.useState(1);
     const [selectedCategory, setSelectedCategory] = React.useState<string>("");
+    
+    const [formSchema, setFormSchema] = React.useState<FormField[]>([]);
+    const [workflowStages, setWorkflowStages] = React.useState<string>("Submitted, Under Review, Approved");
+    const [status, setStatus] = React.useState<string>("active");
 
     const [categories, setCategories] = React.useState<ProductCategory[]>([]);
 
@@ -59,7 +65,7 @@ export default function CreateProductTypePage() {
                 category: formData.get("category") as string,
                 tagline: formData.get("tagline") as string,
                 description: "Product generated from dashboard UI.", // Add rich text later
-                status: "active",
+                status: status as any,
                 financial_terms: [
                     isAccount ? {
                         blockType: "savings-terms",
@@ -74,8 +80,8 @@ export default function CreateProductTypePage() {
                         max_duration: maxDuration
                     }
                 ],
-                form_schema: [], // Empty for now, wait until form builder implemented
-                workflow_stages: ['Submitted'],
+                form_schema: formSchema,
+                workflow_stages: workflowStages.split(",").map(s => s.trim()).filter(Boolean),
                 created_at: new Date().toISOString(),
             });
             router.push("/settings/product/types");
@@ -91,7 +97,8 @@ export default function CreateProductTypePage() {
     const steps = [
         { step: 1, title: "Basic Info", icon: Info },
         { step: 2, title: "Financial Terms", icon: CreditCard },
-        { step: 3, title: "Content & Media", icon: FileText }
+        { step: 3, title: "Content & Media", icon: FileText },
+        { step: 4, title: "App Form", icon: CheckSquare }
     ];
 
     return (
@@ -127,7 +134,7 @@ export default function CreateProductTypePage() {
                         {/* Active Line */}
                         <div
                             className="absolute left-[10%] top-5 h-[2px] bg-primary -z-10 transition-all duration-500"
-                            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 80}%` }}
+                            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
                         ></div>
 
                         {steps.map((s) => (
@@ -341,6 +348,66 @@ export default function CreateProductTypePage() {
                         </section>
                     </div>
 
+                    {/* Section 4: Application Form Builder */}
+                    <div className={currentStep === 4 ? "animate-in slide-in-from-right-4 fade-in duration-300 block" : "hidden"}>
+                        <section className="space-y-6 pt-4">
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                                <CheckSquare className="text-primary h-5 w-5" />
+                                <div>
+                                    <h2 className="text-lg font-semibold">Application Form Builder</h2>
+                                    <p className="text-xs text-muted-foreground mt-1">Define the questions customers must answer to apply for this product.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 w-full">
+                                <SchemaFieldEditor 
+                                    fields={formSchema}
+                                    onChange={setFormSchema}
+                                />
+                            </div>
+
+                            <div className="mt-8 pt-6 border-t grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <h3 className="text-sm font-semibold">Workflow Stages</h3>
+                                    <p className="text-xs text-muted-foreground">Comma-separated list of application stages.</p>
+                                    <textarea 
+                                        className="w-full bg-background border rounded-lg p-3 text-sm min-h-[100px] outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm"
+                                        value={workflowStages}
+                                        onChange={(e) => setWorkflowStages(e.target.value)}
+                                        placeholder="Submitted, Under Review, Approved"
+                                    />
+                                    <div className="flex gap-2 items-center flex-wrap text-sm text-muted-foreground mt-2">
+                                        {workflowStages.split(',').map(s => s.trim()).filter(Boolean).map((stage, i, arr) => (
+                                            <React.Fragment key={stage}>
+                                                <span className="font-medium text-[10px] uppercase tracking-wider text-foreground bg-accent px-2 py-1 rounded border shadow-sm">{stage}</span>
+                                                {i < arr.length - 1 && <span>→</span>}
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <h3 className="text-sm font-semibold">Publication Status</h3>
+                                    <p className="text-xs text-muted-foreground">Determine if this product is visible to customers.</p>
+                                    <div className="relative bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                        <select 
+                                            value={status} 
+                                            onChange={(e) => setStatus(e.target.value)} 
+                                            className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none appearance-none cursor-pointer"
+                                        >
+                                            <option value="draft">Draft (Hidden)</option>
+                                            <option value="active">Active (Published)</option>
+                                            <option value="archived">Archived (Legacy)</option>
+                                        </select>
+                                        <div className="absolute right-3 top-3 pointer-events-none text-muted-foreground">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
                     <div className="flex justify-between items-center pt-8 border-t">
                         <Button
                             type="button"
@@ -351,10 +418,10 @@ export default function CreateProductTypePage() {
                             Previous Step
                         </Button>
 
-                        {currentStep < 3 ? (
+                        {currentStep < 4 ? (
                             <Button
                                 type="button"
-                                onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
+                                onClick={() => setCurrentStep(prev => Math.min(4, prev + 1))}
                             >
                                 Continue to Next Step
                             </Button>

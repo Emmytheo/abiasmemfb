@@ -20,12 +20,12 @@ export async function InterBankTransferExecutor(
         return false
     }
 
-    const sourceAccountId: string = env.getInput('sourceAccountId') || ''
-    const destinationAccount: string = env.getInput('destinationAccount') || ''
-    const destinationBank: string = env.getInput('destinationBank') || ''
-    const destinationName: string = env.getInput('destinationName') || ''
-    const amountNaira: number = Number(env.getInput('amountNaira') || env.getInput('amount') || 0)
-    const narration: string = env.getInput('narration') || 'Interbank Transfer'
+    const sourceAccountId: string = env.getInput('sourceAccountId') || env.getInput('source_account_id') || env.getInput('source_account') || ''
+    const destinationAccount: string = env.getInput('destinationAccount') || env.getInput('destination_account') || env.getInput('destination_account_id') || ''
+    const destinationBank: string = env.getInput('destinationBank') || env.getInput('destination_bank') || env.getInput('destination_bank_code') || ''
+    const destinationName: string = env.getInput('destinationName') || env.getInput('destination_name') || ''
+    const amountNaira: number = Number(env.getInput('amountNaira') || env.getInput('amount') || env.getInput('amount_naira') || 0)
+    const narration: string = env.getInput('narration') || env.getInput('Narration') || 'Interbank Transfer'
 
     // The Provider slug/ID configured in the CMS for NIP routing
     const nipProviderId: string = env.getInput('nipProviderId') || 'mock-nip-gateway'

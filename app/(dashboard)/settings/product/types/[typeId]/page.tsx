@@ -22,7 +22,7 @@ import {
     FormField, 
     ProductFinancialTerms 
 } from "@/lib/api/types";
-import { FormFieldBuilder } from "@/components/forms/builder/FormFieldBuilder";
+import { SchemaFieldEditor } from "@/components/forms/builder/SchemaFieldEditor";
 const productTypeSchema = z.object({
     name: z.string().min(3, "Product name is too short"),
     tagline: z.string().min(5, "Tagline should be more descriptive"),
@@ -84,6 +84,9 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
     const [categories, setCategories] = useState<ProductCategory[]>([]);
     const [endpoints, setEndpoints] = useState<any[]>([]);
 
+    const [qoreProductCode, setQoreProductCode] = useState("");
+    const [existingMappingId, setExistingMappingId] = useState<string | null>(null);
+
     const [product, setProduct] = useState<ProductType>({
         id: typeId,
         name: '',
@@ -101,16 +104,32 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
     const [currentStep, setCurrentStep] = useState(1);
 
     useEffect(() => {
-        async function fetchProduct() {
+        async function fetchProductAndMapping() {
             try {
-                // If it's a new product, we would handle differently. 
-                // Assumes typical flow is editing an existing one based on ID.
-                const data = await api.getProductTypeById(typeId);
+                const [data, mappingsRes] = await Promise.all([
+                    api.getProductTypeById(typeId),
+                    fetch('/api/admin/provider-mappings').then(r => r.json()).catch(() => ({ docs: [] }))
+                ]);
+
                 if (data) {
                     setProduct(data);
                 }
+
+                // Look for mapping for this product type
+                const mappings = mappingsRes.docs || [];
+                const matchedMapping = mappings.find((m: any) => {
+                    const val = typeof m.relatedEntity === 'object'
+                        ? (typeof m.relatedEntity.value === 'object' ? m.relatedEntity.value?.id : m.relatedEntity.value)
+                        : m.relatedEntity;
+                    return String(val) === String(typeId);
+                });
+
+                if (matchedMapping) {
+                    setQoreProductCode(matchedMapping.externalCode || "");
+                    setExistingMappingId(matchedMapping.id);
+                }
             } catch (error) {
-                console.error("Failed to load product", error);
+                console.error("Failed to load product or mapping", error);
             } finally {
                 setIsLoading(false);
             }
@@ -131,7 +150,7 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
 
         fetchInitialData();
         if (typeId && typeId !== 'new') {
-            fetchProduct();
+            fetchProductAndMapping();
         } else {
             setIsLoading(false); // New product template
         }
@@ -153,11 +172,66 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
         setIsSaving(true);
         try {
             await api.saveProductType(product);
-            toast.success("Product published to registry.");
+
+            // Handle Qore Product mapping sync
+            const cleanCode = qoreProductCode.trim();
+            if (cleanCode) {
+                if (existingMappingId) {
+                    // Update existing mapping
+                    await fetch(`/api/admin/provider-mappings/${existingMappingId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ externalCode: cleanCode }),
+                    });
+                } else if (typeId !== 'new') {
+                    // Create new mapping
+                    const res = await fetch('/api/admin/provider-mappings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            internalName: `${product.name} Qore Mapping`,
+                            externalCode: cleanCode,
+                            productTypeId: typeId
+                        }),
+                    });
+                    if (res.ok) {
+                        const created = await res.json();
+                        setExistingMappingId(created.id);
+                    }
+                }
+            }
+
+            toast.success("Product published and core mappings updated.");
             // router.push("/settings/product/types"); // Redirect removed to allow continuous editing
         } catch (error) {
             console.error("Save failed", error);
             toast.error("Failed to publish product type.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleTogglePublish = async () => {
+        const newStatus = product.status === 'active' ? 'draft' : 'active';
+        
+        // Validation logic
+        const validation = productTypeSchema.safeParse({ ...product, status: newStatus });
+        if (!validation.success) {
+            const error = validation.error.issues[0];
+            toast.error(error.message, {
+                description: `Field: ${error.path.join('.')}`
+            });
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await api.saveProductType({ ...product, status: newStatus });
+            setProduct(prev => ({ ...prev, status: newStatus }));
+            toast.success(`Product type has been ${newStatus === 'active' ? 'published successfully' : 'reverted to draft'}`);
+        } catch (error: any) {
+            console.error("Status toggle failed", error);
+            toast.error(error?.message || "Failed to change publication status.");
         } finally {
             setIsSaving(false);
         }
@@ -213,21 +287,6 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
         updateProduct({ form_schema: newSchema });
     };
 
-    // Drag and drop state for form builder
-    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-
-    const handleDragStart = (e: React.DragEvent, index: number) => {
-        setDraggedIndex(index);
-    };
-
-    const handleDragOver = (e: React.DragEvent, index: number) => {
-        e.preventDefault();
-    };
-
-    const handleDragEnd = () => {
-        setDraggedIndex(null);
-    };
-
     const steps = [
         { step: 1, title: "Basic Info", icon: Info },
         { step: 2, title: "Financials", icon: CreditCard },
@@ -274,6 +333,24 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                             <p className="text-muted-foreground ml-11 text-md md:text-base">Configure the core details and application workflows.</p>
                         </div>
                         <div className="flex items-center gap-2 self-end md:self-auto">
+                            <Button
+                                type="button"
+                                onClick={handleTogglePublish}
+                                disabled={isSaving || isDeleting}
+                                className={`shadow-md font-semibold select-none transition-all duration-300 ${
+                                    product.status === 'active'
+                                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 hover:text-amber-700 dark:hover:text-amber-300'
+                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600'
+                                }`}
+                            >
+                                {isSaving ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : product.status === 'active' ? (
+                                    "Revert to Draft"
+                                ) : (
+                                    "Publish Product"
+                                )}
+                            </Button>
                             {typeId !== 'new' && (
                                 <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
                                     {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash className="h-4 w-4" />}
@@ -341,6 +418,24 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                                         <input type="text" value={product.tagline || ''} onChange={e => updateProduct({ tagline: e.target.value })} className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none" />
                                     </div>
                                     <p className="text-xs text-muted-foreground text-right">{product.tagline?.length || 0}/100 characters</p>
+                                </div>
+                                <div className="space-y-2 group md:col-span-2 pt-2">
+                                    <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors flex items-center gap-2">
+                                        Qore ProductCode (Core Banking Mapping)
+                                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-black uppercase tracking-wider">Sync Registry</span>
+                                    </label>
+                                    <div className="bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                        <input 
+                                            type="text" 
+                                            value={qoreProductCode} 
+                                            onChange={e => setQoreProductCode(e.target.value)} 
+                                            placeholder="e.g. 101, SAVINGS_01, 10" 
+                                            className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none font-mono font-bold" 
+                                        />
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                        Associates this platform product with a core banking product code defined in Qore Institution Settings.
+                                    </p>
                                 </div>
                             </div>
                         </section>
@@ -536,23 +631,49 @@ function EditProductTypeContent({ typeId }: { typeId: string }) {
                             </div>
 
                             <div className="space-y-4 w-full">
-                                <FormFieldBuilder 
+                                <SchemaFieldEditor 
                                     fields={product.form_schema}
-                                    endpoints={endpoints}
                                     onChange={(newSchema) => updateProduct({ form_schema: newSchema })}
-                                    idKey="id"
                                 />
                             </div>
 
-                            <div className="mt-8 pt-6 border-t">
-                                <h3 className="text-sm font-semibold mb-3">Workflow Stages</h3>
-                                <div className="flex gap-2 items-center text-sm text-muted-foreground bg-accent/30 p-4 rounded-lg">
-                                    {product.workflow_stages.map((stage, i) => (
-                                        <React.Fragment key={stage}>
-                                            <span className="font-medium text-foreground bg-background px-2 py-1 rounded border shadow-sm">{stage}</span>
-                                            {i < product.workflow_stages.length - 1 && <span>→</span>}
-                                        </React.Fragment>
-                                    ))}
+                            <div className="mt-8 pt-6 border-t grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <h3 className="text-sm font-semibold">Workflow Stages</h3>
+                                    <p className="text-xs text-muted-foreground">Comma-separated list of application stages.</p>
+                                    <textarea 
+                                        className="w-full bg-background border rounded-lg p-3 text-sm min-h-[100px] outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm"
+                                        value={product.workflow_stages.join(", ")}
+                                        onChange={(e) => updateProduct({ workflow_stages: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                                        placeholder="Submitted, Under Review, Approved"
+                                    />
+                                    <div className="flex gap-2 items-center flex-wrap text-sm text-muted-foreground mt-2">
+                                        {product.workflow_stages.map((stage, i) => (
+                                            <React.Fragment key={stage}>
+                                                <span className="font-medium text-[10px] uppercase tracking-wider text-foreground bg-accent px-2 py-1 rounded border shadow-sm">{stage}</span>
+                                                {i < product.workflow_stages.length - 1 && <span>→</span>}
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <h3 className="text-sm font-semibold">Publication Status</h3>
+                                    <p className="text-xs text-muted-foreground">Determine if this product is visible to customers.</p>
+                                    <div className="relative bg-background rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-1">
+                                        <select 
+                                            value={product.status || 'draft'} 
+                                            onChange={(e) => updateProduct({ status: e.target.value as any })} 
+                                            className="w-full bg-transparent border-none focus:ring-0 text-sm h-9 px-3 outline-none appearance-none cursor-pointer"
+                                        >
+                                            <option value="draft">Draft (Hidden)</option>
+                                            <option value="active">Active (Published)</option>
+                                            <option value="archived">Archived (Legacy)</option>
+                                        </select>
+                                        <div className="absolute right-3 top-3 pointer-events-none text-muted-foreground">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>

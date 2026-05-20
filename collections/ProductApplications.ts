@@ -122,8 +122,14 @@ export const ProductApplications: CollectionConfig = {
                                         log: { info: (m: string) => payload.logger.info(m), error: (m: string) => payload.logger.error(m) }
                                     };
 
-                                    await ProvisionAccountExecutor(env).catch((e: any) => {
+                                    await ProvisionAccountExecutor(env).catch(async (e: any) => {
                                         payload.logger.error(`Account Provisioning Executor Failed: ${e.message}`);
+                                        // Mark the application so admins can identify and retry it
+                                        await payload.update({
+                                            collection: 'product-applications',
+                                            id: doc.id,
+                                            data: { workflow_stage: 'Provisioning Failed', metadata: { ...doc.metadata, provisioning_error: e.message, provisioning_failed_at: new Date().toISOString() } }
+                                        }).catch(() => {});
                                     });
                                 } else {
                                     // Default local fallback

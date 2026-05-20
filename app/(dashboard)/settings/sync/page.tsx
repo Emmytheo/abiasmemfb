@@ -441,6 +441,14 @@ export default function SyncSettingsPage() {
                                         <h4 className="text-xs font-black uppercase text-muted-foreground border-b pb-2">Records & Operations</h4>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                             <EndpointSelector 
+                                                label="Transaction History"
+                                                value={getEndpointId(settings.sync.acctMgmt?.history)}
+                                                onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), history: val}}})}
+                                                endpoints={endpoints}
+                                                health={healthStatus[getEndpointId(settings.sync.acctMgmt?.history)]}
+                                                onCheck={() => checkHealth(getEndpointId(settings.sync.acctMgmt?.history))}
+                                            />
+                                            <EndpointSelector 
                                                 label="Generate Statement"
                                                 value={getEndpointId(settings.sync.acctMgmt?.stmt)}
                                                 onChange={(val) => setSettings({...settings, sync: {...settings.sync, acctMgmt: {...(settings.sync.acctMgmt || {}), stmt: val}}})}

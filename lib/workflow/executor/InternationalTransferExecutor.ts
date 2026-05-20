@@ -20,14 +20,14 @@ export async function InternationalTransferExecutor(
         return false
     }
 
-    const sourceAccountId: string = env.getInput('sourceAccountId') || ''
-    const destinationCurrency: string = env.getInput('currency') || 'USD'
-    const foreignAmount: number = Number(env.getInput('amount') || 0)
+    const sourceAccountId: string = env.getInput('sourceAccountId') || env.getInput('source_account_id') || env.getInput('source_account') || ''
+    const destinationCurrency: string = env.getInput('currency') || env.getInput('destination_currency') || 'USD'
+    const foreignAmount: number = Number(env.getInput('amount') || env.getInput('amountNaira') || env.getInput('amount_naira') || 0)
 
-    const iban: string = env.getInput('iban') || ''
-    const swift: string = env.getInput('swift') || ''
-    const accountName: string = env.getInput('accountName') || ''
-    const narration: string = env.getInput('narration') || 'Cross-border Payment'
+    const iban: string = env.getInput('iban') || env.getInput('destination_account') || env.getInput('destination_account_id') || ''
+    const swift: string = env.getInput('swift') || env.getInput('swift_code') || env.getInput('swiftCode') || ''
+    const accountName: string = env.getInput('accountName') || env.getInput('destination_name') || env.getInput('destinationName') || ''
+    const narration: string = env.getInput('narration') || env.getInput('Narration') || 'Cross-border Payment'
 
     // Mock FX rates - realistically fetched from config or live API Provider
     const fxRates: Record<string, number> = {

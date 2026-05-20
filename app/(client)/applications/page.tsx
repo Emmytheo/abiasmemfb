@@ -97,6 +97,7 @@ export default function MyApplicationsPage() {
                         const product = productMap[app.product_type_id];
                         const isApproved = app.status === 'approved';
                         const isRejected = app.status === 'rejected';
+                        const isProvisionPending = isApproved && app.workflow_stage !== 'Provisioned';
 
                         const refId = typeof app.id === 'string' && app.id.includes('_')
                             ? app.id.split('_')[1]?.substring(0, 8).toUpperCase()
@@ -108,11 +109,13 @@ export default function MyApplicationsPage() {
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="flex items-center gap-4">
                                             <div className={`size-12 rounded-xl flex items-center justify-center shrink-0 ${
+                                                isProvisionPending ? 'bg-amber-500/10 text-amber-500' :
                                                 isApproved ? 'bg-emerald-500/10 text-emerald-500' :
                                                 isRejected ? 'bg-destructive/10 text-destructive' :
                                                 'bg-primary/10 text-primary'
                                             }`}>
-                                                {isApproved ? <CheckCircle2 className="h-6 w-6" /> :
+                                                {isProvisionPending ? <Clock className="h-6 w-6 animate-pulse" /> :
+                                                 isApproved ? <CheckCircle2 className="h-6 w-6" /> :
                                                  isRejected ? <XCircle className="h-6 w-6" /> :
                                                  <Clock className="h-6 w-6" />}
                                             </div>
@@ -127,12 +130,13 @@ export default function MyApplicationsPage() {
                                                 <p className="text-sm font-bold">₦{app.requested_amount.toLocaleString()}</p>
                                             )}
                                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                                                isProvisionPending ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
                                                 isApproved ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
                                                 isRejected ? 'bg-destructive/10 text-destructive border-destructive/20' :
                                                 app.status === 'withdrawn' ? 'bg-muted text-muted-foreground border-muted-foreground/20' :
                                                 'bg-amber-500/10 text-amber-600 border-amber-500/20'
                                             }`}>
-                                                {isApproved ? 'Approved' : isRejected ? 'Rejected' : app.status === 'withdrawn' ? 'Withdrawn' : (app.workflow_stage || 'Pending')}
+                                                {isProvisionPending ? 'Finalising Setup' : isApproved ? 'Approved' : isRejected ? 'Rejected' : app.status === 'withdrawn' ? 'Withdrawn' : (app.workflow_stage || 'Pending')}
                                             </span>
                                             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                         </div>

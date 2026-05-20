@@ -15,6 +15,65 @@ interface SyncResults {
 
 export type LogType = 'info' | 'error' | 'success' | 'warn';
 
+async function healPendingApplications(
+    payload: any,
+    targetUserId: string,
+    createdAccId: string,
+    nuban: string,
+    accountType: string,
+    log: (msg: string, type: LogType) => void
+) {
+    if (!targetUserId) return;
+    try {
+        const pendingApps = await payload.find({
+            collection: 'product-applications',
+            where: {
+                and: [
+                    { user_id: { equals: targetUserId } },
+                    { status: { equals: 'approved' } },
+                    { workflow_stage: { not_equals: 'Provisioned' } }
+                ]
+            },
+            depth: 2,
+            limit: 10
+        });
+
+        if (pendingApps.docs.length > 0) {
+            const accTypeLower = (accountType || '').toLowerCase();
+            let bestApp = pendingApps.docs.find((app: any) => {
+                const prodTypeName = (app.product_type_id?.name || '').toLowerCase();
+                const prodTypeCat = (app.product_type_id?.category || '').toLowerCase();
+                if (accTypeLower.includes('savings') && (prodTypeName.includes('savings') || prodTypeCat.includes('savings'))) return true;
+                if (accTypeLower.includes('current') && (prodTypeName.includes('current') || prodTypeCat.includes('current'))) return true;
+                if (accTypeLower.includes('fixed') && (prodTypeName.includes('fixed') || prodTypeCat.includes('fixed'))) return true;
+                return false;
+            });
+
+            if (!bestApp) {
+                bestApp = pendingApps.docs[0];
+            }
+
+            await payload.update({
+                collection: 'product-applications',
+                id: bestApp.id,
+                data: {
+                    workflow_stage: 'Provisioned',
+                    metadata: {
+                        ...(bestApp.metadata || {}),
+                        provisioned_account_id: String(createdAccId),
+                        provisioned_account_number: nuban,
+                        provisioning_error: null,
+                        completed_at: new Date().toISOString()
+                    }
+                }
+            });
+            log(`Linked Account ${nuban} (${accountType}) to pending Application #${bestApp.id} and marked as Provisioned!`, 'success');
+        }
+    } catch (e: any) {
+        log(`Error linking pending application: ${e.message}`, 'error');
+    }
+}
+
 /**
  * CustomerBulkSyncExecutor: Automates the discovery and synchronization of 
  * Core Banking customers and their associated accounts.
@@ -168,8 +227,8 @@ export async function CustomerBulkSyncExecutor(
 
             let customerId: string | number;
             const customerBaseData = {
-                firstName: qoreCust.LastName || qoreCust.FirstName || 'Unknown',
-                lastName: qoreCust.OtherNames || qoreCust.Surname || 'Customer',
+                firstName: qoreCust.FirstName || qoreCust.LastName || 'Unknown',
+                lastName: qoreCust.LastName || qoreCust.Surname || qoreCust.OtherNames || 'Customer',
                 phone_number: phone,
                 email: email,
                 bvn: bvn,
@@ -180,14 +239,46 @@ export async function CustomerBulkSyncExecutor(
 
             if (existingCustomers.docs.length > 0) {
                 const matchedCust = existingCustomers.docs[0];
-                const updateData: any = {
-                    ...customerBaseData,
-                };
-                // Ensure qore_customer_id is set if it was missing on the matched profile
-                if (!matchedCust.qore_customer_id) {
+                
+                // SECURITY & INTEGRITY GUARD: Preserve all active platform-owned digital properties.
+                // Do NOT overwrite existing Names, real Emails, or real Phone Numbers.
+                const updateData: any = {};
+                
+                if (!matchedCust.qore_customer_id || matchedCust.qore_customer_id.startsWith('L-CUST-')) {
                     updateData.qore_customer_id = qoreCustomerID;
                     log(`Associated Qore Customer ID ${qoreCustomerID} to matched active customer profile ${matchedCust.id}`, 'info');
                 }
+                
+                if (!matchedCust.firstName || matchedCust.firstName === 'Unknown') {
+                    updateData.firstName = customerBaseData.firstName;
+                }
+                if (!matchedCust.lastName || matchedCust.lastName === 'Customer') {
+                    updateData.lastName = customerBaseData.lastName;
+                }
+                if (!matchedCust.phone_number) {
+                    updateData.phone_number = phone;
+                }
+                
+                // Prevent overwriting clean emails with Qore dummy fallback (.internal)
+                if (!matchedCust.email || matchedCust.email.endsWith('.internal')) {
+                    if (email && !email.endsWith('.internal')) {
+                        updateData.email = email;
+                    }
+                }
+                if (!matchedCust.bvn) {
+                    updateData.bvn = bvn;
+                }
+                
+                // Safe to merge metadata without destructively overwriting direct attributes
+                updateData.metadata = { ...(matchedCust.metadata || {}), ...qoreCust };
+                
+                if (!matchedCust.kyc_status || matchedCust.kyc_status === 'pending') {
+                    updateData.kyc_status = customerBaseData.kyc_status;
+                }
+                if (!matchedCust.risk_tier) {
+                    updateData.risk_tier = customerBaseData.risk_tier;
+                }
+
                 const updated = await payload.update({
                     collection: 'customers',
                     id: matchedCust.id,
@@ -252,6 +343,8 @@ export async function CustomerBulkSyncExecutor(
                 user_id: email,
             };
 
+            let createdAcc: any;
+
             if (existingAccounts.docs.length > 0) {
                 await payload.update({
                     collection: 'accounts',
@@ -259,14 +352,19 @@ export async function CustomerBulkSyncExecutor(
                     data: accountData
                 });
                 results.accountsUpdated++;
+                createdAcc = existingAccounts.docs[0];
             } else {
-                await payload.create({
+                createdAcc = await payload.create({
                     collection: 'accounts',
                     data: { ...accountData, source: 'qore' }
                 });
                 results.accountsCreated++;
                 log(`MAPPED Account: ${accNo} (${accountData.account_type})`, 'success');
             }
+
+                // --- HEALING/LINKING LOGIC ---
+                const targetUserId = existingCustomers.docs.length > 0 ? existingCustomers.docs[0].supabase_id : email;
+                await healPendingApplications(payload, targetUserId, String(createdAcc.id), nubanSeed, accountData.account_type, log);
             
             const processedAccountNumbers: string[] = [accNo];
 
@@ -312,20 +410,27 @@ export async function CustomerBulkSyncExecutor(
                                 source: 'qore',
                             };
 
+                            let createdOtherAcc: any;
+
                             if (existingOther.docs.length > 0) {
-                                await payload.update({
+                                createdOtherAcc = await payload.update({
                                     collection: 'accounts',
                                     id: existingOther.docs[0].id,
                                     data: otherData
                                 });
                                 results.accountsUpdated++;
                             } else {
-                                await payload.create({
+                                createdOtherAcc = await payload.create({
                                     collection: 'accounts',
                                     data: otherData
                                 });
                                 results.accountsCreated++;
                                 log(`DISCOVERED & MAPPED: ${otherAccNuban}`, 'success');
+                            }
+
+                            // Heal any pending applications for this secondary account
+                            if (targetUserId) {
+                                await healPendingApplications(payload, targetUserId, String(createdOtherAcc.id), otherAccNuban, otherData.account_type, log);
                             }
                             processedAccountNumbers.push(otherAccNuban);
                         }
@@ -335,37 +440,43 @@ export async function CustomerBulkSyncExecutor(
                 }
             }
 
-            // 6. Supabase Shadow User Creation
-            const { data: { users: sbUsers } } = await supabaseAdmin.auth.admin.listUsers();
-            const existingSbUser = sbUsers.find(u => u.email === email);
+            // 6. Supabase Shadow User Creation (IDENTITY SECURITY SHIELD)
+            const hasExistingAssociation = existingCustomers.docs.length > 0 && !!existingCustomers.docs[0].supabase_id;
 
-            if (!existingSbUser) {
-                const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-                    email: email,
-                    email_confirm: true,
-                    user_metadata: {
-                        full_name: `${qoreCust.LastName} ${qoreCust.OtherNames}`,
-                        role: 'customer',
-                        is_shadow: true,
-                        qore_customer_id: qoreCustomerID
+            if (!hasExistingAssociation) {
+                const { data: { users: sbUsers } } = await supabaseAdmin.auth.admin.listUsers();
+                const existingSbUser = sbUsers.find(u => u.email === email);
+
+                if (!existingSbUser) {
+                    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                        email: email,
+                        email_confirm: true,
+                        user_metadata: {
+                            full_name: `${qoreCust.LastName || ''} ${qoreCust.OtherNames || ''}`,
+                            role: 'customer',
+                            is_shadow: true,
+                            qore_customer_id: qoreCustomerID
+                        }
+                    });
+
+                    if (!createError && newUser.user) {
+                        await supabaseAdmin.auth.admin.updateUserById(newUser.user.id, { ban_duration: '876000h' });
+                        results.shadowUsersCreated++;
+                        await payload.update({
+                            collection: 'customers',
+                            id: customerId,
+                            data: { supabase_id: newUser.user.id, is_associated: true }
+                        });
                     }
-                });
-
-                if (!createError && newUser.user) {
-                    await supabaseAdmin.auth.admin.updateUserById(newUser.user.id, { ban_duration: '876000h' });
-                    results.shadowUsersCreated++;
+                } else {
                     await payload.update({
                         collection: 'customers',
                         id: customerId,
-                        data: { supabase_id: newUser.user.id, is_associated: true }
+                        data: { supabase_id: existingSbUser.id, is_associated: true }
                     });
                 }
             } else {
-                await payload.update({
-                    collection: 'customers',
-                    id: customerId,
-                    data: { supabase_id: existingSbUser.id, is_associated: true }
-                });
+                log(`Customer ${customerId} is already securely associated with real Supabase User: ${existingCustomers.docs[0].supabase_id}. Bypassing shadow user generation.`);
             }
 
         } catch (err: any) {

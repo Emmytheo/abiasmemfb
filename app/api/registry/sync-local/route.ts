@@ -5,17 +5,36 @@ import { importRegistryBundle } from '@/lib/registry/sdl';
 
 export async function GET() {
     try {
-        const filePath = path.join(process.cwd(), 'lib/workflow/templates/transfer_services.sdl.json');
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
-        const bundle = JSON.parse(fileContent);
+        const templatesDir = path.join(process.cwd(), 'lib/workflow/templates');
+        if (!fs.existsSync(templatesDir)) {
+            return NextResponse.json({ success: false, error: "Templates directory not found" }, { status: 404 });
+        }
 
-        console.log("[SYNC-LOCAL] Starting synchronization with bundle version:", bundle.version);
-        const result = await importRegistryBundle(bundle);
+        const allFiles = fs.readdirSync(templatesDir);
+        const registrySdlFiles = allFiles.filter(f => f.endsWith('.sdl.json'));
+
+        const results: any[] = [];
+
+        for (const file of registrySdlFiles) {
+            const filePath = path.join(templatesDir, file);
+            const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+
+            // Verify it's a Registry SDL (has products or services)
+            if (content.products || content.services) {
+                console.log(`[SYNC-LOCAL] Synchronizing: ${file}...`);
+                const stats = await importRegistryBundle(content);
+                results.push({
+                    file,
+                    status: 'synchronized',
+                    stats
+                });
+            }
+        }
 
         return NextResponse.json({ 
             success: true, 
-            message: "Synchronization completed", 
-            stats: result 
+            message: "Local registry synchronization completed", 
+            results 
         });
     } catch (error: any) {
         console.error("[SYNC-LOCAL] Sync failed:", error);

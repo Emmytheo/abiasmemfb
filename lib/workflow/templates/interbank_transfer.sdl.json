@@ -1,0 +1,18 @@
+{
+  "name": "Interbank Transfer",
+  "description": "Standard inter-bank (NIP) transfer to external bank accounts.",
+  "trigger": "MANUAL",
+  "steps": [
+    {
+      "id": "execute_interbank_transfer",
+      "type": "INTERBANK_TRANSFER",
+      "inputs": {
+        "sourceAccountId": "{{TRIGGER_PAYLOAD.sourceAccountId}}",
+        "destinationAccountId": "{{TRIGGER_PAYLOAD.destination_account || TRIGGER_PAYLOAD.toAccountNumber || TRIGGER_PAYLOAD.destinationAccountId}}",
+        "destinationBankCode": "{{TRIGGER_PAYLOAD.destination_bank_code}}",
+        "amount": "{{TRIGGER_PAYLOAD.amount}}",
+        "narration": "{{TRIGGER_PAYLOAD.narration}}"
+      }
+    }
+  ]
+}

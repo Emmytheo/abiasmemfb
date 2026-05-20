@@ -1,0 +1,26 @@
+{
+  "name": "Bill Payment Workflow",
+  "description": "Standard workflow for validating and processing bill payments (airtime, cable, electricity).",
+  "trigger": "MANUAL",
+  "steps": [
+    {
+      "id": "validate_bill_payment",
+      "type": "QORE_VALIDATE_BILL",
+      "next": "process_bill_payment",
+      "inputs": {
+        "billerCode": "{{TRIGGER_PAYLOAD.biller_code}}",
+        "customerId": "{{TRIGGER_PAYLOAD.smartcard_number || TRIGGER_PAYLOAD.meter_number || TRIGGER_PAYLOAD.phone_number || TRIGGER_PAYLOAD.customer_id || TRIGGER_PAYLOAD.customerId}}"
+      }
+    },
+    {
+      "id": "process_bill_payment",
+      "type": "QORE_PAY_BILL",
+      "inputs": {
+        "billerCode": "{{TRIGGER_PAYLOAD.biller_code}}",
+        "amount": "{{TRIGGER_PAYLOAD.amount}}",
+        "accountId": "{{TRIGGER_PAYLOAD.sourceAccountId || TRIGGER_PAYLOAD.fromAccountNumber || TRIGGER_PAYLOAD.accountId}}",
+        "customerId": "{{TRIGGER_PAYLOAD.smartcard_number || TRIGGER_PAYLOAD.meter_number || TRIGGER_PAYLOAD.phone_number || TRIGGER_PAYLOAD.customer_id || TRIGGER_PAYLOAD.customerId}}"
+      }
+    }
+  ]
+}

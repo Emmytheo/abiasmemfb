@@ -1,0 +1,148 @@
+{
+    "version": "1.1.1",
+    "description": "Harmonized Bill Payment Services with Event-Driven Biller/Customer Validation",
+    "products": [],
+    "services": [
+        {
+            "name": "Airtime Top-up",
+            "categorySlug": "bills",
+            "provider_service_code": "QORE-AIRTIME",
+            "service_intent": "bill_airtime",
+            "execution_workflow_slug": "Bill Payment Workflow",
+            "fee_type": "none",
+            "fee_value": 0,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "biller_code",
+                    "name": "biller_code",
+                    "label": "Select Network Provider",
+                    "type": "select",
+                    "required": true,
+                    "options": "MTN - MTN, Airtel - AIRTEL, Glo - GLO, 9mobile - 9MOBILE"
+                },
+                {
+                    "id": "phone_number",
+                    "name": "phone_number",
+                    "label": "Phone Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Enter 11-digit mobile number"
+                },
+                {
+                    "id": "amount",
+                    "name": "amount",
+                    "label": "Amount (NGN)",
+                    "type": "number",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "Cable TV Subscription",
+            "categorySlug": "bills",
+            "provider_service_code": "QORE-CABLE",
+            "service_intent": "bill_cable",
+            "execution_workflow_slug": "Bill Payment Workflow",
+            "fee_type": "flat",
+            "fee_value": 100,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "biller_code",
+                    "name": "biller_code",
+                    "label": "Cable TV Provider",
+                    "type": "select",
+                    "required": true,
+                    "options": "DSTV - DSTV, GOTV - GOTV, StarTimes - STARTIMES"
+                },
+                {
+                    "id": "smartcard_number",
+                    "name": "smartcard_number",
+                    "label": "Smartcard / UIC Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Enter smartcard number",
+                    "events": [
+                        {
+                            "trigger": "onBlur",
+                            "action": "EXECUTE_ENDPOINT",
+                            "endpointId": "Validate Bill",
+                            "mappingConfig": {
+                                "customerName": "customer_name"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "customer_name",
+                    "name": "customer_name",
+                    "label": "Customer Name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Auto-verifying..."
+                },
+                {
+                    "id": "amount",
+                    "name": "amount",
+                    "label": "Amount (NGN)",
+                    "type": "number",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "Electricity Bill Payment",
+            "categorySlug": "bills",
+            "provider_service_code": "QORE-ELECTRICITY",
+            "service_intent": "bill_electricity",
+            "execution_workflow_slug": "Bill Payment Workflow",
+            "fee_type": "flat",
+            "fee_value": 100,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "biller_code",
+                    "name": "biller_code",
+                    "label": "Electricity Disco",
+                    "type": "select",
+                    "required": true,
+                    "options": "AEDC Prepaid - AEDC_PREPAID, AEDC Postpaid - AEDC_POSTPAID, EEDC Prepaid - EEDC_PREPAID, EEDC Postpaid - EEDC_POSTPAID, IKEDC Prepaid - IKEDC_PREPAID, IKEDC Postpaid - IKEDC_POSTPAID"
+                },
+                {
+                    "id": "meter_number",
+                    "name": "meter_number",
+                    "label": "Meter Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Enter meter number",
+                    "events": [
+                        {
+                            "trigger": "onBlur",
+                            "action": "EXECUTE_ENDPOINT",
+                            "endpointId": "Validate Bill",
+                            "mappingConfig": {
+                                "customerName": "customer_name"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "customer_name",
+                    "name": "customer_name",
+                    "label": "Customer Name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Auto-verifying..."
+                },
+                {
+                    "id": "amount",
+                    "name": "amount",
+                    "label": "Amount (NGN)",
+                    "type": "number",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "International Transfer",
+  "description": "Standard SWIFT international wire transfer.",
+  "trigger": "MANUAL",
+  "steps": [
+    {
+      "id": "execute_international_transfer",
+      "type": "INTERNATIONAL_TRANSFER",
+      "inputs": {
+        "sourceAccountId": "{{TRIGGER_PAYLOAD.sourceAccountId}}",
+        "destinationAccountId": "{{TRIGGER_PAYLOAD.destination_account || TRIGGER_PAYLOAD.toAccountNumber || TRIGGER_PAYLOAD.destinationAccountId}}",
+        "amount": "{{TRIGGER_PAYLOAD.amount}}",
+        "swiftCode": "{{TRIGGER_PAYLOAD.swift_code}}",
+        "country": "{{TRIGGER_PAYLOAD.country}}"
+      }
+    }
+  ]
+}

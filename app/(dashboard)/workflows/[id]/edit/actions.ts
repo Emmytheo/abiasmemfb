@@ -138,25 +138,31 @@ export async function executeEndpointAction(endpointId: string, inputData: Recor
         const endpoint = await payload.findByID({
             collection: 'endpoints',
             id: endpointId,
+            depth: 2, // Hydrate provider for auth resolution
         })
 
         if (!endpoint) throw new Error('Endpoint not found')
 
-        // Forward to the internal API resolver
+        // Forward to the internal API resolver.
+        // FIX: Route inputData to query params for GET endpoints so the URL is built correctly.
         const { resolveEndpoint } = await import('@/lib/workflow/utils/apiResolver')
-        const { url, method, headers, body } = await resolveEndpoint(endpoint as any, inputData)
+        const isGet = (endpoint as any).method === 'GET' || !(endpoint as any).method;
+        const { url, method, headers, body } = await resolveEndpoint(endpoint as any, {
+            body: isGet ? undefined : (inputData.body ?? inputData),
+            query: isGet ? (inputData.query ?? inputData) : undefined,
+        })
 
         const response = await fetch(url, {
             method,
             headers: {
                 ...headers,
-                'Content-Type': 'application/json',
+                ...(isGet ? {} : { 'Content-Type': 'application/json' }),
             },
-            body: method !== 'GET' ? JSON.stringify(body) : undefined,
+            body: isGet ? undefined : JSON.stringify(body),
         })
 
         const result = await response.json()
-        if (!response.ok) throw new Error(result.message || 'API Execution failed')
+        if (!response.ok) throw new Error(result.Message || result.message || 'API Execution failed')
 
         return { success: true, data: result }
     } catch (e: any) {

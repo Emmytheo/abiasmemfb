@@ -187,7 +187,20 @@ export function resolveResponseOutputs(response: any, outputs: Record<string, st
     
     const results: Record<string, any> = {};
     for (const [outputName, path] of Object.entries(outputs)) {
-        results[outputName] = resolvePath(response, path);
+        let val = resolvePath(response, path);
+        
+        // Self-healing fallback for Qore/BankOne where 'Payload.' is sometimes used interchangeably with 'Message.'
+        if (val === undefined) {
+            if (path.startsWith('Payload.')) {
+                val = resolvePath(response, path.replace('Payload.', 'Message.')) 
+                   ?? resolvePath(response, path.replace('Payload.', ''));
+            } else if (path.startsWith('Message.')) {
+                val = resolvePath(response, path.replace('Message.', 'Payload.'))
+                   ?? resolvePath(response, path.replace('Message.', ''));
+            }
+        }
+        
+        results[outputName] = val;
     }
     return results;
 }
