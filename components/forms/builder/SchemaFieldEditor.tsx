@@ -174,6 +174,9 @@ export function SchemaFieldEditor({ fields, onChange, endpoints = [], idKey = 'i
                                                 <SelectItem value="file">File Upload</SelectItem>
                                                 <SelectItem value="destination_bank_lookup">Bank Lookup</SelectItem>
                                                 <SelectItem value="beneficiary_select">Beneficiary</SelectItem>
+                                                <SelectItem value="autocomplete_select">Autocomplete Select</SelectItem>
+                                                <SelectItem value="api_select">API Select</SelectItem>
+                                                <SelectItem value="hidden">Hidden Metadata</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -236,7 +239,7 @@ export function SchemaFieldEditor({ fields, onChange, endpoints = [], idKey = 'i
                                 />
                             </div>
 
-                            {editingField.type === 'select' && (
+                            {(editingField.type === 'select' || editingField.type === 'autocomplete_select') && (
                                 <div className="space-y-2">
                                     <Label>Options (comma separated)</Label>
                                     <Input 
@@ -244,6 +247,56 @@ export function SchemaFieldEditor({ fields, onChange, endpoints = [], idKey = 'i
                                         onChange={(e) => handleUpdateField(editingIndex!, { options: idKey === 'id' ? e.target.value.split(',').map(s => s.trim()).filter(Boolean) : e.target.value } as any)}
                                         placeholder="Option 1, Option 2, Option 3"
                                     />
+                                </div>
+                            )}
+
+                            {editingField.type === 'api_select' && (
+                                <div className="space-y-3 p-3 bg-muted/40 rounded-lg border">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">API Options Endpoint</Label>
+                                        {endpoints && endpoints.length > 0 ? (
+                                            <Select 
+                                                value={editingField.options_endpoint || editingField.optionsEndpoint || ''} 
+                                                onValueChange={(val) => handleUpdateField(editingIndex!, { options_endpoint: val } as any)}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs">
+                                                    <SelectValue placeholder="Select endpoint..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {endpoints.map((ep: any) => (
+                                                        <SelectItem key={ep.id} value={ep.id}>{ep.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <Input 
+                                                value={editingField.options_endpoint || editingField.optionsEndpoint || ''} 
+                                                onChange={(e) => handleUpdateField(editingIndex!, { options_endpoint: e.target.value } as any)}
+                                                className="h-8 text-xs font-mono"
+                                                placeholder="Endpoint ID or Path"
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[11px]">Text Key</Label>
+                                            <Input 
+                                                value={editingField.options_text_key || editingField.optionsTextKey || ''} 
+                                                onChange={(e) => handleUpdateField(editingIndex!, { options_text_key: e.target.value } as any)}
+                                                className="h-8 text-xs"
+                                                placeholder="e.g. name"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[11px]">Value Key</Label>
+                                            <Input 
+                                                value={editingField.options_value_key || editingField.optionsValueKey || ''} 
+                                                onChange={(e) => handleUpdateField(editingIndex!, { options_value_key: e.target.value } as any)}
+                                                className="h-8 text-xs"
+                                                placeholder="e.g. code"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 

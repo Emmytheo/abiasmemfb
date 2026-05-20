@@ -1,20 +1,22 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Wifi, ShieldCheck, Loader2, CheckCircle2, Building2, Globe, Search, UserCircle2 } from "lucide-react";
+import { ArrowRight, Wifi, ShieldCheck, Loader2, CheckCircle2, Building2, Globe, Search, UserCircle2, ChevronDown, X } from "lucide-react";
 import { toast } from "sonner";
 import { Service, ServiceFormSchema, Customer, Beneficiary } from "@/lib/api/types";
 import { api } from "@/lib/api";
 import { NIGERIAN_BANKS } from "@/lib/data/nigerian-banks";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { applyMappingConfig, normalizeOptionsData } from "@/lib/utils/form-mapper";
+
 interface ServiceExecutionFormProps {
     service: Service | null;
     prefillBeneficiaryId?: string;
@@ -24,7 +26,7 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isValidating, setIsValidating] = useState(false);
-    const [formData, setFormData] = useState<Record<string, string>>({});
+    const [formData, setFormData] = useState<Record<string, any>>({});
     const [validationData, setValidationData] = useState<Record<string, any>>({});
     const [accounts, setAccounts] = useState<any[]>([]);
     const [sourceAccountId, setSourceAccountId] = useState<string>('');
@@ -35,6 +37,53 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
     const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [isPickerOpen, setIsPickerOpen] = useState(false);
+
+    // api_select: fetched options per field name
+    const [apiOptions, setApiOptions] = useState<Record<string, { label: string; value: any }[]>>({});
+    const [loadingApiOptions, setLoadingApiOptions] = useState<Record<string, boolean>>({});
+    // autocomplete_select: search term and open state per field
+    const [acSearchTerms, setAcSearchTerms] = useState<Record<string, string>>({});
+    const [openAcDropdown, setOpenAcDropdown] = useState<string | null>(null);
+    const acDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close autocomplete dropdowns on outside click
+    useEffect(() => {
+        function handle(e: MouseEvent) {
+            if (acDropdownRef.current && !acDropdownRef.current.contains(e.target as Node)) {
+                setOpenAcDropdown(null);
+            }
+        }
+        document.addEventListener('mousedown', handle);
+        return () => document.removeEventListener('mousedown', handle);
+    }, []);
+
+    // Fetch api_select options
+    const fetchApiOptions = useCallback(async (field: ServiceFormSchema) => {
+        const endpointId = typeof (field as any).options_endpoint === 'object'
+            ? (field as any).options_endpoint?.id
+            : (field as any).options_endpoint;
+        if (!endpointId) return;
+        setLoadingApiOptions(prev => ({ ...prev, [field.name]: true }));
+        try {
+            const res = await fetch('/api/endpoints/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpointId, dynamicPayload: {} })
+            });
+            const data = await res.json();
+            const rawData = data?.data ?? data?.Payload ?? data ?? [];
+            const opts = normalizeOptionsData(
+                rawData,
+                (field as any).options_text_key || 'name',
+                (field as any).options_value_key || 'id'
+            );
+            setApiOptions(prev => ({ ...prev, [field.name]: opts }));
+        } catch (e) {
+            console.error('[SEF] Failed to fetch options for', field.name, e);
+        } finally {
+            setLoadingApiOptions(prev => ({ ...prev, [field.name]: false }));
+        }
+    }, []);
 
     React.useEffect(() => {
         if (!service) return;
@@ -60,7 +109,13 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
             setIsLoadingBeneficiaries(false);
         }
         fetchData();
-    }, [service]);
+        // Pre-fetch api_select options
+        service.form_schema?.forEach(field => {
+            if ((field as any).type === 'api_select' && (field as any).options_endpoint) {
+                fetchApiOptions(field);
+            }
+        });
+    }, [service, fetchApiOptions]);
 
     React.useEffect(() => {
         if (prefillBeneficiaryId && beneficiaries.length > 0) {
@@ -174,44 +229,29 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
         }
     };
 
-    const executeEvent = async (event: any, value: string, extraData?: any) => {
-        if (event.action === 'SET_VALUES' && event.mappingConfig) {
-            const newLocked = new Set(lockedFields);
-            const updates: Record<string, string> = {};
-            
-            // If it's a beneficiary_select, track the chosen object for the UI
+    const executeEvent = async (event: any, value: any, extraData?: any) => {
+        if ((event.action === 'SET_VALUES' || event.action === 'SET_VALUE') && event.mappingConfig) {
+            // Track selected beneficiary for rich UI rendering
             if (extraData && extraData.account_name) {
                 setSelectedBeneficiary(extraData);
-                setIsPickerOpen(false); 
+                setIsPickerOpen(false);
             }
-
-            // Process the mapping config
-            for (const [targetField, template] of Object.entries(event.mappingConfig)) {
-                let resolvedValue = template;
-                if (typeof template === 'string' && template.includes('{{$value.')) {
-                    const prop = template.replace('{{$value.', '').replace('}}', '');
-                    resolvedValue = extraData ? extraData[prop] : (typeof value === 'object' ? (value as any)[prop] : value);
-                } else if (template === '{{$value}}') {
-                    resolvedValue = value;
-                }
-                updates[targetField] = String(resolvedValue || '');
-                newLocked.add(targetField);
-            }
+            const updates = applyMappingConfig(event.mappingConfig, null, value, extraData);
+            const newLocked = new Set(lockedFields);
+            Object.keys(updates).forEach(k => newLocked.add(k));
             setFormData(prev => ({ ...prev, ...updates }));
             setLockedFields(newLocked);
+
         } else if (event.action === 'EXECUTE_ENDPOINT' && event.endpointId) {
             setIsValidating(true);
             try {
-                // FIX: Only send the fields the enquiry endpoint actually needs.
-                // Sending the whole formData blob (amount, sourceAccountId, etc.) confuses Qore.
-                // The triggering field value is always included; destination_bank_code is added
-                // for interbank name-enquiry endpoints that require it.
                 const triggerField = event.fieldName || '';
                 const enquiryPayload: Record<string, any> = {
                     ...formData,
-                    accountNumber:          value,          // Qore-native name for intra-bank enquiry
-                    AccountNumber:          value,          // some Qore endpoints use PascalCase
-                    [triggerField]:         value,
+                    // Always include common Qore/BankOne field name variants
+                    accountNumber: value,
+                    AccountNumber: value,
+                    [triggerField]: value,
                 };
                 const res = await fetch('/api/endpoints/execute', {
                     method: 'POST',
@@ -224,33 +264,21 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
 
                 if (res.ok) {
                     const data = await res.json();
-                    
-                    // Specific to BankOne/Qore: payload is often in .Payload
-                    const apiData = data.Payload || data;
-                    
+                    // BankOne/Qore: response payload often nested under .Payload
+                    const responseData = data.Payload ?? data.data ?? data;
+
                     if (event.mappingConfig) {
-                        const updates: Record<string, string> = {};
-                        for (const [targetField, template] of Object.entries(event.mappingConfig)) {
-                            let resolvedValue = template;
-                            // Support nested path resolution via {{$response.path.to.prop}}
-                            if (typeof template === 'string' && template.includes('{{$response.')) {
-                                const path = template.replace('{{$response.', '').replace('}}', '');
-                                resolvedValue = path.split('.').reduce((acc, part) => {
-                                    if (!acc) return undefined;
-                                    if (acc[part] !== undefined) return acc[part];
-                                    const partLower = part.toLowerCase();
-                                    const match = Object.keys(acc).find(k => k.toLowerCase() === partLower);
-                                    return match !== undefined ? acc[match] : undefined;
-                                }, apiData);
-                            }
-                            updates[targetField] = String(resolvedValue || '');
-                        }
+                        const updates = applyMappingConfig(event.mappingConfig, responseData, value, extraData);
                         setFormData(prev => ({ ...prev, ...updates }));
-                        
-                        // Store the resolved label for UI display
-                        const resolvedLabel = updates[event.fieldName] || apiData.fullName || apiData.AccountName || apiData.accountName;
+
+                        // Surface the resolved human-readable label (e.g. account name)
+                        const resolvedLabel =
+                            updates[triggerField] ||
+                            responseData.fullName ||
+                            responseData.AccountName ||
+                            responseData.accountName;
                         if (resolvedLabel) {
-                            setValidationData(prev => ({ ...prev, [event.fieldName]: resolvedLabel }));
+                            setValidationData(prev => ({ ...prev, [triggerField]: resolvedLabel }));
                         }
                     }
                     toast.success('Information resolved successfully');
@@ -310,8 +338,48 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
         }
     };
 
+    // ── Static options parser (mirrors UniversalDynamicForm) ──────────────
+    const parseOptions = (options: any): { label: string; value: any }[] => {
+        if (!options) return [];
+        if (typeof options === 'string') {
+            const trimmed = options.trim();
+            if (trimmed.startsWith('[')) {
+                try {
+                    const arr = JSON.parse(trimmed);
+                    return arr.map((o: any) =>
+                        typeof o === 'object'
+                            ? { label: o.label ?? o.name ?? String(o.value), value: o.value ?? o }
+                            : { label: String(o), value: o }
+                    );
+                } catch (_) {}
+            }
+            return trimmed.split(',').map((o: string) => ({ label: o.trim(), value: o.trim() }));
+        }
+        if (Array.isArray(options)) {
+            return options.map((o: any) =>
+                typeof o === 'object'
+                    ? { label: o.label ?? o.name ?? String(o.value), value: o.value ?? o }
+                    : { label: String(o), value: o }
+            );
+        }
+        return [];
+    };
+
     const renderField = (field: ServiceFormSchema) => {
         const id = `field-${field.name}`;
+
+        // ── Hidden fields — not rendered, maintained in formData via useEffect
+        if ((field as any).type === 'hidden') {
+            return (
+                <input
+                    key={field.name}
+                    type="hidden"
+                    name={field.name}
+                    value={formData[field.name] ?? ''}
+                    readOnly
+                />
+            );
+        }
 
         if (field.name === 'sourceAccountId') {
             return (
@@ -491,31 +559,33 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
             );
         }
 
-        if (field.type === 'select' || field.type === 'destination_bank_lookup') {
-            // Parse options: supports both JSON [{label,value}] arrays and legacy comma strings
-            let parsedOptions: { label: string; value: string }[] = [];
-            if (field.options) {
-                const raw = field.options as any;
-                if (Array.isArray(raw)) {
-                    parsedOptions = raw.map((o: any) =>
-                        typeof o === 'object' ? { label: o.label ?? o.value, value: o.value } : { label: String(o), value: String(o) }
-                    );
-                } else if (typeof raw === 'string') {
-                    const trimmed = raw.trim();
-                    if (trimmed.startsWith('[')) {
-                        try {
-                            const arr = JSON.parse(trimmed);
-                            parsedOptions = arr.map((o: any) =>
-                                typeof o === 'object' ? { label: o.label ?? o.value, value: o.value } : { label: String(o), value: String(o) }
-                            );
-                        } catch {
-                            parsedOptions = trimmed.split(',').map(o => ({ label: o.trim(), value: o.trim() }));
-                        }
-                    } else {
-                        parsedOptions = trimmed.split(',').map(o => ({ label: o.trim(), value: o.trim() }));
-                    }
-                }
-            }
+        if (field.type === 'destination_bank_lookup') {
+            return (
+                <div key={field.name} className="space-y-2">
+                    <label htmlFor={id} className="text-sm font-medium">
+                        {field.label} {field.required && <span className="text-destructive">*</span>}
+                    </label>
+                    <select
+                        id={id}
+                        value={formData[field.name] || ""}
+                        onChange={(e) => handleInputChange(field.name, e.target.value)}
+                        onBlur={() => handleBlur(field.name)}
+                        className="w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer"
+                    >
+                        <option value="" disabled>Select bank...</option>
+                        <option value="abiasmemfb">ABIASMEMFB (Intra-bank)</option>
+                        {NIGERIAN_BANKS.map(bank => (
+                            <option key={bank.code} value={bank.code}>
+                                {bank.name} ({bank.code})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            );
+        }
+
+        if (field.type === 'select') {
+            const parsedOptions = parseOptions(field.options);
             return (
                 <div key={field.name} className="space-y-2">
                     <label htmlFor={id} className="text-sm font-medium">
@@ -529,21 +599,119 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                         className="w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer"
                     >
                         <option value="" disabled>Select {field.label.toLowerCase()}...</option>
-                        {field.type === 'destination_bank_lookup' ? (
-                            <>
-                                <option value="abiasmemfb">ABIASMEMFB (Intra-bank)</option>
-                                {NIGERIAN_BANKS.map(bank => (
-                                    <option key={bank.code} value={bank.code}>
-                                        {bank.name} ({bank.code})
-                                    </option>
-                                ))}
-                            </>
-                        ) : (
-                            parsedOptions.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))
-                        )}
+                        {parsedOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                     </select>
+                </div>
+            );
+        }
+
+        if ((field as any).type === 'api_select') {
+            const isLoading = loadingApiOptions[field.name];
+            const opts = apiOptions[field.name] || [];
+            return (
+                <div key={field.name} className="space-y-2">
+                    <label htmlFor={id} className="text-sm font-medium">
+                        {field.label} {field.required && <span className="text-destructive">*</span>}
+                    </label>
+                    <div className="relative">
+                        {isLoading && (
+                            <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-primary animate-spin pointer-events-none" />
+                        )}
+                        <select
+                            id={id}
+                            value={formData[field.name] || ""}
+                            onChange={(e) => handleInputChange(field.name, e.target.value)}
+                            onBlur={() => handleBlur(field.name)}
+                            disabled={isLoading || isSubmitting}
+                            className={`w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer ${isLoading ? 'opacity-60' : ''}`}
+                        >
+                            <option value="" disabled>
+                                {isLoading ? 'Loading...' : `Select ${field.label.toLowerCase()}...`}
+                            </option>
+                            {opts.map((opt, idx) => (
+                                <option key={`${opt.value}-${idx}`} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            );
+        }
+
+        if ((field as any).type === 'autocomplete_select') {
+            const allOptions = parseOptions(field.options);
+            const searchTerm = acSearchTerms[field.name] || '';
+            const filtered = searchTerm
+                ? allOptions.filter(o => o.label.toLowerCase().includes(searchTerm.toLowerCase()))
+                : allOptions;
+            const selectedLabel = allOptions.find(o => String(o.value) === String(formData[field.name]))?.label;
+            return (
+                <div key={field.name} className="space-y-2">
+                    <label className="text-sm font-medium">
+                        {field.label} {field.required && <span className="text-destructive">*</span>}
+                    </label>
+                    <div
+                        className="relative"
+                        ref={openAcDropdown === field.name ? acDropdownRef : undefined}
+                    >
+                        <div
+                            className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm cursor-pointer"
+                            onClick={() => setOpenAcDropdown(openAcDropdown === field.name ? null : field.name)}
+                        >
+                            <span className={`flex-1 truncate ${selectedLabel ? '' : 'text-muted-foreground'}`}>
+                                {selectedLabel || `Select ${field.label.toLowerCase()}...`}
+                            </span>
+                            {formData[field.name] ? (
+                                <X
+                                    size={13}
+                                    className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        handleInputChange(field.name, '');
+                                        setAcSearchTerms(prev => ({ ...prev, [field.name]: '' }));
+                                    }}
+                                />
+                            ) : (
+                                <ChevronDown size={13} className="text-muted-foreground shrink-0 mt-0.5" />
+                            )}
+                        </div>
+                        {openAcDropdown === field.name && (
+                            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg overflow-hidden">
+                                <div className="p-1.5 border-b">
+                                    <div className="relative">
+                                        <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                        <input
+                                            autoFocus
+                                            className="w-full h-7 pl-6 pr-2 text-xs rounded border bg-background focus:outline-none"
+                                            placeholder="Search..."
+                                            value={searchTerm}
+                                            onChange={e => setAcSearchTerms(prev => ({ ...prev, [field.name]: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto">
+                                    {filtered.length === 0 ? (
+                                        <p className="text-xs text-muted-foreground text-center py-3">No options found</p>
+                                    ) : filtered.map((o, idx) => (
+                                        <div
+                                            key={`${o.value}-${idx}`}
+                                            className={`px-3 py-1.5 text-sm cursor-pointer hover:bg-muted transition-colors ${
+                                                String(formData[field.name]) === String(o.value) ? 'bg-muted font-medium' : ''
+                                            }`}
+                                            onClick={() => {
+                                                handleInputChange(field.name, o.value);
+                                                setOpenAcDropdown(null);
+                                                setAcSearchTerms(prev => ({ ...prev, [field.name]: '' }));
+                                            }}
+                                        >
+                                            {o.label}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }

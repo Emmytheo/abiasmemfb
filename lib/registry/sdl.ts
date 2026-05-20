@@ -138,6 +138,54 @@ export async function importRegistryBundle(bundle: RegistryBundleSDL) {
     return stats;
 }
 
+async function denormalizeFormSchema(payload: any, schema: any[]): Promise<any[]> {
+    return Promise.all((schema || []).map(async (field) => {
+        let optEpName = undefined;
+        if (field.options_endpoint) {
+            if (typeof field.options_endpoint === 'object') {
+                optEpName = field.options_endpoint.name;
+            } else {
+                const ep = await payload.findByID({ collection: 'endpoints', id: field.options_endpoint }).catch(() => null);
+                optEpName = ep?.name;
+            }
+        }
+
+        const events = await Promise.all((field.events || []).map(async (ev: any) => {
+            let epName = undefined;
+            if (ev.endpointId) {
+                if (typeof ev.endpointId === 'object') {
+                    epName = ev.endpointId.name;
+                } else {
+                    const ep = await payload.findByID({ collection: 'endpoints', id: ev.endpointId }).catch(() => null);
+                    epName = ep?.name;
+                }
+            }
+            return {
+                trigger: ev.trigger,
+                condition: ev.condition || undefined,
+                action: ev.action,
+                endpointId: epName || undefined,
+                mappingConfig: ev.mappingConfig || undefined,
+            };
+        }));
+
+        return {
+            id: field.name || field.id,
+            label: field.label,
+            type: field.type || 'text',
+            required: field.required ?? false,
+            placeholder: field.placeholder || undefined,
+            description: field.description || undefined,
+            options: field.options || undefined,
+            options_endpoint: optEpName || undefined,
+            options_text_key: field.options_text_key || undefined,
+            options_value_key: field.options_value_key || undefined,
+            validations: field.validations || undefined,
+            events: events.length > 0 ? events : undefined,
+        };
+    }));
+}
+
 /**
  * exportRegistryBundle: Dumps the entire CMS registry into a portable SDL format.
  */
@@ -159,6 +207,8 @@ export async function exportRegistryBundle(version: string = "1.0.0"): Promise<R
             limit: 1
         });
 
+        const denormalizedSchema = await denormalizeFormSchema(payload, p.form_schema || []);
+
         return {
             name: p.name,
             categorySlug: cat.name.toLowerCase(),
@@ -167,7 +217,7 @@ export async function exportRegistryBundle(version: string = "1.0.0"): Promise<R
             description: p.description,
             image_url: p.image_url,
             status: p.status,
-            form_schema: p.form_schema || [],
+            form_schema: denormalizedSchema,
             workflow_stages: p.workflow_stages || [],
             financial_terms: p.financial_terms || [],
             externalCode: mapping.docs[0]?.externalCode
@@ -181,6 +231,8 @@ export async function exportRegistryBundle(version: string = "1.0.0"): Promise<R
         const valWf = s.validation_workflow ? (typeof s.validation_workflow === 'object' ? s.validation_workflow : await payload.findByID({ collection: 'workflows', id: s.validation_workflow })) : null;
         const exeWf = s.execution_workflow ? (typeof s.execution_workflow === 'object' ? s.execution_workflow : await payload.findByID({ collection: 'workflows', id: s.execution_workflow })) : null;
         
+        const denormalizedSchema = await denormalizeFormSchema(payload, s.form_schema || []);
+
         return {
             name: s.name,
             categorySlug: cat.name.toLowerCase(),
@@ -189,7 +241,7 @@ export async function exportRegistryBundle(version: string = "1.0.0"): Promise<R
             execution_workflow_slug: exeWf?.name,
             fee_type: s.fee_type,
             fee_value: s.fee_value,
-            form_schema: s.form_schema || [],
+            form_schema: denormalizedSchema,
             status: s.status
         };
     }));
@@ -250,13 +302,40 @@ async function normalizeFormSchema(payload: any, schema: any[], cache: any): Pro
             };
         }));
 
+        // Normalize options_endpoint: resolve string endpoint name to a Payload document ID
+        let resolvedOptionsEndpoint = field.options_endpoint;
+        if (field.options_endpoint && typeof field.options_endpoint === 'string') {
+            const cacheKey = `ep_${field.options_endpoint}`;
+            if (cache.endpoints.has(cacheKey)) {
+                resolvedOptionsEndpoint = cache.endpoints.get(cacheKey);
+            } else {
+                const res = await payload.find({
+                    collection: 'endpoints',
+                    where: { name: { equals: field.options_endpoint } },
+                    limit: 1,
+                    pagination: false
+                });
+                if (res.docs.length > 0) {
+                    resolvedOptionsEndpoint = res.docs[0].id;
+                    cache.endpoints.set(cacheKey, resolvedOptionsEndpoint);
+                } else {
+                    cache.endpoints.set(cacheKey, null);
+                    resolvedOptionsEndpoint = null;
+                }
+            }
+        }
+
         return {
             name: fieldName,
             label: field.label,
             type: field.type || 'text',
             required: field.required ?? false,
             placeholder: field.placeholder || undefined,
+            description: field.description || undefined,
             options: Array.isArray(field.options) ? field.options.join(', ') : field.options || undefined,
+            options_endpoint: resolvedOptionsEndpoint || undefined,
+            options_text_key: field.options_text_key || undefined,
+            options_value_key: field.options_value_key || undefined,
             triggers_validation: false,
             validations: (field.validations || []).map((v: any) => ({
                 type: v.type,

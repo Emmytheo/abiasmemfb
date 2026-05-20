@@ -106,7 +106,7 @@ export const Services: CollectionConfig = {
                     name: 'type',
                     type: 'select',
                     required: true,
-                    options: ['text', 'number', 'email', 'select', 'destination_bank_lookup', 'beneficiary_select'],
+                    options: ['text', 'number', 'email', 'select', 'destination_bank_lookup', 'beneficiary_select', 'autocomplete_select', 'api_select', 'hidden'],
                 },
                 {
                     name: 'required',
@@ -121,8 +121,33 @@ export const Services: CollectionConfig = {
                     name: 'options',
                     type: 'text',
                     admin: {
-                        description: 'Comma separated list of static options for a "select" field (e.g., "Premium - 29500, Compact - 12500").',
-                        condition: (data, siblingData) => siblingData.type === 'select',
+                        description: 'Comma separated list of static options for a "select" or "autocomplete_select" field (e.g., "Premium - 29500, Compact - 12500").',
+                        condition: (data, siblingData) => siblingData.type === 'select' || siblingData.type === 'autocomplete_select',
+                    }
+                },
+                {
+                    name: 'options_endpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: {
+                        description: 'Endpoint to fetch dynamic options from for an api_select field.',
+                        condition: (data, siblingData) => siblingData.type === 'api_select',
+                    }
+                },
+                {
+                    name: 'options_text_key',
+                    type: 'text',
+                    admin: {
+                        description: 'Field in API response representing display text (e.g., "name").',
+                        condition: (data, siblingData) => siblingData.type === 'api_select',
+                    }
+                },
+                {
+                    name: 'options_value_key',
+                    type: 'text',
+                    admin: {
+                        description: 'Field in API response representing option value (e.g., "code").',
+                        condition: (data, siblingData) => siblingData.type === 'api_select',
                     }
                 },
                 {

@@ -100,11 +100,14 @@ export interface FieldEvent {
 export interface FormField {
     id: string;
     label: string;
-    type: 'text' | 'number' | 'email' | 'select' | 'file' | 'destination_bank_lookup' | 'beneficiary_select';
+    type: 'text' | 'number' | 'email' | 'select' | 'file' | 'destination_bank_lookup' | 'beneficiary_select' | 'autocomplete_select' | 'api_select' | 'hidden';
     required: boolean;
     options?: string[]; // For select fields
     placeholder?: string;
     description?: string;
+    options_endpoint?: string | any;
+    options_text_key?: string;
+    options_value_key?: string;
     validations?: FieldValidation[];
     events?: FieldEvent[];
 }
@@ -474,11 +477,14 @@ export interface ServiceFormSchema {
     id: string;
     name: string; // Internal variable name
     label: string; // UI label
-    type: 'text' | 'number' | 'email' | 'select' | 'file' | 'destination_bank_lookup' | 'beneficiary_select';
+    type: 'text' | 'number' | 'email' | 'select' | 'file' | 'destination_bank_lookup' | 'beneficiary_select' | 'autocomplete_select' | 'api_select' | 'hidden';
     required: boolean;
     placeholder?: string;
     options?: string; // Comma-separated options for 'select'
     triggers_validation: boolean;
+    options_endpoint?: string | any;
+    options_text_key?: string;
+    options_value_key?: string;
     validations?: FieldValidation[];
     events?: FieldEvent[];
 }

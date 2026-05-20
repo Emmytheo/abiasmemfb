@@ -26,7 +26,7 @@ export function compileSDLToFlow(sdl: WorkflowSDL) {
 
     // We'll use Dagre to auto-layout the compiled React Flow nodes
     const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: 'TB', ranksep: 60, nodesep: 40 });
+    g.setGraph({ rankdir: 'LR', ranksep: 60, nodesep: 40 });
     g.setDefaultEdgeLabel(() => ({}));
 
     // Generate Trigger Node

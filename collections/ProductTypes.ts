@@ -103,11 +103,36 @@ export const ProductTypes: CollectionConfig = {
             admin: { description: 'Dynamic fields for the application form' },
             fields: [
                 { name: 'label', type: 'text', required: true },
-                { name: 'type', type: 'select', options: ['text', 'number', 'email', 'select', 'file'], required: true },
+                { name: 'type', type: 'select', options: ['text', 'number', 'email', 'select', 'file', 'destination_bank_lookup', 'beneficiary_select', 'autocomplete_select', 'api_select', 'hidden'], required: true },
                 { name: 'required', type: 'checkbox', defaultValue: false },
                 { name: 'placeholder', type: 'text' },
                 { name: 'description', type: 'text' },
                 { name: 'options', type: 'json' },
+                {
+                    name: 'options_endpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: {
+                        description: 'Endpoint to fetch dynamic options from for an api_select field.',
+                        condition: (data, siblingData) => siblingData?.type === 'api_select',
+                    }
+                },
+                {
+                    name: 'options_text_key',
+                    type: 'text',
+                    admin: {
+                        description: 'Field in API response representing display text (e.g., "name").',
+                        condition: (data, siblingData) => siblingData?.type === 'api_select',
+                    }
+                },
+                {
+                    name: 'options_value_key',
+                    type: 'text',
+                    admin: {
+                        description: 'Field in API response representing option value (e.g., "code").',
+                        condition: (data, siblingData) => siblingData?.type === 'api_select',
+                    }
+                },
                 {
                     name: 'validations',
                     type: 'array',
