@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { 
-  CheckCircle, ArrowRight, HeartHandshake, Store, Users, Bike, Rocket, 
-  Banknote, Sprout, ScrollText, Building, Loader2, CreditCard, ShieldCheck, 
-  Sparkles, Landmark, Phone, MapPin, Briefcase, Code, Smartphone, Zap, 
-  QrCode, Lock, Unlock, Check, Calculator, Building2
+import {
+    CheckCircle, ArrowRight, HeartHandshake, Store, Users, Bike, Rocket,
+    Banknote, Sprout, ScrollText, Building, Loader2, CreditCard, ShieldCheck,
+    Sparkles, Landmark, Phone, MapPin, Briefcase, Code, Smartphone, Zap,
+    QrCode, Lock, Unlock, Check, Calculator, Building2
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { ProductType } from "@/lib/api/types";
@@ -52,7 +52,7 @@ export default function Business() {
     // Interactive States: Business Suite Savings Yield
     const [savingsDeposit, setSavingsDeposit] = useState<number>(500000);
     const [savingsTenure, setSavingsTenure] = useState<number>(12); // months
-    
+
     const calculateSmeYield = (deposit: number, tenure: number) => {
         // High yield premium of 12.5% per annum
         const rate = 0.125;
@@ -63,7 +63,7 @@ export default function Business() {
     // Interactive States: Cooperative Thrift Esusu
     const [esusuMembers, setEsusuMembers] = useState<number>(10);
     const [esusuContribution, setEsusuContribution] = useState<number>(50000);
-    
+
     const esusuPoolSize = esusuMembers * esusuContribution;
     const esusuPlatformFee = esusuPoolSize * 0.01; // 1% platform commission
     const esusuNetPayout = esusuPoolSize - esusuPlatformFee;
@@ -164,11 +164,11 @@ export default function Business() {
                         <Sparkles size={14} className="text-primary animate-pulse" />
                         <span className="text-primary text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]">Unions & Corporate Banking Portal</span>
                     </div>
-                    
+
                     <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black text-foreground tracking-tight leading-[1.1]">
                         Tailored Enterprise <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">& Cooperative Systems</span>
                     </h1>
-                    
+
                     <p className="text-lg sm:text-xl text-muted-foreground font-medium max-w-3xl mx-auto leading-relaxed">
                         Deploy state-of-the-art retail checkouts, digitize your thrift cooperative cycles, command customizable smart debit cards, or power your neighborhood agency cashpoint network.
                     </p>
@@ -189,11 +189,10 @@ export default function Business() {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as TabType)}
-                            className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm transition-all duration-300 ${
-                                activeTab === tab.id
+                            className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm transition-all duration-300 ${activeTab === tab.id
                                     ? "bg-primary text-primary-foreground shadow-md scale-[1.02]"
                                     : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                            }`}
+                                }`}
                         >
                             {tab.icon}
                             <span>{tab.label}</span>
@@ -204,7 +203,7 @@ export default function Business() {
 
             {/* Content Hub Panels */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32 relative z-10">
-                <div className="bg-card text-card-foreground border border-border/60 rounded-[3rem] p-8 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden">
+                <div className="bg-card text-card-foreground border border-border/60 rounded-[3rem] p-6 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden">
                     {/* Inner glowing badge style header */}
                     <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -223,7 +222,7 @@ export default function Business() {
                                     <p className="text-muted-foreground text-lg leading-relaxed">
                                         Scale your company with zero business account maintenance fees, advanced web payroll disbursement tools, and streamlined corporate deposits customized for Abia businesses.
                                     </p>
-                                    
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {[
                                             "Zero account opening maintenance fees",
@@ -242,7 +241,7 @@ export default function Business() {
                                 {/* Dynamic Savings Yield Calculator */}
                                 <div className="bg-background/80 border border-border/80 p-8 rounded-3xl shadow-xl space-y-6 relative">
                                     <div className="absolute top-4 right-4 bg-primary/10 text-primary border border-primary/20 text-[9px] uppercase font-black px-2 py-0.5 rounded">High Yield</div>
-                                    
+
                                     <h3 className="text-lg font-black text-foreground flex items-center gap-2">
                                         <Calculator size={18} className="text-primary" />
                                         <span>Corporate Yield Estimator</span>
@@ -257,10 +256,10 @@ export default function Business() {
                                                 <span className="text-muted-foreground">Fixed Deposit Principal:</span>
                                                 <span className="text-primary font-mono text-sm">₦{savingsDeposit.toLocaleString()}</span>
                                             </div>
-                                            <input 
-                                                type="range" 
-                                                min="100000" 
-                                                max="10000000" 
+                                            <input
+                                                type="range"
+                                                min="100000"
+                                                max="10000000"
                                                 step="100000"
                                                 value={savingsDeposit}
                                                 onChange={(e) => setSavingsDeposit(Number(e.target.value))}
@@ -273,10 +272,10 @@ export default function Business() {
                                                 <span className="text-muted-foreground">Tenure (Investment Lock):</span>
                                                 <span className="text-primary font-mono text-sm">{savingsTenure} Months</span>
                                             </div>
-                                            <input 
-                                                type="range" 
-                                                min="3" 
-                                                max="24" 
+                                            <input
+                                                type="range"
+                                                min="3"
+                                                max="24"
                                                 step="3"
                                                 value={savingsTenure}
                                                 onChange={(e) => setSavingsTenure(Number(e.target.value))}
@@ -315,7 +314,7 @@ export default function Business() {
                                     <p className="text-muted-foreground text-lg leading-relaxed">
                                         Digitize your local trade association thrift and Esusu savings wheels. We provide transparent automated cycle disbursements, secure group trust wallets, and multi-signature security for executives.
                                     </p>
-                                    
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {[
                                             "Automated contributions collection",
@@ -350,10 +349,10 @@ export default function Business() {
                                                 <span className="text-muted-foreground">Union Size (Contributors):</span>
                                                 <span className="text-primary font-mono text-sm">{esusuMembers} Active Members</span>
                                             </div>
-                                            <input 
-                                                type="range" 
-                                                min="5" 
-                                                max="50" 
+                                            <input
+                                                type="range"
+                                                min="5"
+                                                max="50"
                                                 step="1"
                                                 value={esusuMembers}
                                                 onChange={(e) => setEsusuMembers(Number(e.target.value))}
@@ -366,10 +365,10 @@ export default function Business() {
                                                 <span className="text-muted-foreground">Contribution (Per Hand/Cycle):</span>
                                                 <span className="text-primary font-mono text-sm">₦{esusuContribution.toLocaleString()}</span>
                                             </div>
-                                            <input 
-                                                type="range" 
-                                                min="5000" 
-                                                max="250000" 
+                                            <input
+                                                type="range"
+                                                min="5000"
+                                                max="250000"
                                                 step="5000"
                                                 value={esusuContribution}
                                                 onChange={(e) => setEsusuContribution(Number(e.target.value))}
@@ -417,7 +416,7 @@ export default function Business() {
                                     {/* Interactive Lead Sheet Form */}
                                     <div className="bg-background/80 border border-border/80 p-6 rounded-3xl shadow-lg relative overflow-hidden">
                                         <h3 className="text-sm font-black text-foreground mb-4 uppercase tracking-wider">POS Agent Terminal Application</h3>
-                                        
+
                                         {agentSuccess ? (
                                             <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
                                                 <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center">
@@ -427,7 +426,7 @@ export default function Business() {
                                                 <p className="text-xs text-muted-foreground max-w-md">
                                                     Our Onboarding Operations Officer in Umuahia/Aba will contact you via phone within 24 business hours to finalize your terminal collection.
                                                 </p>
-                                                <button 
+                                                <button
                                                     onClick={() => setAgentSuccess(false)}
                                                     className="mt-2 text-xs font-bold text-primary hover:underline"
                                                 >
@@ -439,23 +438,23 @@ export default function Business() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] uppercase font-extrabold text-slate-500">Full Name</label>
-                                                        <input 
-                                                            type="text" 
+                                                        <input
+                                                            type="text"
                                                             required
                                                             placeholder="Sarah Johnson"
                                                             value={agentForm.fullName}
-                                                            onChange={(e) => setAgentForm({...agentForm, fullName: e.target.value})}
+                                                            onChange={(e) => setAgentForm({ ...agentForm, fullName: e.target.value })}
                                                             className="w-full bg-card border border-border/80 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:border-primary"
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] uppercase font-extrabold text-slate-500">Business Name</label>
-                                                        <input 
-                                                            type="text" 
+                                                        <input
+                                                            type="text"
                                                             required
                                                             placeholder="Ariaria Fashion Hub"
                                                             value={agentForm.businessName}
-                                                            onChange={(e) => setAgentForm({...agentForm, businessName: e.target.value})}
+                                                            onChange={(e) => setAgentForm({ ...agentForm, businessName: e.target.value })}
                                                             className="w-full bg-card border border-border/80 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:border-primary"
                                                         />
                                                     </div>
@@ -464,20 +463,20 @@ export default function Business() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] uppercase font-extrabold text-slate-500">Mobile Phone</label>
-                                                        <input 
-                                                            type="tel" 
+                                                        <input
+                                                            type="tel"
                                                             required
                                                             placeholder="080 1234 5678"
                                                             value={agentForm.phone}
-                                                            onChange={(e) => setAgentForm({...agentForm, phone: e.target.value})}
+                                                            onChange={(e) => setAgentForm({ ...agentForm, phone: e.target.value })}
                                                             className="w-full bg-card border border-border/80 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:border-primary"
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] uppercase font-extrabold text-slate-500">Location (Abia LGA)</label>
-                                                        <select 
+                                                        <select
                                                             value={agentForm.location}
-                                                            onChange={(e) => setAgentForm({...agentForm, location: e.target.value})}
+                                                            onChange={(e) => setAgentForm({ ...agentForm, location: e.target.value })}
                                                             className="w-full bg-card border border-border/80 px-3 py-2.5 rounded-xl text-xs font-bold focus:outline-none focus:border-primary"
                                                         >
                                                             <option>Aba North</option>
@@ -490,9 +489,9 @@ export default function Business() {
                                                     </div>
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] uppercase font-extrabold text-slate-500">Do you currently have a POS?</label>
-                                                        <select 
+                                                        <select
                                                             value={agentForm.hasPOS}
-                                                            onChange={(e) => setAgentForm({...agentForm, hasPOS: e.target.value})}
+                                                            onChange={(e) => setAgentForm({ ...agentForm, hasPOS: e.target.value })}
                                                             className="w-full bg-card border border-border/80 px-3 py-2.5 rounded-xl text-xs font-bold focus:outline-none focus:border-primary"
                                                         >
                                                             <option value="no">No, need new terminal</option>
@@ -501,8 +500,8 @@ export default function Business() {
                                                     </div>
                                                 </div>
 
-                                                <button 
-                                                    type="submit" 
+                                                <button
+                                                    type="submit"
                                                     disabled={agentSubmitting}
                                                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black py-3 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all shadow-md shadow-primary/20"
                                                 >
@@ -542,10 +541,10 @@ export default function Business() {
                                                     <span className="text-muted-foreground">Expected Daily Transactions:</span>
                                                     <span className="text-primary font-mono text-sm">{agencyTxCount} Transactions</span>
                                                 </div>
-                                                <input 
-                                                    type="range" 
-                                                    min="10" 
-                                                    max="300" 
+                                                <input
+                                                    type="range"
+                                                    min="10"
+                                                    max="300"
                                                     step="5"
                                                     value={agencyTxCount}
                                                     onChange={(e) => setAgencyTxCount(Number(e.target.value))}
@@ -601,7 +600,7 @@ export default function Business() {
                                     <p className="text-muted-foreground text-lg leading-relaxed">
                                         Accept digital transfers seamlessly inside your online store, checkout website, or mobile app. Integrate our robust developer APIs, print custom dynamic QR codes for physical registers, or dispatch dynamic payment checkout links.
                                     </p>
-                                    
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {[
                                             "Developer-friendly Webhook APIs",
@@ -632,7 +631,7 @@ export default function Business() {
                                         <div className="space-y-4">
                                             <p className="text-slate-500 text-[10px]">{"// Trigger simulated API payment payload"}</p>
                                             <pre className="text-slate-400 text-[11px] leading-relaxed">
-{`{
+                                                {`{
   "api_token": "abiamfb_live_79a2bb...",
   "currency": "NGN",
   "amount": ${checkoutAmount},
@@ -640,7 +639,7 @@ export default function Business() {
   "recipient": "Aba Leather Guild Corp"
 }`}
                                             </pre>
-                                            <button 
+                                            <button
                                                 onClick={triggerCheckoutSim}
                                                 className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3.5 rounded-2xl flex items-center justify-center gap-2 border border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:scale-[1.01] active:scale-95 transition-all text-xs"
                                             >
@@ -666,7 +665,7 @@ export default function Business() {
                                                     <p className="text-[10px] text-emerald-400/80">Ref: abia-7910-381a-912a</p>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="bg-slate-900 p-4 rounded-xl space-y-1.5 text-[10px] text-slate-400 border border-slate-800">
                                                 <div className="flex justify-between"><span className="text-slate-500">Customer:</span><span className="text-white font-bold">Sarah Johnson</span></div>
                                                 <div className="flex justify-between"><span className="text-slate-500">Recipient Store:</span><span className="text-white font-bold">Aba Leather Guild Corp</span></div>
@@ -674,7 +673,7 @@ export default function Business() {
                                                 <div className="flex justify-between"><span className="text-slate-500">Clearing Network:</span><span className="text-white">Abia MFB InstantPay API</span></div>
                                             </div>
 
-                                            <button 
+                                            <button
                                                 onClick={() => setCheckoutState("idle")}
                                                 className="w-full bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-2 rounded-xl text-center transition-colors text-[10px]"
                                             >
@@ -694,13 +693,12 @@ export default function Business() {
                                 {/* Interactive Card Previewer Left */}
                                 <div className="lg:col-span-5 flex flex-col items-center justify-center space-y-6">
                                     <div className="perspective-1000 w-full max-w-[360px]">
-                                        <div className={`w-full aspect-[1.586/1] rounded-3xl p-6 text-white flex flex-col justify-between shadow-2xl relative overflow-hidden transition-all duration-500 transform hover:scale-[1.02] border ${
-                                            cardBrand === "Verve" 
-                                                ? "bg-gradient-to-br from-emerald-600 via-teal-800 to-emerald-950 border-emerald-500/40" 
+                                        <div className={`w-full aspect-[1.586/1] rounded-3xl p-6 text-white flex flex-col justify-between shadow-2xl relative overflow-hidden transition-all duration-500 transform hover:scale-[1.02] border ${cardBrand === "Verve"
+                                                ? "bg-gradient-to-br from-emerald-600 via-teal-800 to-emerald-950 border-emerald-500/40"
                                                 : cardBrand === "Visa"
-                                                ? "bg-gradient-to-br from-blue-700 via-indigo-900 to-indigo-950 border-blue-600/40"
-                                                : "bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 border-neutral-700/40"
-                                        }`}>
+                                                    ? "bg-gradient-to-br from-blue-700 via-indigo-900 to-indigo-950 border-blue-600/40"
+                                                    : "bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 border-neutral-700/40"
+                                            }`}>
                                             {/* Glowing ambient ring */}
                                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
 
@@ -746,7 +744,7 @@ export default function Business() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div className="text-right">
                                                     <span className="text-sm font-black italic tracking-wide block leading-none">{cardBrand}</span>
                                                     <span className="text-[7px] font-extrabold uppercase text-slate-400 block mt-1 tracking-widest">Active Limit: ₦{(cardLimit / 1000).toFixed(0)}k</span>
@@ -757,14 +755,12 @@ export default function Business() {
 
                                     {/* Active State glow indicator */}
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-3.5 h-3.5 rounded-full border shadow-sm transition-all duration-500 ${
-                                            cardFrozen 
-                                                ? "bg-rose-500 border-rose-400 shadow-rose-950 animate-pulse" 
+                                        <div className={`w-3.5 h-3.5 rounded-full border shadow-sm transition-all duration-500 ${cardFrozen
+                                                ? "bg-rose-500 border-rose-400 shadow-rose-950 animate-pulse"
                                                 : "bg-emerald-500 border-emerald-400 shadow-emerald-950 animate-ping"
-                                        }`}></div>
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${
-                                            cardFrozen ? "text-rose-500" : "text-emerald-500"
-                                        }`}>
+                                            }`}></div>
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${cardFrozen ? "text-rose-500" : "text-emerald-500"
+                                            }`}>
                                             {cardFrozen ? "CARD STATUS: LOCKED" : "CARD STATUS: LIVE & ACTIVE"}
                                         </span>
                                     </div>
@@ -787,8 +783,8 @@ export default function Business() {
                                         {/* Cardholder Input */}
                                         <div className="space-y-1">
                                             <label className="text-[10px] uppercase font-extrabold text-slate-500">Name on Card</label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 maxLength={20}
                                                 value={cardName}
                                                 onChange={(e) => setCardName(e.target.value.toUpperCase())}
@@ -804,11 +800,10 @@ export default function Business() {
                                                     <button
                                                         key={net}
                                                         onClick={() => setCardBrand(net as any)}
-                                                        className={`py-2 rounded-xl text-[10px] font-black tracking-wider transition-all ${
-                                                            cardBrand === net
+                                                        className={`py-2 rounded-xl text-[10px] font-black tracking-wider transition-all ${cardBrand === net
                                                                 ? "bg-primary text-primary-foreground font-black shadow-sm"
                                                                 : "bg-card text-muted-foreground hover:bg-foreground/5"
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {net}
                                                     </button>
@@ -826,11 +821,10 @@ export default function Business() {
                                                     <button
                                                         key={mode}
                                                         onClick={() => setCardType(mode as any)}
-                                                        className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                                            cardType === mode
+                                                        className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${cardType === mode
                                                                 ? "bg-primary text-primary-foreground font-black shadow-sm"
                                                                 : "bg-card text-muted-foreground hover:bg-foreground/5"
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {mode}
                                                     </button>
@@ -843,11 +837,10 @@ export default function Business() {
                                             <label className="text-[10px] uppercase font-extrabold text-slate-500">Emergency Security Lock</label>
                                             <button
                                                 onClick={() => setCardFrozen(!cardFrozen)}
-                                                className={`w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${
-                                                    cardFrozen
+                                                className={`w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${cardFrozen
                                                         ? "bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-950"
                                                         : "bg-emerald-500 hover:bg-emerald-600 text-black shadow-md shadow-emerald-950"
-                                                }`}
+                                                    }`}
                                             >
                                                 {cardFrozen ? (
                                                     <>
@@ -870,10 +863,10 @@ export default function Business() {
                                             <span className="text-slate-500 uppercase">Local Spending Limit (Per Day)</span>
                                             <span className="text-primary font-mono">₦{cardLimit.toLocaleString()}</span>
                                         </div>
-                                        <input 
-                                            type="range" 
-                                            min="50000" 
-                                            max="5000000" 
+                                        <input
+                                            type="range"
+                                            min="50000"
+                                            max="5000000"
                                             step="50000"
                                             value={cardLimit}
                                             onChange={(e) => setCardLimit(Number(e.target.value))}
@@ -946,7 +939,7 @@ export default function Business() {
                                         <p className="text-slate-200 text-sm leading-relaxed mb-6 z-10">
                                             We design customized cooperative loans or supply discounting contracts for unique corporate scenarios. Speak directly with a loan officer.
                                         </p>
-                                        <Link 
+                                        <Link
                                             href="mailto:support@abiamfb.com"
                                             className="bg-white text-primary font-black px-6 py-3.5 rounded-full hover:bg-slate-100 transition-colors w-full shadow-md z-10 text-xs uppercase tracking-wider"
                                         >

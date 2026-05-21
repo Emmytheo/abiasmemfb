@@ -111,6 +111,32 @@ const navGroups: NavGroup[] = [
         ],
     },
     {
+        title: "Digital Hub",
+        minRole: "user",
+        items: [
+            {
+                title: "Smart Cards",
+                url: "/my-cards",
+                icon: CreditCard,
+            },
+            {
+                title: "Digital Esusu",
+                url: "/esusu",
+                icon: Users,
+            },
+            {
+                title: "Agency Network",
+                url: "/agency",
+                icon: Landmark,
+            },
+            {
+                title: "Merchant Portal",
+                url: "/merchant",
+                icon: Briefcase,
+            },
+        ],
+    },
+    {
         title: "Explore Products",
         minRole: "user",
         items: [

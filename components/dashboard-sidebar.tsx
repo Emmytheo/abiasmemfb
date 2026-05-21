@@ -101,6 +101,31 @@ const navGroups = [
         ],
     },
     {
+        title: "Digital Hub Admin",
+        items: [
+            {
+                title: "Esusu Cooperatives",
+                url: "/dashboard/esusu",
+                icon: Users,
+            },
+            {
+                title: "POS Partner Agency",
+                url: "/dashboard/agency",
+                icon: Landmark,
+            },
+            {
+                title: "Card Registry",
+                url: "/dashboard/cards",
+                icon: CreditCard,
+            },
+            {
+                title: "Merchant Accounts",
+                url: "/dashboard/merchant",
+                icon: Briefcase,
+            },
+        ],
+    },
+    {
         title: "Services",
         items: [
             {

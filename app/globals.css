@@ -306,7 +306,9 @@
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   }
 
-  .marketing-scale {
-    zoom: 0.90;
+  @media (min-width: 768px) {
+    .marketing-scale {
+      zoom: 0.90;
+    }
   }
 }

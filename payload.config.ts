@@ -35,6 +35,22 @@ import { Accounts } from './collections/Accounts'
 import { Loans } from './collections/Loans'
 import { Transactions } from './collections/Transactions'
 import { Beneficiaries } from './collections/Beneficiaries'
+// Digital Esusu collections
+import { Cooperatives } from './collections/Cooperatives'
+import { EsusuCycles } from './collections/EsusuCycles'
+import { EsusuMembers } from './collections/EsusuMembers'
+import { EsusuContributions } from './collections/EsusuContributions'
+import { EsusuPayouts } from './collections/EsusuPayouts'
+// Agency Banking collections
+import { AgencyTerminals } from './collections/AgencyTerminals'
+import { AgencyCommissions } from './collections/AgencyCommissions'
+// Smart Cards collections
+import { SmartCards } from './collections/SmartCards'
+// Merchant Payments collections
+import { MerchantProfiles } from './collections/MerchantProfiles'
+import { MerchantApiKeys } from './collections/MerchantApiKeys'
+import { MerchantCheckouts } from './collections/MerchantCheckouts'
+
 import { s3Storage } from '@payloadcms/storage-s3'
 import { seoPlugin } from '@payloadcms/plugin-seo'
 
@@ -100,6 +116,14 @@ export default buildConfig({
         ServiceCategories, Services,
         // Digital Ledger
         Accounts, Loans, Transactions, Beneficiaries, AccountOfficers,
+        // Digital Esusu
+        Cooperatives, EsusuCycles, EsusuMembers, EsusuContributions, EsusuPayouts,
+        // Agency Banking
+        AgencyTerminals, AgencyCommissions,
+        // Smart Cards
+        SmartCards,
+        // Merchant Payments
+        MerchantProfiles, MerchantApiKeys, MerchantCheckouts,
     ],
     globals: [SiteSettings],
     editor: lexicalEditor({}),
