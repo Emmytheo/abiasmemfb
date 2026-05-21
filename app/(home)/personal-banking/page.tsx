@@ -90,7 +90,7 @@ export default function PersonalBanking() {
           </h1>
 
           <p className="max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-zinc-300 font-light leading-relaxed">
-            From Kiddies accounts built for legacy, to high-yield Esusu thrifts and secure fixed terms—experience licensed microfinance tailored for Aba’s commercial drive.
+            From Kiddies accounts built for legacy, to high-yield Esusu thrifts and secure fixed terms—experience licensed microfinance tailored for Abia’s commercial drive.
           </p>
 
           {/* Quick trust metrics */}
