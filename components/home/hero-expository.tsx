@@ -34,9 +34,9 @@ const SLIDES = [
     {
         id: "trade",
         badge: "State-of-the-Art Banking",
-        headline: ["Modernizing Aba Trade.", "Seeding Co-ops."],
+        headline: ["Modernizing Abia Trade.", "Seeding Co-ops."],
         accentLine: "Seeding Co-ops.",
-        body: "Abia MFB is the engine empowering entrepreneurs, digitized Esusu thrifts, local trade unions, and market merchants with secure loans, smart cards, and agent banking solutions built for Aba.",
+        body: "AbiaSME MFB is the engine empowering entrepreneurs, digitized Esusu thrifts, local trade unions, and market merchants with secure loans, smart cards, and agent banking solutions built for Abia.",
         cta: { label: "Unions & Business Suite", href: "/business" },
         ctaSecondary: { label: "Esusu Calculator", href: "/business#esusu" },
         stats: [
@@ -246,11 +246,10 @@ export function HeroExpository() {
                                 {slide.headline.map((line, i) => (
                                     <h1
                                         key={`${slide.id}-line-${i}`}
-                                        className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display font-black leading-[1.0] tracking-tight ${
-                                            line === slide.accentLine
+                                        className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display font-black leading-[1.0] tracking-tight ${line === slide.accentLine
                                                 ? `text-transparent bg-clip-text bg-gradient-to-r ${slide.accentGradient}`
                                                 : "text-foreground"
-                                        }`}
+                                            }`}
                                     >
                                         {line}
                                     </h1>
