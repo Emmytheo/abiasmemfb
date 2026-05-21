@@ -72,8 +72,8 @@ export function Navbar({ userRole }: NavbarProps) {
                             Company
                         </Link>
                         <Link
-                            href="/blog"
-                            className={`${linkBaseClass} ${isActive("/blog") ? activeClass : inactiveClass}`}
+                            href="/blog/featured"
+                            className={`${linkBaseClass} ${isActive("/blog/featured") ? activeClass : inactiveClass}`}
                         >
                             Blog
                         </Link>
@@ -149,7 +149,7 @@ export function Navbar({ userRole }: NavbarProps) {
                             Company
                         </Link>
                         <Link
-                            href="/blog"
+                            href="/blog/featured"
                             onClick={() => setIsOpen(false)}
                             className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-primary dark:hover:text-accent hover:bg-muted"
                         >
