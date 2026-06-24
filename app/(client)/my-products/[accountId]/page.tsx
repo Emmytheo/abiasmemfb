@@ -102,7 +102,7 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    endpointId: 25,
+                    endpointId: 34,
                     dynamicPayload: { AccountNumber: account.account_number, CardType: cardType }
                 })
             });
@@ -128,7 +128,7 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    endpointId: 26,
+                    endpointId: 35,
                     dynamicPayload: { CardNumber: activateCardNumber.replace(/\s/g, '') }
                 })
             });

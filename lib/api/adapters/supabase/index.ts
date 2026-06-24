@@ -322,5 +322,17 @@ export const SupabaseAdapter: ApiAdapter = {
     },
     deletePromotion: async (id) => {
         throw new Error("Supabase Adapter not fully implemented");
+    },
+    getUserStandingOrders: async (userId) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    createStandingOrder: async (data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    updateStandingOrder: async (id, data) => {
+        throw new Error("Supabase Adapter not fully implemented");
+    },
+    deleteStandingOrder: async (id) => {
+        throw new Error("Supabase Adapter not fully implemented");
     }
 };

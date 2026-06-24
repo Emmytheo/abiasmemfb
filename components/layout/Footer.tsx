@@ -178,6 +178,7 @@ export function Footer() {
                                     src="https://ndic.gov.ng/wp-content/uploads/2020/08/ndic_small_logo-1.png"
                                     alt="NDIC Logo"
                                     fill
+                                    sizes="128px"
                                     className="object-contain"
                                 />
 

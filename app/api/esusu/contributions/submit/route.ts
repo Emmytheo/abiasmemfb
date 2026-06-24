@@ -105,10 +105,10 @@ export async function POST(req: Request) {
 
         const ref = `ESU_CON_${Date.now()}`
 
-        // Trigger ledger transaction internally. We use local simulation if Qore fails or is in test sandbox
+        // Trigger ledger transaction strictly on the core switch.
         let qoreSuccess = false
-        try {
-            if (primaryAccount.source === 'qore' && vaultAccount.source === 'qore') {
+        if (primaryAccount.source === 'qore' && vaultAccount.source === 'qore') {
+            try {
                 await intraBankTransfer({
                     FromAccountNumber: primaryAccount.account_number,
                     ToAccountNumber: vaultAccount.account_number,
@@ -117,9 +117,10 @@ export async function POST(req: Request) {
                     RetrievalReference: ref.slice(0, 12).padEnd(12, '0'),
                 })
                 qoreSuccess = true
+            } catch (err: any) {
+                console.error('[Qore Esusu Sync] Qore transfer failed. Aborting local settlement...', err)
+                return NextResponse.json({ error: `Core Banking Transaction Failed: ${err.message}` }, { status: 400 })
             }
-        } catch (err) {
-            console.warn('[Qore Esusu Sync] Qore transfer failed or not configured. Proceeding with local settlement...', err)
         }
 
         // Deduct balance locally

@@ -19,7 +19,8 @@ import {
     Beneficiary, 
     SiteSettings, 
     CustomerAudit,
-    AccountOfficer
+    AccountOfficer,
+    StandingOrder
 } from '../../types';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
@@ -1719,15 +1720,27 @@ export const getBlogPosts = async (params?: any): Promise<BlogPost[]> => {
             sort: '-createdAt',
             overrideAccess: true 
         });
-        return docs.map((doc: any) => ({
-            id: String(doc.id),
-            title: doc.title,
-            slug: doc.slug,
-            excerpt: doc.excerpt || doc.meta?.description,
-            image_url: doc.feature_image?.url,
-            created_at: doc.createdAt,
-            content: doc.content
-        } as any)) as BlogPost[];
+        return docs.map((doc: any) => {
+            const authorDoc = typeof doc.author === 'object' && doc.author ? doc.author : null;
+            return {
+                id: String(doc.id),
+                title: doc.title,
+                slug: doc.slug,
+                excerpt: doc.excerpt || doc.meta?.description || 'Read this post...',
+                coverImage: doc.featuredImage?.url || 'https://images.unsplash.com/photo-1579621970588-a35d0e7ab9b6?auto=format&fit=crop&w=2070&q=80',
+                author: {
+                    name: authorDoc?.name || 'Abia MFB Team',
+                    role: authorDoc?.role || 'Editorial',
+                    avatar: 'https://ui-avatars.com/api/?name=Abia+MFB+Team&background=3B82F6&color=fff'
+                },
+                date: new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                category: typeof doc.category === 'object' && doc.category ? doc.category.title : 'Company News',
+                tags: doc.tags || [],
+                featured: doc.featured || false,
+                readTime: doc.readTime || '5 min read',
+                content: doc.content
+            } as any;
+        }) as BlogPost[];
     } catch (e) { return []; }
 };
 
@@ -2702,3 +2715,137 @@ export const getAllTransactionsPaginated = async (page = 1, limit = 50, filters?
         };
     } catch (e) { return { docs: [], totalDocs: 0, totalPages: 0, page }; }
 };
+
+// Standing Orders
+export const getUserStandingOrders = async (userId: string): Promise<StandingOrder[]> => {
+    try {
+        const payload = await initPayload();
+        const { docs } = await payload.find({
+            collection: 'standing-orders' as any,
+            where: { user_id: { equals: userId } },
+            limit: 100,
+            overrideAccess: true,
+            depth: 1,
+        });
+
+        return (docs as any[]).map((doc: any) => ({
+            id: String(doc.id),
+            user_id: doc.user_id,
+            customer: doc.customer,
+            source_account: doc.source_account,
+            destination_bank_name: doc.destination_bank_name,
+            destination_bank_code: doc.destination_bank_code,
+            destination_account_number: doc.destination_account_number,
+            destination_account_name: doc.destination_account_name,
+            amount: (doc.amount ?? 0) / 100,
+            frequency: doc.frequency,
+            start_date: doc.start_date,
+            end_date: doc.end_date,
+            next_run_date: doc.next_run_date,
+            status: doc.status,
+            narration: doc.narration,
+            created_at: doc.createdAt,
+        } as StandingOrder));
+    } catch (e) {
+        console.error('[getUserStandingOrders] Error:', e);
+        return [];
+    }
+};
+
+export const createStandingOrder = async (data: Omit<StandingOrder, 'id' | 'created_at'>): Promise<StandingOrder> => {
+    const payload = await initPayload();
+    const doc = await payload.create({
+        collection: 'standing-orders' as any,
+        data: {
+            user_id: data.user_id,
+            customer: typeof data.customer === 'object' ? data.customer.id : data.customer,
+            source_account: typeof data.source_account === 'object' ? data.source_account.id : data.source_account,
+            destination_bank_name: data.destination_bank_name,
+            destination_bank_code: data.destination_bank_code,
+            destination_account_number: data.destination_account_number,
+            destination_account_name: data.destination_account_name,
+            amount: Math.round(data.amount * 100),
+            frequency: data.frequency,
+            start_date: data.start_date,
+            end_date: data.end_date,
+            next_run_date: data.next_run_date,
+            status: data.status || 'active',
+            narration: data.narration,
+        } as any,
+        overrideAccess: true,
+    });
+
+    return {
+        id: String(doc.id),
+        user_id: doc.user_id,
+        customer: doc.customer,
+        source_account: doc.source_account,
+        destination_bank_name: doc.destination_bank_name,
+        destination_bank_code: doc.destination_bank_code,
+        destination_account_number: doc.destination_account_number,
+        destination_account_name: doc.destination_account_name,
+        amount: (doc.amount ?? 0) / 100,
+        frequency: doc.frequency,
+        start_date: doc.start_date,
+        end_date: doc.end_date,
+        next_run_date: doc.next_run_date,
+        status: doc.status,
+        narration: doc.narration,
+        created_at: doc.createdAt,
+    } as StandingOrder;
+};
+
+export const updateStandingOrder = async (id: string, data: Partial<StandingOrder>): Promise<StandingOrder> => {
+    const payload = await initPayload();
+    const updateData: any = { ...data };
+    if (updateData.amount != null) {
+        updateData.amount = Math.round(updateData.amount * 100);
+    }
+    if (updateData.customer && typeof updateData.customer === 'object') {
+        updateData.customer = updateData.customer.id;
+    }
+    if (updateData.source_account && typeof updateData.source_account === 'object') {
+        updateData.source_account = updateData.source_account.id;
+    }
+    const doc = await payload.update({
+        collection: 'standing-orders' as any,
+        id,
+        data: updateData,
+        overrideAccess: true,
+    });
+
+    return {
+        id: String(doc.id),
+        user_id: doc.user_id,
+        customer: doc.customer,
+        source_account: doc.source_account,
+        destination_bank_name: doc.destination_bank_name,
+        destination_bank_code: doc.destination_bank_code,
+        destination_account_number: doc.destination_account_number,
+        destination_account_name: doc.destination_account_name,
+        amount: (doc.amount ?? 0) / 100,
+        frequency: doc.frequency,
+        start_date: doc.start_date,
+        end_date: doc.end_date,
+        next_run_date: doc.next_run_date,
+        status: doc.status,
+        narration: doc.narration,
+        created_at: doc.createdAt,
+    } as StandingOrder;
+};
+
+export const deleteStandingOrder = async (id: string): Promise<boolean> => {
+    try {
+        const payload = await initPayload();
+        await payload.delete({
+            collection: 'standing-orders' as any,
+            id,
+            overrideAccess: true,
+        });
+        return true;
+    } catch (e) {
+        console.error('[deleteStandingOrder] Error:', e);
+        return false;
+    }
+};
+

@@ -82,11 +82,16 @@ export async function POST(req: Request) {
 
         const ref = `POS_WD_${Date.now()}`
 
-        // Trigger a ledger transaction internally. We simulate debiting the switching network
-        // and crediting the agent float account with the cash-out amount + agent commission share.
+        // --- MOCK CARD SWITCH VALIDATION ---
+        // Simulating a real NIBSS/Interswitch card verification and debit.
+        if (body.pin === '0000' || card_number_masked.endsWith('0000')) {
+             return NextResponse.json({ error: 'Card Switch Error: Invalid PIN or Card Blocked' }, { status: 400 })
+        }
+
+        // Trigger a ledger transaction strictly to the core.
         let qoreSuccess = false
-        try {
-            if (agentFloatAccount.source === 'qore') {
+        if (agentFloatAccount.source === 'qore') {
+            try {
                 // In a real agency cash-out, BankOne/Qore handles the card settlement
                 // and credits the agent's core account. We simulate that credit call here.
                 await intraBankTransfer({
@@ -97,9 +102,10 @@ export async function POST(req: Request) {
                     RetrievalReference: ref.slice(0, 12).padEnd(12, '0'),
                 })
                 qoreSuccess = true
+            } catch (err: any) {
+                console.error('[Qore POS Sync] Core ledger credit failed. Aborting transaction.', err)
+                return NextResponse.json({ error: `Core Settlement Error: ${err.message}` }, { status: 400 })
             }
-        } catch (err) {
-            console.warn('[Qore POS Sync] Core ledger credit failed. Proceeding locally.', err)
         }
 
         // Update Agent balance locally: cashout amount + commission share is added to their float

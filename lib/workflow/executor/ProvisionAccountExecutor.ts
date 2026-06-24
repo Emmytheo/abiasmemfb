@@ -178,7 +178,7 @@ export async function ProvisionAccountExecutor(
                 FirstName:                  submittedData.FirstName      || submittedData.firstName      || customer.firstName      || '',
                 OtherNames:                 submittedData.OtherNames     || submittedData.otherNames     || customer.firstName      || '',
                 DateOfBirth:                submittedData.DateOfBirth    || submittedData.dob            || customer.dob            || '1990-01-01',
-                PhoneNo:                    submittedData.PhoneNo        || submittedData.phone_number   || customer.phone_number   || '',
+                PhoneNo:                    submittedData.PhoneNo        || submittedData.phone_number   || customer.phone_number   || '08000000000',
                 Gender:                     Number(submittedData.Gender ?? submittedData.gender ?? customer.gender ?? 0) || 0,
                 BVN:                        submittedData.BVN            || submittedData.bvn            || customer.bvn            || '',
                 NationalIdentityNo:         submittedData.NationalIdentityNo || submittedData.nin        || customer.nin            || '',

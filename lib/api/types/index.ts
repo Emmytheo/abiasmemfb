@@ -460,6 +460,31 @@ export interface ApiAdapter {
     }) => Promise<{ success: boolean; mergedRecords: number; archivedIds: string[] }>;
     getQoreAccounts: (customerId: string) => Promise<any[]>;
     unlinkCustomer: (id: string) => Promise<Customer>;
+
+    // Standing Orders
+    getUserStandingOrders: (userId: string) => Promise<StandingOrder[]>;
+    createStandingOrder: (data: Omit<StandingOrder, 'id' | 'created_at'>) => Promise<StandingOrder>;
+    updateStandingOrder: (id: string, data: Partial<StandingOrder>) => Promise<StandingOrder>;
+    deleteStandingOrder: (id: string) => Promise<boolean>;
+}
+
+export interface StandingOrder {
+    id: string;
+    user_id: string;
+    customer: string | Customer;
+    source_account: string | Account;
+    destination_bank_name: string;
+    destination_bank_code: string;
+    destination_account_number: string;
+    destination_account_name: string;
+    amount: number;
+    frequency: 'daily' | 'weekly' | 'monthly';
+    start_date: string;
+    end_date?: string;
+    next_run_date: string;
+    status: 'active' | 'paused' | 'completed' | 'cancelled';
+    narration?: string;
+    created_at: string;
 }
 
 export interface ServiceCategory {

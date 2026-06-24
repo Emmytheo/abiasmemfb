@@ -48,6 +48,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
 import { NavUser } from "@/components/nav-user";
+import { ScopeSelector } from "@/components/scope-selector";
 
 const navGroups = [
     {
@@ -258,6 +259,7 @@ export function DashboardSidebar({ userName, userEmail, ...props }: DashboardSid
                 </SidebarMenu>
                 <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                     <SidebarGroupContent>
+                        <ScopeSelector role="admin" />
                         <SidebarMenu>
                             <SidebarMenuItem className="flex flex-col gap-2 mt-4 group-data-[collapsible=icon]:items-center">
                                 <SidebarMenuButton

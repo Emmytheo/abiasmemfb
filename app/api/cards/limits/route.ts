@@ -45,8 +45,9 @@ export async function PATCH(req: Request) {
             await updateCardLimits(card.card_token, 'WEB', Number(limit_web))
             await updateCardLimits(card.card_token, 'ATM', Number(limit_atm))
             qoreSuccess = true
-        } catch (err) {
-            console.warn('[Qore Card Sync] Qore card limits update failed. Proceeding locally.', err)
+        } catch (err: any) {
+            console.error('[Qore Card Sync] Qore card limits update failed. Aborting local sync.', err)
+            return NextResponse.json({ error: `Core Banking Error: ${err.message}` }, { status: 400 })
         }
 
         // Update local database

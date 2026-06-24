@@ -40,6 +40,23 @@ export const Loans: CollectionConfig = {
             admin: { description: 'The original product application.' },
         },
         {
+            name: 'qore_loan_id',
+            type: 'text',
+            unique: true,
+            index: true,
+            admin: {
+                description: 'The unique Loan ID assigned by Qore Corebanking.',
+                position: 'sidebar'
+            }
+        },
+        {
+            name: 'metadata',
+            type: 'json',
+            admin: {
+                description: 'Raw Qore response and additional metadata for auditing.',
+            }
+        },
+        {
             name: 'product_type',
             type: 'relationship',
             relationTo: 'product-types',

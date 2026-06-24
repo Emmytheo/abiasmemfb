@@ -47,6 +47,7 @@ import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
 import { ServiceCategory } from "@/lib/api/types";
 import { Megaphone } from "lucide-react";
+import { ScopeSelector } from "@/components/scope-selector";
 
 type NavGroup = {
     title: string;
@@ -54,7 +55,7 @@ type NavGroup = {
     minRole?: "user" | "customer";
 };
 
-const IconMap: Record<string, any> = {
+const IconMap: Record<string, React.ElementType> = {
     tag: Tag,
     wifi: Wifi,
     user: User,
@@ -102,6 +103,11 @@ const navGroups: NavGroup[] = [
                 title: "Saved Beneficiaries",
                 url: "/client-dashboard/beneficiaries",
                 icon: Users,
+            },
+            {
+                title: "Standing Orders",
+                url: "/client-dashboard/standing-orders",
+                icon: ListOrdered,
             },
             {
                 title: "My Applications",
@@ -238,6 +244,11 @@ export function ClientSidebar({
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+                <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+                    <SidebarGroupContent>
+                        <ScopeSelector role="client" />
+                    </SidebarGroupContent>
+                </SidebarGroup>
 
                 {/* Action Carousel (Profile Incomplete + Promo + Personal Advisor) */}
                 <SidebarGroup className="group-data-[collapsible=icon]:hidden">

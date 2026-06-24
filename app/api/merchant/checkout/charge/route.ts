@@ -94,10 +94,10 @@ export async function POST(req: Request) {
 
         const ref = `MCH_CHG_${Date.now()}`
 
-        // Trigger ledger transaction internally
+        // Trigger ledger transaction strictly on the core
         let qoreSuccess = false
-        try {
-            if (payerAccount.source === 'qore' && merchantAccount.source === 'qore') {
+        if (payerAccount.source === 'qore' && merchantAccount.source === 'qore') {
+            try {
                 await intraBankTransfer({
                     FromAccountNumber: payerAccount.account_number,
                     ToAccountNumber: merchantAccount.account_number,
@@ -106,9 +106,10 @@ export async function POST(req: Request) {
                     RetrievalReference: ref.slice(0, 12).padEnd(12, '0'),
                 })
                 qoreSuccess = true
+            } catch (err: any) {
+                console.error('[Qore SME Sync] Core transfer failed. Aborting transaction.', err)
+                return NextResponse.json({ error: `Core Settlement Error: ${err.message}` }, { status: 400 })
             }
-        } catch (err) {
-            console.warn('[Qore SME Sync] Core transfer failed. Proceeding locally.', err)
         }
 
         // Deduct payer account
@@ -168,14 +169,28 @@ export async function POST(req: Request) {
         if (merchant.webhook_url) {
             Promise.resolve().then(async () => {
                 try {
-                    console.log(`[Webhook Dispatcher] Posting payment event to ${merchant.webhook_url}...`)
-                    const response = await fetch(merchant.webhook_url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Webhook-Signature': crypto.createHmac('sha256', checkout_id).update(ref).digest('hex'),
+                    const { dispatchWebhook } = await import('@/lib/utils/webhook-dispatcher')
+                    
+                    // Fetch merchant secret key
+                    const keysRes = await payload.find({
+                        collection: 'merchant-api-keys',
+                        where: {
+                            and: [
+                                { merchant: { equals: merchant.id } },
+                                { is_active: { equals: true } },
+                                { key_type: { equals: 'live_secret' } }
+                            ]
                         },
-                        body: JSON.stringify({
+                        overrideAccess: true,
+                        limit: 1
+                    })
+                    
+                    const secretKey = keysRes.docs[0]?.key_value || 'fallback_secret_key'
+                    
+                    await dispatchWebhook(
+                        merchant.webhook_url, 
+                        secretKey, 
+                        {
                             event: 'checkout.successful',
                             data: {
                                 reference: checkout.reference,
@@ -185,11 +200,10 @@ export async function POST(req: Request) {
                                 metadata: checkout.metadata,
                                 paid_at: new Date().toISOString(),
                             }
-                        }),
-                    })
-                    console.log(`[Webhook Dispatcher] Status: ${response.status}`)
+                        }
+                    )
                 } catch (e: any) {
-                    console.error(`[Webhook Dispatcher] Dispatch failed: ${e.message}`)
+                    console.error(`[Webhook Wrapper] Dispatch failed: ${e.message}`)
                 }
             })
         }

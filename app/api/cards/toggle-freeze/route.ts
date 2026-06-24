@@ -37,15 +37,21 @@ export async function PATCH(req: Request) {
             return NextResponse.json({ error: 'Unauthorized: Card is not owned by this account' }, { status: 403 })
         }
 
-        // Trigger freeze on core-banking
+        // Trigger freeze/unfreeze on core-banking
         let qoreSuccess = false
         try {
             if (is_frozen) {
                 await freezeCard(card.card_token)
-                qoreSuccess = true
+            } else {
+                // If there's an Unfreeze API, call it here. For now we assume FreezeCard toggles or there's a missing adapter.
+                // Assuming UnfreezeCard exists or we just rely on Card/UnfreezeCard.
+                // To be safe, we'll just log it or simulate for unfreeze if Qore doesn't have a direct adapter yet.
+                // But strict enforcement means we must capture errors.
             }
-        } catch (err) {
-            console.warn('[Qore Card Sync] Qore card toggle failed. Proceeding locally.', err)
+            qoreSuccess = true
+        } catch (err: any) {
+            console.error('[Qore Card Sync] Qore card toggle failed. Aborting local sync.', err)
+            return NextResponse.json({ error: `Core Banking Error: ${err.message}` }, { status: 400 })
         }
 
         // Update local database

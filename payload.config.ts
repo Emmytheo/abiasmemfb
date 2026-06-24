@@ -46,6 +46,8 @@ import { AgencyTerminals } from './collections/AgencyTerminals'
 import { AgencyCommissions } from './collections/AgencyCommissions'
 // Smart Cards collections
 import { SmartCards } from './collections/SmartCards'
+// Standing Orders collections
+import { StandingOrders } from './collections/StandingOrders'
 // Merchant Payments collections
 import { MerchantProfiles } from './collections/MerchantProfiles'
 import { MerchantApiKeys } from './collections/MerchantApiKeys'
@@ -121,7 +123,7 @@ export default buildConfig({
         // Agency Banking
         AgencyTerminals, AgencyCommissions,
         // Smart Cards
-        SmartCards,
+        SmartCards, StandingOrders,
         // Merchant Payments
         MerchantProfiles, MerchantApiKeys, MerchantCheckouts,
     ],

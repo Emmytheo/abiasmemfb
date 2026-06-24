@@ -143,7 +143,7 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
                     <CardTitle>Application Form</CardTitle>
                     <CardDescription>Please complete all required fields accurately to process your application.</CardDescription>
                 </CardHeader>
-                <form onSubmit={handleSubmit}>
+                <div>
                     <CardContent className="space-y-8 bg-card pb-8">
 
                         {/* Universal Amount Request Input */}
@@ -209,7 +209,7 @@ function ApplyProductContent({ params }: { params: Promise<{ productId: string }
                             )}
                         </div>
                     </CardContent>
-                </form>
+                </div>
             </Card>
         </div>
     );

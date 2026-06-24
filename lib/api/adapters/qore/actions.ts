@@ -184,13 +184,35 @@ export const createLoan = async (data: Omit<Loan, 'id' | 'created_at' | 'updated
     await qoreRequest('core', 'Loan/Apply/2', {
         method: 'POST',
         body: JSON.stringify({
-            Amount: data.amount,
-            InterestRate: data.interest_rate,
-            Tenure: data.duration_months,
+            amount: data.amount,
+            interestRate: data.interest_rate,
+            tenure: data.duration_months,
+            userId: typeof data.customer === 'string' ? data.customer : data.customer?.qore_customer_id || data.user_id
         }),
         overrides
     });
     return PayloadAdapter.createLoan(data);
+};
+
+export const applyForQoreLoan = async (
+    amountNaira: number,
+    interestRate: number,
+    tenureMonths: number,
+    customerId: string,
+    productCode: string,
+    overrides?: QoreOverrides
+) => {
+    return qoreRequest('core', 'LoanAccount/LoanApplication/2', {
+        method: 'POST',
+        body: JSON.stringify({
+            amount: amountNaira,
+            interestRate: interestRate,
+            tenure: tenureMonths,
+            userId: customerId,
+            productCode: productCode,
+        }),
+        overrides
+    });
 };
 
 export const getLoanById = async (id: string): Promise<Loan | null> => PayloadAdapter.getLoanById(id);
@@ -627,6 +649,14 @@ export const updateCardLimits = async (cardId: string, channel: string, limit: n
     return qoreRequest('channels', 'Card/UpdateCardLimit', {
         method: 'POST',
         body: JSON.stringify({ cardId, channel, limit }),
+        overrides
+    });
+};
+
+export const changeCardPin = async (cardId: string, newPin: string, overrides?: QoreOverrides) => {
+    return qoreRequest('channels', 'Card/ChangePin', {
+        method: 'POST',
+        body: JSON.stringify({ cardId, newPin }),
         overrides
     });
 };

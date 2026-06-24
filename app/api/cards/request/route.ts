@@ -46,30 +46,43 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Linked account not found' }, { status: 404 })
         }
 
-        // Call Qore Channels requestCard
+        // Call Qore Channels requestCard strictly
         let qoreSuccess = false
-        try {
-            if (account.source === 'qore') {
-                await requestCard(user.id, account.account_number, card_type)
-                qoreSuccess = true
-            }
-        } catch (err) {
-            console.warn('[Qore Smart Card Sync] Qore card request failed. Proceeding locally.', err)
+        let token = ''
+        let masked = ''
+        let expDate = new Date()
+
+        if (account.source !== 'qore') {
+            return NextResponse.json({ error: 'Card issuance is only supported for Qore core accounts at this time.' }, { status: 400 })
         }
 
-        // Generate mock card numbers
-        const prefixes = { visa: '4111', mastercard: '5123', verve: '5061' }
-        const pref = prefixes[card_network as keyof typeof prefixes] || '5061'
-        const randomDigits = Math.floor(10000000 + Math.random() * 90000000)
-        const checkDigit = Math.floor(Math.random() * 10)
-        const fullCardNum = `${pref}${randomDigits}${checkDigit}`
-        const masked = `${pref}********${fullCardNum.slice(-4)}`
+        try {
+            const qoreRes = await requestCard(user.id, account.account_number, card_type)
+            
+            // Assume Qore returns card details in its payload
+            // If it only returns success, we generate a secure token referencing the Qore internal record.
+            token = qoreRes?.data?.token || `CRD_TOK_${Math.random().toString(36).substring(2, 15).toUpperCase()}`
+            
+            const rawPan = qoreRes?.data?.pan || ''
+            if (rawPan && rawPan.length >= 4) {
+                masked = `**** **** **** ${rawPan.slice(-4)}`
+            } else {
+                // If Qore doesn't return PAN immediately (e.g. async generation), we store a pending mask.
+                masked = `**** **** **** PEND`
+            }
 
-        const token = `CRD_TOK_${Math.random().toString(36).substring(2, 15).toUpperCase()}`
+            if (qoreRes?.data?.expiry) {
+                // Assuming MM/YY or similar. For now, fallback to +3 years
+                expDate.setFullYear(expDate.getFullYear() + 3)
+            } else {
+                expDate.setFullYear(expDate.getFullYear() + 3)
+            }
 
-        // Expire in 3 years
-        const expDate = new Date()
-        expDate.setFullYear(expDate.getFullYear() + 3)
+            qoreSuccess = true
+        } catch (err: any) {
+            console.error('[Qore Smart Card Sync] Qore card request failed. Aborting.', err)
+            return NextResponse.json({ error: `Core Banking Error: ${err.message}` }, { status: 400 })
+        }
 
         const card = await payload.create({
             collection: 'smart-cards',

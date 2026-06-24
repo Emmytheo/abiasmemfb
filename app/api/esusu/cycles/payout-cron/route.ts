@@ -5,6 +5,11 @@ import { intraBankTransfer } from '@/lib/api/adapters/qore/actions'
 
 export async function POST(req: Request) {
     try {
+        const authHeader = req.headers.get('authorization')
+        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+            return new NextResponse('Unauthorized', { status: 401 })
+        }
+
         const payload = await getPayload({ config: configPromise })
 
         // Find all active esusu cycles
@@ -118,10 +123,11 @@ export async function POST(req: Request) {
 
                 const ref = `ESU_PAY_${Date.now()}`
 
-                // Transfer from vault to recipient primary account
+                // Transfer from vault to recipient primary account strictly on core
                 let qoreSuccess = false
-                try {
-                    if (vaultAccount.source === 'qore' && primaryAccount.source === 'qore') {
+                let coreFailed = false
+                if (vaultAccount.source === 'qore' && primaryAccount.source === 'qore') {
+                    try {
                         await intraBankTransfer({
                             FromAccountNumber: vaultAccount.account_number,
                             ToAccountNumber: primaryAccount.account_number,
@@ -130,9 +136,15 @@ export async function POST(req: Request) {
                             RetrievalReference: ref.slice(0, 12).padEnd(12, '0'),
                         })
                         qoreSuccess = true
+                    } catch (err: any) {
+                        console.error('[Qore Esusu Sync] Qore transfer failed. Aborting local settlement.', err)
+                        logs.push(`Failed to process cycle "${cycle.name}": Core Transfer Failed: ${err.message}`)
+                        coreFailed = true
                     }
-                } catch (err) {
-                    console.warn('[Qore Esusu Sync] Qore transfer failed or not configured. Proceeding locally.', err)
+                }
+
+                if (coreFailed) {
+                    continue // Skip to next cycle, do not update anything
                 }
 
                 // Update vault account balance to 0

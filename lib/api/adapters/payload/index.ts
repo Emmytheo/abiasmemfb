@@ -136,4 +136,10 @@ export const PayloadAdapter: ApiAdapter = {
     unlinkCustomer: (...args) => actions.unlinkCustomer(...args),
     repointAccount: (...args) => actions.repointAccount(...args),
     repointDigitalIdentity: (...args) => actions.repointDigitalIdentity(...args),
+
+    // Standing Orders
+    getUserStandingOrders: (...args) => actions.getUserStandingOrders(...args),
+    createStandingOrder: (...args) => actions.createStandingOrder(...args),
+    updateStandingOrder: (...args) => actions.updateStandingOrder(...args),
+    deleteStandingOrder: (...args) => actions.deleteStandingOrder(...args),
 };

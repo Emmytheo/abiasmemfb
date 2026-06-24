@@ -93,10 +93,15 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
     }
 
     // Calculations for progress
-    const totalRepayable = loan.amount + (loan.amount * (loan.interest_rate / 100)); // Simple interest mock
+    const monthlyRate = (loan.interest_rate ?? 0) / 100 / 12;
+    const calculatedMonthlyPayment = monthlyRate === 0
+        ? loan.amount / loan.duration_months
+        : (loan.amount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -loan.duration_months));
+    const monthlyInstallment = loan.monthly_installment || calculatedMonthlyPayment;
+    const totalRepayable = monthlyInstallment * loan.duration_months;
     const outstanding = loan.outstanding_balance ?? totalRepayable;
-    const amountPaid = totalRepayable - outstanding;
-    const progressPercent = Math.min(100, Math.max(0, (amountPaid / totalRepayable) * 100));
+    const amountPaid = Math.max(0, totalRepayable - outstanding);
+    const progressPercent = totalRepayable > 0 ? Math.min(100, Math.max(0, (amountPaid / totalRepayable) * 100)) : 0;
 
     // Formatter
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -243,7 +248,7 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
                                         <Separator />
                                         <div>
                                             <p className="text-sm text-muted-foreground">Interest Rate</p>
-                                            <p className="text-lg font-medium">{loan.interest_rate}% <span className="text-sm font-normal text-muted-foreground block sm:inline leading-none">per month</span></p>
+                                            <p className="text-lg font-medium">{loan.interest_rate}% <span className="text-sm font-normal text-muted-foreground block sm:inline leading-none">P.A. (Per Annum)</span></p>
                                         </div>
                                         <Separator />
                                         <div>

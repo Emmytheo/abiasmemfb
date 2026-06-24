@@ -672,5 +672,29 @@ export const DummyAdapter: ApiAdapter = {
     unlinkCustomer: async (id) => {
         await delay(800);
         return MOCK_CUSTOMERS[0];
+    },
+    getUserStandingOrders: async (userId) => {
+        await delay(400);
+        return [];
+    },
+    createStandingOrder: async (data) => {
+        await delay(400);
+        return {
+            id: 'dummy-so-1',
+            ...data,
+            created_at: new Date().toISOString(),
+        } as any;
+    },
+    updateStandingOrder: async (id, data) => {
+        await delay(400);
+        return {
+            id,
+            ...data,
+            created_at: new Date().toISOString(),
+        } as any;
+    },
+    deleteStandingOrder: async (id) => {
+        await delay(400);
+        return true;
     }
 };

@@ -416,8 +416,7 @@ async function HomeContent() {
         </div>
       </section>
 
-      {/* Success Stories */}
-      <SuccessStories />
+      {/* Removed Success Stories placeholder */}
       {/* News & Insights */}
       <Suspense fallback={null}>
         <NewsInsights />

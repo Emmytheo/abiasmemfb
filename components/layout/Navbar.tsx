@@ -72,10 +72,10 @@ export function Navbar({ userRole }: NavbarProps) {
                             Company
                         </Link>
                         <Link
-                            href="/blog/featured"
-                            className={`${linkBaseClass} ${isActive("/blog/featured") ? activeClass : inactiveClass}`}
+                            href="/internet-banking"
+                            className={`${linkBaseClass} ${isActive("/internet-banking") ? activeClass : inactiveClass}`}
                         >
-                            Blog
+                            Internet Banking
                         </Link>
                         <Link
                             href="/support"
@@ -149,11 +149,11 @@ export function Navbar({ userRole }: NavbarProps) {
                             Company
                         </Link>
                         <Link
-                            href="/blog/featured"
+                            href="/internet-banking"
                             onClick={() => setIsOpen(false)}
                             className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-primary dark:hover:text-accent hover:bg-muted"
                         >
-                            Blog
+                            Internet Banking
                         </Link>
                         <Link
                             href="/support"

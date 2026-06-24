@@ -65,6 +65,57 @@ export async function DisburseLoanExecutor(
         return false
     }
 
+    // 1. Fetch customer to get Qore ID
+    const userCustomer = await payload.find({
+        collection: 'customers',
+        where: { supabase_id: { equals: userId } },
+        limit: 1
+    })
+    const customer = userCustomer.docs[0]
+    const qoreCustomerId = customer?.qore_customer_id
+
+    if (!qoreCustomerId) {
+        env.log.error('DISBURSE_LOAN: Customer does not have a Qore Customer ID. Cannot disburse to Qore.')
+        return false
+    }
+
+    // 1.5 Fetch Product Mapping to get Qore Product Code
+    const mappingRes = await payload.find({
+        collection: 'provider-mappings' as any,
+        where: { relatedEntity: { equals: productTypeId } },
+        limit: 1
+    });
+    const qoreProductCode = mappingRes.docs[0]?.externalCode || '';
+
+    let qoreLoanId = ''
+    let qoreMetadata = null
+
+    // 2. Provision loan on Qore Corebanking
+    try {
+        const { applyForQoreLoan } = await import('../../api/adapters/qore/actions')
+        const qoreRes = await applyForQoreLoan(
+            principalNaira,
+            interestRate,
+            durationMonths,
+            qoreCustomerId,
+            qoreProductCode
+        )
+
+        qoreMetadata = qoreRes
+        
+        // Qore responses usually have IsSuccessful and Payload.LoanID
+        if (qoreRes?.IsSuccessful && qoreRes?.Payload?.LoanID) {
+            qoreLoanId = qoreRes.Payload.LoanID
+            env.log.info(`DISBURSE_LOAN: Successfully provisioned loan on Qore. Qore Loan ID: ${qoreLoanId}`)
+        } else {
+            env.log.error(`DISBURSE_LOAN: Qore API rejected the loan application: ${JSON.stringify(qoreRes)}`)
+            return false
+        }
+    } catch (e: any) {
+        env.log.error(`DISBURSE_LOAN: Failed to communicate with Qore API: ${e.message}`)
+        return false
+    }
+
     const schedule = computeSchedule(principalKobo, interestRate, durationMonths)
     const monthlyInstallment = schedule[0]?.installmentAmount ?? 0
     const maturityDate = schedule[schedule.length - 1]?.dueDate
@@ -76,11 +127,12 @@ export async function DisburseLoanExecutor(
     try {
         const disbursedAt = new Date().toISOString()
 
-        // 1. Create Loan record
+        // 3. Create Local Loan record
         const loan = await payload.create({
             collection: 'loans',
             data: {
                 user_id: userId,
+                customer: customer?.id,
                 account: accountId || undefined,
                 application: applicationId || undefined,
                 product_type: productTypeId || undefined,
@@ -95,12 +147,14 @@ export async function DisburseLoanExecutor(
                 status: 'active',
                 repayment_schedule: schedule,
                 purpose,
+                qore_loan_id: qoreLoanId,
+                metadata: qoreMetadata,
             },
         })
 
         env.log.info(`DISBURSE_LOAN: Loan record created: ${loan.id}`)
 
-        // 2. Credit the borrower's account and create a transaction record
+        // 4. Credit the borrower's local account and create a local transaction record
         if (accountId) {
             const accountDoc = await payload.findByID({ collection: 'accounts', id: accountId }).catch(() => null)
             if (accountDoc) {
