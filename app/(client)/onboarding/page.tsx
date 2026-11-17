@@ -2,11 +2,16 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { api } from "@/lib/api";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { getServerBankProfile } from "@/lib/banking/bank-profile-server";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "Complete Your Onboarding | ABIASMEMFB",
-  description: "Set up your banking identity and open your first account with ABIASMEMFB.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { profile } = await getServerBankProfile();
+  return {
+    title: `Complete Your Onboarding | ${profile.shortName}`,
+    description: `Set up your banking identity and open your first account with ${profile.legalName}.`,
+  };
+}
 
 export default async function OnboardingPage() {
     const supabase = await createClient();

@@ -8,11 +8,13 @@ import { Plus, ArrowRight, Loader2, Landmark } from "lucide-react";
 import { api } from "@/lib/api";
 import { Account, ProductApplication, ProductType } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/client";
+import { useScope } from "@/context/scope-context";
 
 export default function MyProductsPage() {
     const [applications, setApplications] = useState<(ProductApplication & { product?: ProductType })[]>([]);
     const [realAccounts, setRealAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
+    const { activeScopeId, activeScope } = useScope();
 
     useEffect(() => {
         async function loadData() {
@@ -40,8 +42,26 @@ export default function MyProductsPage() {
                         return blockType === 'savings-terms' || blockType === 'fixed-deposit-terms';
                     });
 
-                setApplications(enrichedApps);
-                setRealAccounts(accounts);
+                // Apply Scope Filtering
+                let filteredAccounts = accounts;
+                let filteredApps = enrichedApps;
+
+                if (activeScope.type === 'business') {
+                    // Display Current accounts or those flagged as corporate
+                    filteredAccounts = accounts.filter(a => a.account_type === 'Current' || a.metadata?.is_corporate);
+                    filteredApps = enrichedApps.filter(a => a.product?.name.toLowerCase().includes('corporate') || a.product?.name.toLowerCase().includes('business'));
+                } else if (activeScope.type === 'coop') {
+                    // Display joint/union accounts
+                    filteredAccounts = accounts.filter(a => a.metadata?.is_coop);
+                    filteredApps = enrichedApps.filter(a => a.product?.name.toLowerCase().includes('union') || a.product?.name.toLowerCase().includes('coop'));
+                } else {
+                    // Personal scope: standard Savings and Fixed Deposits
+                    filteredAccounts = accounts.filter(a => a.account_type === 'Savings' || a.account_type === 'Fixed Deposit' || a.is_primary);
+                    filteredApps = enrichedApps.filter(a => !a.product?.name.toLowerCase().includes('corporate') && !a.product?.name.toLowerCase().includes('union'));
+                }
+
+                setApplications(filteredApps);
+                setRealAccounts(filteredAccounts);
             } finally {
                 setLoading(false);
             }

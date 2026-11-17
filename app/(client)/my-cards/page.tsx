@@ -5,18 +5,19 @@ import { motion, AnimatePresence } from "framer-motion"
 import { 
     CreditCard, 
     Shield, 
-    Eye, 
-    EyeOff, 
     Lock, 
     Unlock, 
     Sliders, 
+    Eye, 
+    EyeOff, 
     KeyRound, 
     Plus, 
     Loader2, 
-    CheckCircle,
-    Info
+    CheckCircle, 
+    Info 
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useScope } from "@/context/scope-context"
 
 interface Card {
     id: string
@@ -41,6 +42,7 @@ interface Account {
 }
 
 export default function MyCardsPage() {
+    const { activeScopeId, activeScope } = useScope();
     const [cards, setCards] = React.useState<Card[]>([])
     const [accounts, setAccounts] = React.useState<Account[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -65,11 +67,21 @@ export default function MyCardsPage() {
     const [newPin, setNewPin] = React.useState('')
     const [pinSuccess, setPinSuccess] = React.useState(false)
 
+    // Dynamic max values for cap sliders based on scope
+    const maxLimits = React.useMemo(() => {
+        if (activeScope.type === 'business') {
+            return { pos: 10000000, web: 5000000, atm: 1000000 }; // Higher cap for corporate
+        }
+        if (activeScope.type === 'coop') {
+            return { pos: 25000000, web: 10000000, atm: 2000000 }; // Union disbursement caps
+        }
+        return { pos: 500000, web: 250000, atm: 100000 }; // Personal caps
+    }, [activeScopeId]);
+
     // Load cards and accounts on mount
     React.useEffect(() => {
         const loadData = async () => {
             try {
-                // Try importing createClient dynamically or from client helper
                 const { createClient } = await import("@/lib/supabase/client")
                 const supabase = createClient()
                 const { data: { user } } = await supabase.auth.getUser()
@@ -129,7 +141,7 @@ export default function MyCardsPage() {
                 if (fetchedCards.length === 0) {
                     fetchedCards = [
                         {
-                            id: 'card_1',
+                            id: 'card_personal_1',
                             card_holder_name: 'CHIDI MGBARA',
                             card_network: 'verve',
                             card_type: 'physical',
@@ -139,6 +151,34 @@ export default function MyCardsPage() {
                             limit_atm: 2000000,
                             is_frozen: false,
                             expiry_date: '12/30',
+                            status: 'active',
+                            account: '1'
+                        },
+                        {
+                            id: 'card_business_1',
+                            card_holder_name: 'ACME CORP - CHIDI MGBARA',
+                            card_network: 'visa',
+                            card_type: 'virtual',
+                            card_number_masked: '4000-12XX-XXXX-4567',
+                            limit_pos: 200000000,
+                            limit_web: 150000000,
+                            limit_atm: 50000000,
+                            is_frozen: false,
+                            expiry_date: '08/31',
+                            status: 'active',
+                            account: '2'
+                        },
+                        {
+                            id: 'card_coop_1',
+                            card_holder_name: 'ABA UNION - CHIDI M',
+                            card_network: 'mastercard',
+                            card_type: 'physical',
+                            card_number_masked: '5412-75XX-XXXX-8901',
+                            limit_pos: 500000000,
+                            limit_web: 250000000,
+                            limit_atm: 100000000,
+                            is_frozen: true,
+                            expiry_date: '04/29',
                             status: 'active',
                             account: '1'
                         }
@@ -160,7 +200,19 @@ export default function MyCardsPage() {
         loadData()
     }, [])
 
-    const activeCard = cards[activeCardIndex]
+    // Filter cards dynamically by active scope
+    const filteredCards = React.useMemo(() => {
+        if (activeScope.type === 'business') {
+            return cards.filter(c => String(c.card_holder_name).includes('ACME CORP') || String(c.id).includes('business'));
+        }
+        if (activeScope.type === 'coop') {
+            return cards.filter(c => String(c.card_holder_name).includes('UNION') || String(c.card_holder_name).includes('ABA') || String(c.id).includes('coop'));
+        }
+        return cards.filter(c => !String(c.card_holder_name).includes('ACME CORP') && !String(c.card_holder_name).includes('UNION') && !String(c.card_holder_name).includes('ABA') && !String(c.id).includes('business') && !String(c.id).includes('coop'));
+    }, [cards, activeScope.id, activeScope.type]);
+
+    // Track active card index in the filtered cards subset
+    const activeCard = filteredCards[activeCardIndex] || filteredCards[0]
 
     // Sync limits when active card changes
     React.useEffect(() => {
@@ -169,7 +221,7 @@ export default function MyCardsPage() {
             setLimitWeb(activeCard.limit_web / 100)
             setLimitAtm(activeCard.limit_atm / 100)
         }
-    }, [activeCardIndex, cards])
+    }, [activeCardIndex, activeCard])
 
     const handleToggleFreeze = async () => {
         if (!activeCard) return
@@ -183,8 +235,7 @@ export default function MyCardsPage() {
             })
             const data = await res.json()
             if (data.success) {
-                const updated = [...cards]
-                updated[activeCardIndex] = data.card
+                const updated = cards.map(c => c.id === activeCard.id ? data.card : c)
                 setCards(updated)
             }
         } catch (e) {
@@ -210,8 +261,7 @@ export default function MyCardsPage() {
             })
             const data = await res.json()
             if (data.success) {
-                const updated = [...cards]
-                updated[activeCardIndex] = data.card
+                const updated = cards.map(c => c.id === activeCard.id ? data.card : c)
                 setCards(updated)
                 alert('Daily card transaction limits updated successfully!')
             }
@@ -253,6 +303,14 @@ export default function MyCardsPage() {
         if (!newCardHolder || !selectedAccountId) return
         setActionLoading('create')
         try {
+            // Scope card holder name prefix
+            let holderName = newCardHolder.toUpperCase()
+            if (activeScope.type === 'business' && !holderName.includes('ACME CORP')) {
+                holderName = `ACME CORP - ${holderName}`
+            } else if (activeScope.type === 'coop' && !holderName.includes('UNION')) {
+                holderName = `ABA UNION - ${holderName}`
+            }
+
             const res = await fetch('/api/cards/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -260,7 +318,7 @@ export default function MyCardsPage() {
                     account_id: selectedAccountId,
                     card_network: newCardNetwork,
                     card_type: newCardType,
-                    card_holder_name: newCardHolder.toUpperCase()
+                    card_holder_name: holderName
                 })
             })
             const data = await res.json()
@@ -268,7 +326,7 @@ export default function MyCardsPage() {
                 setCards([...cards, data.card])
                 setShowRequestModal(false)
                 setNewCardHolder('')
-                setActiveCardIndex(cards.length) // Focus new card
+                setActiveCardIndex(filteredCards.length) // Focus new card
             }
         } catch (e) {
             console.error(e)
@@ -291,21 +349,25 @@ export default function MyCardsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">Smart Cards Management</h1>
-                    <p className="text-sm text-muted-foreground mt-1 font-medium">Issue, configure, and instantly lock physical & virtual cards.</p>
+                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
+                        {activeScope.type === 'business' ? 'Corporate Expense Cards' : activeScope.type === 'coop' ? 'Union Disbursement Cards' : 'Smart Cards Management'}
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1 font-medium">
+                        {activeScope.type === 'business' ? 'Authorize company expenses and distribute custom employee spend caps.' : activeScope.type === 'coop' ? 'Issue guild allocation cards and audit shared rotation spend.' : 'Issue, configure, and instantly lock physical & virtual cards.'}
+                    </p>
                 </div>
                 <Button 
                     onClick={() => setShowRequestModal(true)} 
                     className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl px-5 py-3 shadow-lg hover:shadow-primary/20 transition-all flex items-center gap-2"
                 >
-                    <Plus className="h-5 w-5" /> Request New Card
+                    <Plus className="h-5 w-5" /> Request {activeScope.type === 'business' ? 'Corporate' : activeScope.type === 'coop' ? 'Union' : 'New'} Card
                 </Button>
             </div>
 
-            {cards.length === 0 ? (
+            {filteredCards.length === 0 ? (
                 <div className="bg-card/50 backdrop-blur-xl border border-border rounded-2xl p-12 text-center max-w-md mx-auto space-y-4">
                     <CreditCard className="h-16 w-16 mx-auto text-primary/40 animate-pulse" />
-                    <h3 className="text-xl font-bold">No active cards found</h3>
+                    <h3 className="text-xl font-bold">No active scoped cards found</h3>
                     <p className="text-muted-foreground text-sm font-medium leading-relaxed">
                         Secure instant virtual Visa, Mastercard, or local Verve cards connected directly to your ledger accounts.
                     </p>
@@ -347,7 +409,7 @@ export default function MyCardsPage() {
                                         {activeCard?.card_network === 'verve' && 'verve'}
                                     </span>
                                 </div>
-
+ 
                                 {/* Frozen Banner Overlay */}
                                 <AnimatePresence>
                                     {activeCard?.is_frozen && (
@@ -362,14 +424,14 @@ export default function MyCardsPage() {
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-
+ 
                                 {/* Middle Row - Masked Card Number */}
                                 <div className="z-10 py-4 flex items-center justify-between">
                                     <p className="text-xl sm:text-2xl font-mono tracking-widest font-black opacity-95">
                                         {showCVV ? activeCard?.card_number_masked.replace(/\*/g, '•') : activeCard?.card_number_masked}
                                     </p>
                                 </div>
-
+ 
                                 {/* Bottom Row */}
                                 <div className="flex justify-between items-end z-10">
                                     <div className="space-y-1">
@@ -389,10 +451,10 @@ export default function MyCardsPage() {
                                 </div>
                             </motion.div>
                         </div>
-
+ 
                         {/* Card Selector / Indicators */}
                         <div className="flex gap-2">
-                            {cards.map((c, i) => (
+                            {filteredCards.map((c, i) => (
                                 <button
                                     key={c.id}
                                     onClick={() => setActiveCardIndex(i)}
@@ -402,7 +464,7 @@ export default function MyCardsPage() {
                                 />
                             ))}
                         </div>
-
+ 
                         {/* View Card Tokens */}
                         <div className="flex items-center gap-3 w-full max-w-[400px]">
                             <Button 
@@ -415,14 +477,14 @@ export default function MyCardsPage() {
                             </Button>
                         </div>
                     </div>
-
+ 
                     {/* Right: Security & Limits Settings Panel */}
                     <div className="lg:col-span-6 space-y-6">
                         <div className="bg-card border border-border/60 rounded-2xl p-6 shadow-xl space-y-6">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <Shield className="h-5 w-5 text-primary" /> Security & Controls
                             </h2>
-
+ 
                             {/* Card Status & Lock Toggle */}
                             <div className="flex items-center justify-between border-b pb-4">
                                 <div className="space-y-0.5">
@@ -451,13 +513,13 @@ export default function MyCardsPage() {
                                     )}
                                 </Button>
                             </div>
-
+ 
                             {/* Limits Control */}
                             <div className="space-y-6 border-b pb-6">
                                 <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <Sliders className="h-4 w-4" /> Customized Limits
                                 </h3>
-
+ 
                                 {/* POS limit */}
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-xs font-medium">
@@ -467,14 +529,14 @@ export default function MyCardsPage() {
                                     <input 
                                         type="range" 
                                         min="1000" 
-                                        max="500000" 
+                                        max={maxLimits.pos} 
                                         step="1000"
                                         value={limitPos} 
                                         onChange={(e) => setLimitPos(Number(e.target.value))}
                                         className="w-full accent-primary bg-muted rounded-lg h-2 cursor-pointer"
                                     />
                                 </div>
-
+ 
                                 {/* Web limit */}
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-xs font-medium">
@@ -484,31 +546,31 @@ export default function MyCardsPage() {
                                     <input 
                                         type="range" 
                                         min="1000" 
-                                        max="250000" 
+                                        max={maxLimits.web} 
                                         step="1000"
                                         value={limitWeb} 
                                         onChange={(e) => setLimitWeb(Number(e.target.value))}
                                         className="w-full accent-primary bg-muted rounded-lg h-2 cursor-pointer"
                                     />
                                 </div>
-
+ 
                                 {/* ATM limit */}
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-xs font-medium">
-                                        <span className="font-bold">Daily ATM Cash Withdrawal Cap</span>
+                                        <span className="font-bold">Daily ATM Cash Cap</span>
                                         <span className="font-black text-primary">₦ {limitAtm.toLocaleString()}</span>
                                     </div>
                                     <input 
                                         type="range" 
                                         min="1000" 
-                                        max="100000" 
+                                        max={maxLimits.atm} 
                                         step="1000"
                                         value={limitAtm} 
                                         onChange={(e) => setLimitAtm(Number(e.target.value))}
                                         className="w-full accent-primary bg-muted rounded-lg h-2 cursor-pointer"
                                     />
                                 </div>
-
+ 
                                 <Button 
                                     onClick={handleSaveLimits}
                                     disabled={actionLoading !== null}
@@ -517,7 +579,7 @@ export default function MyCardsPage() {
                                     {actionLoading === 'limits' ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Save Limit Configurations'}
                                 </Button>
                             </div>
-
+ 
                             {/* PIN Reset button */}
                             <div className="flex justify-between items-center">
                                 <div className="space-y-0.5">
@@ -535,7 +597,7 @@ export default function MyCardsPage() {
                     </div>
                 </div>
             )}
-
+ 
             {/* Modal: Request Card */}
             <AnimatePresence>
                 {showRequestModal && (

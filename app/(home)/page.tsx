@@ -1,434 +1,177 @@
 import { ExpandingReach } from "@/components/home/expanding-reach";
 import Link from "next/link";
-import Image from "next/image";
-import { CheckCircle, ArrowRight, TrendingUp, Smartphone, Users, DollarSign, FileText, CheckSquare, ShieldCheck, Apple, Play, Battery, Wifi, Signal, Menu, UserCircle, Send, ArrowDownLeft, Receipt, CreditCard, Hash, Store, Zap } from "lucide-react";
-import { Newsletter } from "@/components/newsletter";
-import { SuccessStories } from "@/components/home/success-stories";
+import { FileText, CheckSquare, ShieldCheck, DollarSign, Zap } from "lucide-react";
 import { NewsInsights } from "@/components/home/news-insights";
 import { HeroPromotionsShowcase, BannerPromotion, SidebarPromotionsWidget } from "@/components/home/promotions-showcase";
 import { ProductsShowcase } from "@/components/home/products-showcase";
 import { HeroExpository } from "@/components/home/hero-expository";
 import { SpotlightSection } from "@/components/home/spotlight-section";
+import { MobileAppShowcase } from "@/components/home/mobile-app-showcase";
+import { WhyChooseBankSection, MissionVisionBand, CoreServicesGrid, TestimonialsBand } from "@/components/home/nnmfb-sections";
 import { Suspense } from "react";
+import { unstable_cache } from "next/cache";
 import { api } from "@/lib/api";
 import { PageRenderer } from "@/components/payload/PageRenderer";
+import { getServerBankProfile } from "@/lib/banking/bank-profile-server";
 
-async function HomeContent() {
-  const pageData = await api.getPageBySlug('home');
-
-  if (pageData && pageData.layout && pageData.layout.length > 0) {
-    return (
-      <main className="flex flex-col min-h-screen">
-        <PageRenderer layout={pageData.layout} />
-      </main>
-    );
-  }
-
-  // Server-side pre-fetch promotions for perfect SSR and CLS elimination
-  const [heroPromos, sidebarPromos] = await Promise.all([
-    api.getPromotions('hero').catch(() => []),
-    api.getPromotions('sidebar').catch(() => [])
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
   ]);
+}
 
-  const activeHero = (heroPromos || []).filter(p => p.isActive);
-  const activeSidebar = (sidebarPromos || []).filter(p => p.isActive);
+const getCachedPromotions = unstable_cache(
+  async (placement: string) => {
+    return await withTimeout(api.getPromotions(placement), 1500, []);
+  },
+  ["home-promotions"],
+  { revalidate: 60 }
+);
+
+const getCachedAbiaHomePage = unstable_cache(
+  async () => {
+    return await withTimeout(api.getPageBySlug("home"), 1500, null);
+  },
+  ["home-cms-page"],
+  { revalidate: 60 }
+);
+
+async function HeroPromotionsSlot() {
+  const heroPromos = await getCachedPromotions("hero");
+  const activeHero = (heroPromos || []).filter((p: any) => p.isActive);
+  if (activeHero.length === 0) return null;
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <BannerPromotion />
+      <HeroPromotionsShowcase initialData={activeHero} />
+    </div>
+  );
+}
+
+async function SidebarPromotionsColumn() {
+  const sidebarPromos = await getCachedPromotions("sidebar");
+  const activeSidebar = (sidebarPromos || []).filter((p: any) => p.isActive);
+  if (activeSidebar.length === 0) return null;
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="rounded-3xl border border-border p-6 bg-card/60">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-4">Special Offers</h3>
+        <SidebarPromotionsWidget initialData={activeSidebar} />
+      </div>
+    </div>
+  );
+}
+
+export default async function Home() {
+  const { profile } = await getServerBankProfile();
+
+  // Only check static CMS layout override when AbiaSMEMFB profile is active
+  if (profile.id === "abiasmemfb") {
+    const pageData = await getCachedAbiaHomePage();
+    if (pageData && pageData.layout && pageData.layout.length > 0) {
+      return (
+        <main className="flex flex-col min-h-screen">
+          <PageRenderer layout={pageData.layout} />
+        </main>
+      );
+    }
+  }
 
   return (
     <main className="flex flex-col min-h-screen overflow-x-hidden">
-      {/* Grand Hero/Expository Section */}
+      {/* 1. Profile-Controlled Hero Banner (Instant SSR, Zero DB Blocking) */}
       <HeroExpository />
 
-      {/* Dismissible Banner Promotion */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-40">
-        <BannerPromotion />
-      </div>
+      {/* 2. Why Choose Bank + Mission/Vision + Core Services (Instant SSR) */}
+      <WhyChooseBankSection />
+      <MissionVisionBand />
+      <CoreServicesGrid />
 
-      {/* Featured Offers & Promotions Strip */}
-      <HeroPromotionsShowcase initialData={activeHero} />
+      {/* Optional Non-Blocking Promotions Banner */}
+      <Suspense fallback={null}>
+        <HeroPromotionsSlot />
+      </Suspense>
 
+      {/* 3. Live Core Product Catalog */}
       <ProductsShowcase />
 
-      {/* Spotlight with Right Rail Promotions */}
-      {activeSidebar.length > 0 ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex flex-col lg:flex-row gap-8">
-            <div className="flex-1 rounded-[2rem] overflow-hidden border shadow-xl">
-              <SpotlightSection />
+      {/* 4. Spotlight + Optional Sidebar Offers + Customer Reviews */}
+      <SpotlightSection />
+      <Suspense fallback={null}>
+        <SidebarPromotionsColumn />
+      </Suspense>
+
+      <TestimonialsBand />
+
+      {/* 5. Mobile App & Interactive Channels (USSD / Cards / POS) */}
+      <MobileAppShowcase />
+
+      <section className="py-20 bg-background pattern-dots relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="inline-flex items-center gap-2 py-1.5 px-3.5 rounded-full bg-primary/10 border border-primary/20 mb-4">
+              <Zap size={12} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">Omnichannel Delivery</span>
             </div>
-            <div className="w-full lg:w-[320px] shrink-0 space-y-6">
-              <div className="sticky top-24">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-4">Special Offers</h3>
-                <SidebarPromotionsWidget initialData={activeSidebar} />
-              </div>
-            </div>
+            <h2 className="text-3xl md:text-5xl font-display font-black text-foreground mb-4 tracking-tight">
+              Cards, {profile.ussdCode} USSD &amp; Agency POS
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
+              Every customer and enterprise on {profile.shortName} operates seamlessly across cards, offline USSD, mobile apps, and POS cashpoints.
+            </p>
           </div>
-        </div>
-      ) : (
-        <SpotlightSection />
-      )}
 
-      {/* App Section */}
-      <section className="py-24 bg-muted overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-16">
-            <div className="lg:w-1/2 order-2 lg:order-1">
-              <div className="relative flex justify-center">
-                <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl transform -translate-x-10 translate-y-10"></div>
-                {/* Mobile Mockup */}
-                <div className="w-[320px] bg-white rounded-[2rem] overflow-hidden shadow-2xl relative border-[8px] border-slate-900 z-10 transform scale-90 sm:scale-100 hover:scale-[1.02] transition-transform duration-500">
-                  {/* Status Bar Mockup */}
-                  <div className="h-6 bg-slate-900 flex justify-between items-center px-4">
-                    <span className="text-[10px] text-white font-bold">9:41</span>
-                    <div className="flex gap-1.5 items-center">
-                      <Signal className="text-white w-3 h-3" />
-                      <Wifi className="text-white w-3 h-3" />
-                      <Battery className="text-white w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  {/* App Content */}
-                  <div className="bg-gray-50 min-h-[500px]">
-                    {/* Header bar fake */}
-                    <div className="bg-primary px-4 py-3 flex justify-between items-center shadow-sm">
-                      <Menu className="text-black w-5 h-5 cursor-pointer" />
-                      <span className="text-sm font-black tracking-tight text-black border-2 border-black rounded-sm px-2">ABIASMEMFB</span>
-                      <UserCircle className="text-black w-6 h-6 cursor-pointer" />
-                    </div>
-
-                    <div className="p-4 space-y-5">
-                      {/* Greeting */}
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">Good Morning,</p>
-                        <h4 className="text-xl font-bold text-gray-900 tracking-tight">Sarah Johnson</h4>
-                      </div>
-
-                      {/* Balance Card */}
-                      <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-bl-full transform translate-x-10 -translate-y-10"></div>
-                        <p className="text-xs text-slate-400 font-medium mb-1">Total Available Balance</p>
-                        <div className="flex items-center gap-2 mb-4">
-                          <span className="text-lg font-light text-primary">₦</span>
-                          <span className="text-3xl font-bold tracking-tighter">1,240,500<span className="text-lg text-slate-400">.00</span></span>
-                        </div>
-                        <div className="flex gap-3 text-xs font-semibold">
-                          <button className="bg-primary text-black px-4 py-2 rounded-lg flex-1 hover:bg-white active:scale-95 transition-all">Add Money</button>
-                          <button className="bg-white/10 text-white px-4 py-2 rounded-lg flex-1 hover:bg-white/20 active:scale-95 transition-all">Transfer</button>
-                        </div>
-                      </div>
-
-                      {/* Dynamic Esusu & Active Card Widgets (Interactive Marketing addition) */}
-                      <div className="space-y-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="flex justify-between items-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                          <span>Active Systems</span>
-                          <span className="text-emerald-500 font-extrabold animate-pulse">● LIVE</span>
-                        </div>
-
-                        {/* Esusu Cycle */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center text-[10px]">
-                            <span className="font-bold text-gray-800">Ajo Cycle: Ariaria Trade Union</span>
-                            <span className="font-mono text-gray-500">₦250K/₦500K</span>
-                          </div>
-                          <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-primary h-full w-1/2 rounded-full"></div>
-                          </div>
-                        </div>
-
-                        {/* Card Indicator */}
-                        <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-gray-100 text-[10px]">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="font-mono font-bold text-slate-800">Verve Card •• 4912</span>
-                          </div>
-                          <span className="bg-emerald-50 text-emerald-600 font-extrabold px-1.5 py-0.5 rounded text-[8px]">ACTIVE</span>
-                        </div>
-                      </div>
-
-                      {/* Quick Actions */}
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className="flex flex-col items-center gap-1.5 cursor-pointer">
-                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                            <Send size={20} />
-                          </div>
-                          <span className="text-[10px] font-bold text-gray-600">Send</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1.5 cursor-pointer">
-                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                            <Users size={20} />
-                          </div>
-                          <span className="text-[10px] font-bold text-gray-600">Esusu</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1.5 cursor-pointer">
-                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                            <Store size={20} />
-                          </div>
-                          <span className="text-[10px] font-bold text-gray-600">Agency</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1.5 cursor-pointer">
-                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                            <CreditCard size={20} />
-                          </div>
-                          <span className="text-[10px] font-bold text-gray-600">Cards</span>
-                        </div>
-                      </div>
-
-                      {/* Recent Transactions */}
-                      <div>
-                        <div className="flex justify-between items-center mb-3">
-                          <h4 className="text-sm font-bold text-gray-900">Recent Transactions</h4>
-                          <span className="text-[10px] font-bold text-primary uppercase cursor-pointer">See All</span>
-                        </div>
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
-                          {/* Transaction 1 */}
-                          <div className="p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                                <ArrowDownLeft size={14} />
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-gray-900">Salary Credit</p>
-                                <p className="text-[10px] text-gray-400">Today, 08:30 AM</p>
-                              </div>
-                            </div>
-                            <p className="text-xs font-bold text-emerald-500">+₦450,000</p>
-                          </div>
-                          {/* Transaction 2 */}
-                          <div className="p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center">
-                                <Send size={14} />
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-gray-900">MTN Airtime</p>
-                                <p className="text-[10px] text-gray-400">Yesterday</p>
-                              </div>
-                            </div>
-                            <p className="text-xs font-bold text-gray-900">-₦5,000</p>
-                          </div>
-                          {/* Transaction 3 */}
-                          <div className="p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center">
-                                <Receipt size={14} />
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-gray-900">Aba Power PLC</p>
-                                <p className="text-[10px] text-gray-400">Monday</p>
-                              </div>
-                            </div>
-                            <p className="text-xs font-bold text-gray-900">-₦12,500</p>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                  {/* Home Indicator */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-slate-300 rounded-full"></div>
-                </div>
-              </div>
-            </div>
-            <div className="lg:w-1/2 order-1 lg:order-2">
-              <h2 className="text-accent font-bold tracking-wider uppercase text-sm mb-3">Seamless Experience</h2>
-              <h3 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-6 leading-tight">
-                Banking that fits in your pocket.
-              </h3>
-              <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                Manage your finances on the go with our secure and intuitive mobile app. From instant transfers to
-                bill payments, control your wealth from anywhere in the world.
-              </p>
-              <div className="space-y-4 mb-10">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center mt-1">
-                    <CheckCircle className="text-secondary" size={14} />
-                  </div>
-                  <p className="ml-4 text-base text-foreground">
-                    Zero Rate Transactions on internal transfers
-                  </p>
-                </div>
-                <div className="flex items-start">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center mt-1">
-                    <CheckCircle className="text-secondary" size={14} />
-                  </div>
-                  <p className="ml-4 text-base text-foreground">
-                    Real-time spending notifications
-                  </p>
-                </div>
-                <div className="flex items-start">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center mt-1">
-                    <CheckCircle className="text-secondary" size={14} />
-                  </div>
-                  <p className="ml-4 text-base text-foreground">
-                    Biometric security for your peace of mind
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <button className="flex items-center bg-foreground text-background px-4 py-2 rounded-lg hover:opacity-80 transition-opacity">
-                  <Apple className="text-3xl mr-2" size={30} />
-                  <div className="text-left">
-                    <p className="text-[10px] uppercase font-semibold leading-none">Download on the</p>
-                    <p className="text-sm font-bold leading-none mt-1">App Store</p>
-                  </div>
-                </button>
-                <button className="flex items-center bg-foreground text-background px-4 py-2 rounded-lg hover:opacity-80 transition-opacity">
-                  <Play className="text-3xl mr-2 fill-current" size={30} />
-                  <div className="text-left">
-                    <p className="text-[10px] uppercase font-semibold leading-none">Get it on</p>
-                    <p className="text-sm font-bold leading-none mt-1">Google Play</p>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
+          <ExpandingReach />
         </div>
       </section>
 
-      {/* Process Section */}
-      <section className="py-24 bg-card text-card-foreground relative overflow-hidden">
-        <div className="absolute inset-y-0 left-0 w-1 bg-accent opacity-20"></div>
+      {/* 6. 4-Step Fast Financing */}
+      <section className="py-20 bg-card text-card-foreground border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-accent font-bold tracking-wider uppercase text-sm mb-3">Flexible Financing</h2>
+          <div className="text-center mb-14">
+            <h2 className="text-accent font-bold tracking-wider uppercase text-xs mb-2">Fast Onboarding</h2>
             <h3 className="text-3xl md:text-4xl font-display font-bold text-foreground">
-              Get Funded in 4 Simple Steps
+              Open Accounts or Apply for Credit in 4 Steps
             </h3>
-            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              We've simplified the loan application process to get you the capital you need without the usual
-              banking headaches.
-            </p>
           </div>
-          <div className="relative grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="hidden md:block absolute top-[3.5rem] left-0 w-full h-0.5 bg-border -z-10"></div>
-            {/* Step 1 */}
-            <div className="text-center group relative">
-              <div className="w-28 h-28 mx-auto relative mb-6">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle className="text-border" cx="50%" cy="50%" fill="transparent"
-                    r="45%" stroke="currentColor" strokeWidth="6"></circle>
-                  <circle className="text-accent transition-all duration-1000 ease-out group-hover:stroke-primary"
-                    cx="50%" cy="50%" fill="transparent" r="45%" stroke="currentColor"
-                    strokeDasharray="283" strokeDashoffset="210" strokeLinecap="round" strokeWidth="6">
-                  </circle>
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <FileText size={32} className="text-primary" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {[
+              { icon: FileText, title: "Verify BVN / NIN", desc: "Complete secure digital onboarding in minutes." },
+              { icon: CheckSquare, title: "Select Facility", desc: "Pick savings, salary loans, or school billing." },
+              { icon: ShieldCheck, title: "Automated Review", desc: "Instant eligibility & risk officer sign-off." },
+              { icon: DollarSign, title: "Disbursement", desc: "Funds credit straight to your ledger account." },
+            ].map((step, idx) => (
+              <div key={idx} className="text-center p-6 rounded-2xl border border-border bg-background space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                  <step.icon size={26} />
                 </div>
+                <h4 className="text-base font-bold text-foreground">{step.title}</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
               </div>
-              <h4 className="text-lg font-bold text-foreground mb-2">Check Eligibility</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed px-4">
-                Complete our secure online form in under 5 minutes to see your qualified amount.
-              </p>
-            </div>
-            {/* Step 2 */}
-            <div className="text-center group relative">
-              <div className="w-28 h-28 mx-auto relative mb-6">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle className="text-border" cx="50%" cy="50%" fill="transparent"
-                    r="45%" stroke="currentColor" strokeWidth="6"></circle>
-                  <circle className="text-accent transition-all duration-1000 ease-out group-hover:stroke-primary"
-                    cx="50%" cy="50%" fill="transparent" r="45%" stroke="currentColor"
-                    strokeDasharray="283" strokeDashoffset="140" strokeLinecap="round" strokeWidth="6">
-                  </circle>
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <CheckSquare size={32} className="text-primary" />
-                </div>
-              </div>
-              <h4 className="text-lg font-bold text-foreground mb-2">Documentation</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed px-4">
-                Upload your basic ID and business documents directly through our portal.
-              </p>
-            </div>
-            {/* Step 3 */}
-            <div className="text-center group relative">
-              <div className="w-28 h-28 mx-auto relative mb-6">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle className="text-border" cx="50%" cy="50%" fill="transparent"
-                    r="45%" stroke="currentColor" strokeWidth="6"></circle>
-                  <circle className="text-accent transition-all duration-1000 ease-out group-hover:stroke-primary"
-                    cx="50%" cy="50%" fill="transparent" r="45%" stroke="currentColor"
-                    strokeDasharray="283" strokeDashoffset="70" strokeLinecap="round" strokeWidth="6">
-                  </circle>
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <ShieldCheck size={32} className="text-primary" />
-                </div>
-              </div>
-              <h4 className="text-lg font-bold text-foreground mb-2">Fast Approval</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed px-4">
-                Our team reviews applications within 24 hours to give you a quick decision.
-              </p>
-            </div>
-            {/* Step 4 */}
-            <div className="text-center group relative">
-              <div className="w-28 h-28 mx-auto relative mb-6">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle className="text-border" cx="50%" cy="50%" fill="transparent"
-                    r="45%" stroke="currentColor" strokeWidth="6"></circle>
-                  <circle className="text-accent transition-all duration-1000 ease-out group-hover:stroke-primary"
-                    cx="50%" cy="50%" fill="transparent" r="45%" stroke="currentColor"
-                    strokeDasharray="283" strokeDashoffset="0" strokeLinecap="round" strokeWidth="6">
-                  </circle>
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <DollarSign size={32} className="text-primary" />
-                </div>
-              </div>
-              <h4 className="text-lg font-bold text-foreground mb-2">Disbursement</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed px-4">
-                Funds are deposited directly into your account instantly upon final approval.
-              </p>
-            </div>
+            ))}
           </div>
-          <div className="mt-16 text-center">
+          <div className="mt-12 text-center flex flex-wrap justify-center gap-4">
             <Link
-              className="inline-flex items-center justify-center px-8 py-3 text-sm font-semibold rounded-full text-white bg-primary hover:bg-accent hover:text-primary transition-all duration-300 shadow-md"
+              className="inline-flex items-center justify-center px-8 py-3.5 text-sm font-black rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-md"
+              href="/support"
+            >
+              Contact {profile.shortName}
+            </Link>
+            <Link
+              className="inline-flex items-center justify-center px-8 py-3.5 text-sm font-black rounded-lg bg-accent text-accent-foreground hover:opacity-90 transition-all shadow-md"
               href="/business"
             >
-              Start Your Application
+              Explore Services
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Expanded Modern Channels Showcase */}
-      <section className="py-24 bg-background pattern-dots relative overflow-hidden">
-        {/* Soft Background Accent */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[160px] pointer-events-none"></div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-20">
-            <div className="inline-flex items-center gap-2 py-1.5 px-3.5 rounded-full bg-primary/10 border border-primary/20 mb-4 animate-pulse">
-              <Zap size={12} className="text-primary" />
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">Unprecedented Access</span>
-            </div>
-            <h2 className="text-accent font-black tracking-widest uppercase text-xs mb-3">Expanding Our Channels</h2>
-            <h3 className="text-3xl md:text-5xl font-display font-black text-foreground mb-6 tracking-tight">
-              State-of-the-Art Digital Reach
-            </h3>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg leading-relaxed">
-              We are constantly innovating to bring digital-first solutions closer to you. Experience premium card options, completely offline USSD banking, and neighborhood POS agency banking cashpoints.
-            </p>
-          </div>
-
-          {/* Interactive Client Channels Component */}
-          <ExpandingReach />
-        </div>
-      </section>
-
-      {/* Removed Success Stories placeholder */}
-      {/* News & Insights */}
+      {/* Non-Blocking Cached Insights */}
       <Suspense fallback={null}>
         <NewsInsights />
       </Suspense>
     </main>
   );
-}
-
-export default function Home() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center flex-col space-y-4"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div><p className="text-muted-foreground animate-pulse">Loading ABIASMEMFB...</p></div>}>
-      <HomeContent />
-    </Suspense>
-  )
 }

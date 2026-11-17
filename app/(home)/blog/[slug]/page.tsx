@@ -78,6 +78,45 @@ async function BlogPostPageContent({ params }: { params: { slug: string } }) {
         notFound();
     }
 
+    const rawPost = post as any;
+    const categoryLabel =
+        typeof rawPost.category === "object" && rawPost.category
+            ? rawPost.category.name || rawPost.category.title || "Insights"
+            : String(rawPost.category || "Insights");
+    const authorName =
+        typeof rawPost.author === "object" && rawPost.author
+            ? rawPost.author.name || rawPost.author.email || "Editorial Team"
+            : String(rawPost.author || "Editorial Team");
+    const authorRole =
+        typeof rawPost.author === "object" && rawPost.author
+            ? rawPost.author.role || "Contributor"
+            : "Contributor";
+    const authorAvatar =
+        typeof rawPost.author === "object" && rawPost.author && rawPost.author.avatar
+            ? rawPost.author.avatar
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=070D59&color=fff`;
+    const coverUrl =
+        rawPost.coverImage ||
+        (typeof rawPost.featuredImage === "object" && rawPost.featuredImage ? rawPost.featuredImage.url : "") ||
+        "https://images.unsplash.com/photo-1554469384-e58fac16e23a";
+    const safeDate =
+        rawPost.date ||
+        (rawPost.createdAt
+            ? new Date(rawPost.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+            : "Recent");
+    const htmlContent =
+        typeof rawPost.content === "string" ? rawPost.content : JSON.stringify(rawPost.content || "");
+
+    const normalizedPost: BlogPost = {
+        ...rawPost,
+        category: categoryLabel,
+        coverImage: coverUrl,
+        date: safeDate,
+        readTime: rawPost.readTime || "5 min read",
+        author: { name: authorName, role: authorRole, avatar: authorAvatar },
+        content: htmlContent,
+    };
+
     return (
         <article className="min-h-screen bg-background transition-colors duration-300 pb-20">
             <ReadingProgress />
@@ -85,7 +124,7 @@ async function BlogPostPageContent({ params }: { params: { slug: string } }) {
             <div className="relative h-[60vh] min-h-[500px] w-full overflow-hidden">
                 <div
                     className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url('${post.coverImage}')` }}
+                    style={{ backgroundImage: `url('${normalizedPost.coverImage}')` }}
                 ></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
 
@@ -97,24 +136,24 @@ async function BlogPostPageContent({ params }: { params: { slug: string } }) {
                         </Link>
                         <div className="flex items-center gap-4 mb-4">
                             <span className="px-3 py-1 bg-accent text-primary text-xs font-bold rounded-full uppercase tracking-wider">
-                                {post.category}
+                                {normalizedPost.category}
                             </span>
                             <span className="flex items-center gap-1 text-sm text-gray-300">
-                                <Clock className="w-4 h-4" /> {post.readTime}
+                                <Clock className="w-4 h-4" /> {normalizedPost.readTime}
                             </span>
                         </div>
                         <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold text-white leading-tight mb-8">
-                            {post.title}
+                            {normalizedPost.title}
                         </h1>
                         <div className="flex items-center gap-4">
-                            <img src={post.author.avatar} alt={post.author.name} className="w-12 h-12 rounded-full border-2 border-white/20" />
+                            <img src={normalizedPost.author.avatar} alt={normalizedPost.author.name} className="w-12 h-12 rounded-full border-2 border-white/20" />
                             <div>
-                                <p className="text-white font-bold text-lg">{post.author.name}</p>
-                                <p className="text-gray-400 text-sm">{post.author.role}</p>
+                                <p className="text-white font-bold text-lg">{normalizedPost.author.name}</p>
+                                <p className="text-gray-400 text-sm">{normalizedPost.author.role}</p>
                             </div>
                             <span className="text-gray-500 mx-2">|</span>
                             <span className="flex items-center gap-2 text-gray-300">
-                                <Calendar className="w-4 h-4" /> {post.date}
+                                <Calendar className="w-4 h-4" /> {normalizedPost.date}
                             </span>
                         </div>
                     </div>
@@ -126,11 +165,11 @@ async function BlogPostPageContent({ params }: { params: { slug: string } }) {
 
                 <article className="max-w-[720px] w-full text-lg leading-loose text-foreground font-light mx-auto lg:mx-0">
                     <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-headings:text-foreground prose-a:text-accent hover:prose-a:text-primary transition-colors">
-                        <div dangerouslySetInnerHTML={{ __html: post.content }} />
+                        <div dangerouslySetInnerHTML={{ __html: normalizedPost.content }} />
                     </div>
                 </article>
 
-                <BlogPostAuthorSidebar post={post} />
+                <BlogPostAuthorSidebar post={normalizedPost} />
                 <BlogPostMobileActions />
             </div>
         </article>

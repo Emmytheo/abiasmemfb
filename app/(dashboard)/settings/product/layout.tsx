@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 function ProductSettingsContent({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const { activeProfile } = useBankProfile();
 
     const tabs = [
         { name: "Classes", href: "/settings/product/classes" },
@@ -24,7 +26,7 @@ function ProductSettingsContent({ children }: { children: React.ReactNode }) {
                         <div className="flex flex-col gap-2 px-4 md:px-8">
                             <h1 className="text-3xl font-bold tracking-tight text-primary">Product Configuration</h1>
                             <p className="text-muted-foreground">
-                                Manage product classes, categories, and specific types offered by ABIASMEMFB.
+                                Manage product classes, categories, and specific types offered by {activeProfile.shortName}.
                             </p>
                         </div>
 

@@ -57,9 +57,11 @@ const adminScopes = [
   },
 ];
 
+import { useScope } from "@/context/scope-context";
+
 export function ScopeSelector({ role = "client" }: { role?: "client" | "admin" }) {
-  const scopes = role === "admin" ? adminScopes : clientScopes;
-  const [activeScope, setActiveScope] = React.useState(scopes[0]);
+  const { activeScopeId, setScopeId, scopes } = useScope();
+  const activeScope = scopes.find((s) => s.id === activeScopeId) || scopes[0];
 
   return (
     <SidebarMenu>
@@ -93,9 +95,9 @@ export function ScopeSelector({ role = "client" }: { role?: "client" | "admin" }
             {scopes.map((scope) => (
               <DropdownMenuItem
                 key={scope.id}
-                onClick={() => setActiveScope(scope)}
+                onClick={() => setScopeId(scope.id)}
                 className={`gap-3 p-2 cursor-pointer ${
-                  activeScope.id === scope.id ? "bg-primary/5" : ""
+                  activeScopeId === scope.id ? "bg-primary/5" : ""
                 }`}
               >
                 <div className="flex size-8 items-center justify-center rounded-md border bg-background">
@@ -105,7 +107,7 @@ export function ScopeSelector({ role = "client" }: { role?: "client" | "admin" }
                   <span className="font-semibold text-sm">{scope.name}</span>
                   <span className="text-xs text-muted-foreground">{scope.description}</span>
                 </div>
-                {activeScope.id === scope.id && (
+                {activeScopeId === scope.id && (
                   <Check className="size-4 text-primary ml-auto" />
                 )}
               </DropdownMenuItem>

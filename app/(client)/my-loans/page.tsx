@@ -8,11 +8,13 @@ import { Plus, ArrowRight, Loader2, TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
 import { Loan, ProductApplication, ProductType } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/client";
+import { useScope } from "@/context/scope-context";
 
 export default function MyLoansPage() {
     const [applications, setApplications] = useState<(ProductApplication & { product?: ProductType })[]>([]);
     const [realLoans, setRealLoans] = useState<Loan[]>([]);
     const [loading, setLoading] = useState(true);
+    const { activeScopeId, activeScope } = useScope();
 
     useEffect(() => {
         async function loadData() {
@@ -38,8 +40,23 @@ export default function MyLoansPage() {
                         return blockType === 'loan-terms';
                     });
 
-                setApplications(enrichedApps);
-                setRealLoans(loans);
+                // Apply Scope Filtering
+                let filteredLoans = loans;
+                let filteredApps = enrichedApps;
+
+                if (activeScope.type === 'business') {
+                    filteredApps = enrichedApps.filter(a => a.product?.name.toLowerCase().includes('corporate') || a.product?.name.toLowerCase().includes('sme') || a.product?.name.toLowerCase().includes('business'));
+                    filteredLoans = loans.filter(l => l.amount >= 5000000); // Mock heuristic for business loans
+                } else if (activeScope.type === 'coop') {
+                    filteredApps = enrichedApps.filter(a => a.product?.name.toLowerCase().includes('union') || a.product?.name.toLowerCase().includes('coop'));
+                    filteredLoans = loans.filter(l => l.amount >= 1000000 && l.amount < 5000000); // Mock heuristic
+                } else {
+                    filteredApps = enrichedApps.filter(a => !a.product?.name.toLowerCase().includes('corporate') && !a.product?.name.toLowerCase().includes('union') && !a.product?.name.toLowerCase().includes('sme'));
+                    filteredLoans = loans.filter(l => l.amount < 1000000); // Mock heuristic for personal loans
+                }
+
+                setApplications(filteredApps);
+                setRealLoans(filteredLoans);
             } finally {
                 setLoading(false);
             }

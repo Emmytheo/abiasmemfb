@@ -696,5 +696,48 @@ export const DummyAdapter: ApiAdapter = {
     deleteStandingOrder: async (id) => {
         await delay(400);
         return true;
+    },
+    getInvoices: async (merchantId) => {
+        await delay(400);
+        return [
+            {
+                id: 'inv_1',
+                user_id: merchantId,
+                client_name: 'Tech Solutions Inc.',
+                amount: 150000,
+                status: 'paid',
+                issue_date: new Date().toISOString(),
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 'inv_2',
+                user_id: merchantId,
+                client_name: 'Acme Corp',
+                amount: 75000,
+                status: 'unpaid',
+                issue_date: new Date().toISOString(),
+                created_at: new Date().toISOString()
+            }
+        ];
+    },
+    createInvoice: async (data) => {
+        await delay(400);
+        return {
+            ...data,
+            id: `inv_${Date.now()}`,
+            created_at: new Date().toISOString()
+        } as any;
+    },
+    updateInvoice: async (id, data) => {
+        await delay(400);
+        return {
+            id,
+            ...data,
+            created_at: new Date().toISOString()
+        } as any;
+    },
+    deleteInvoice: async (id) => {
+        await delay(400);
+        return true;
     }
 };

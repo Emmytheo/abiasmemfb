@@ -67,6 +67,15 @@ export function ThemeCustomizer() {
                     </div>
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
+                    checked={palette === 'navy'}
+                    onCheckedChange={() => setPalette('navy')}
+                >
+                    <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-[#0A214A] ring-1 ring-[#D4AF37]" />
+                        Naval Blue & Gold
+                    </div>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
                     checked={palette === 'nature'}
                     onCheckedChange={() => setPalette('nature')}
                 >

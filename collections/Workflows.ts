@@ -92,6 +92,15 @@ export const Workflows: CollectionConfig = {
             type: 'array',
             fields: [{ name: 'tag', type: 'text' }],
         },
+        {
+            name: 'cooperative',
+            type: 'relationship',
+            relationTo: 'cooperatives',
+            admin: {
+                position: 'sidebar',
+                description: 'Scope this workflow to a specific cooperative union. Leave empty for system-wide/global.',
+            }
+        },
         // Run metadata (server-written, read-only in admin)
         {
             name: 'lastRunAt',

@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { applyMappingConfig, normalizeOptionsData } from "@/lib/utils/form-mapper";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 interface ServiceExecutionFormProps {
     service: Service | null;
@@ -24,6 +25,7 @@ interface ServiceExecutionFormProps {
 
 export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceExecutionFormProps) {
     const router = useRouter();
+    const { activeProfile } = useBankProfile();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isValidating, setIsValidating] = useState(false);
     const [formData, setFormData] = useState<Record<string, any>>({});
@@ -420,8 +422,8 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                     (b.account_number?.includes(searchQuery));
                 
                 if (!matchesSearch) return false;
-                if (benType === 'internal') return b.bank_code === 'abiasmemfb' || !b.bank_code;
-                if (benType === 'interbank') return b.bank_code && b.bank_code !== 'abiasmemfb' && !b.is_international;
+                if (benType === 'internal') return b.bank_code === activeProfile.id || b.bank_code === activeProfile.internalBankCode || b.bank_code === 'abiasmemfb' || !b.bank_code;
+                if (benType === 'interbank') return b.bank_code && b.bank_code !== activeProfile.id && b.bank_code !== activeProfile.internalBankCode && b.bank_code !== 'abiasmemfb' && !b.is_international;
                 if (benType === 'international') return b.is_international;
                 return true;
             });
@@ -576,7 +578,7 @@ export function ServiceExecutionForm({ service, prefillBeneficiaryId }: ServiceE
                         className="w-full h-10 px-3 rounded-md border bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer"
                     >
                         <option value="" disabled>Select bank...</option>
-                        <option value="abiasmemfb">ABIASMEMFB (Intra-bank)</option>
+                        <option value={activeProfile.internalBankCode || activeProfile.id}>{activeProfile.shortName} (Intra-bank)</option>
                         {NIGERIAN_BANKS.map(bank => (
                             <option key={bank.code} value={bank.code}>
                                 {bank.name} ({bank.code})

@@ -7,11 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 import { ProductApplication, ProductType } from "@/lib/api/types";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText, ArrowRight, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { useScope } from "@/context/scope-context";
 
 export default function MyApplicationsPage() {
     const [applications, setApplications] = useState<ProductApplication[]>([]);
     const [productMap, setProductMap] = useState<Record<string, ProductType>>({});
     const [loading, setLoading] = useState(true);
+    const { activeScopeId, activeScope } = useScope();
 
     useEffect(() => {
         async function loadData() {
@@ -35,7 +37,26 @@ export default function MyApplicationsPage() {
                         } catch { /* ignore */ }
                     })
                 );
-                setProductMap(products);
+                // Apply Scope Filtering
+                let filteredApps = apps;
+                if (activeScope.type === 'business') {
+                    filteredApps = apps.filter(a => {
+                        const pName = products[a.product_type_id]?.name.toLowerCase() || '';
+                        return pName.includes('corporate') || pName.includes('business') || pName.includes('sme');
+                    });
+                } else if (activeScope.type === 'coop') {
+                    filteredApps = apps.filter(a => {
+                        const pName = products[a.product_type_id]?.name.toLowerCase() || '';
+                        return pName.includes('union') || pName.includes('coop');
+                    });
+                } else {
+                    filteredApps = apps.filter(a => {
+                        const pName = products[a.product_type_id]?.name.toLowerCase() || '';
+                        return !pName.includes('corporate') && !pName.includes('business') && !pName.includes('sme') && !pName.includes('union') && !pName.includes('coop');
+                    });
+                }
+
+                setApplications(filteredApps);
             } finally {
                 setLoading(false);
             }

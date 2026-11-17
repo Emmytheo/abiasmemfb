@@ -130,6 +130,59 @@ export const SiteSettings: GlobalConfig = {
                     ]
                 }
             ]
+        },
+        {
+            name: 'copteller',
+            type: 'group',
+            label: 'Copteller Infrastructure Settings',
+            admin: {
+                description: 'Configuration for Copteller gateway, wallets, and compliance reporting.',
+            },
+            fields: [
+                {
+                    name: 'masterFundingAccount',
+                    type: 'text',
+                    label: 'Platform Master Funding Account',
+                    defaultValue: '3000392981',
+                    admin: { description: 'The official core banking NUBAN account used for Copteller deposits and payments.' }
+                },
+                {
+                    name: 'kycEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to verify Member KYC details.' }
+                },
+                {
+                    name: 'depositEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to clear member wallet deposits.' }
+                },
+                {
+                    name: 'transferEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to process outward bank transfers.' }
+                },
+                {
+                    name: 'creditScoreEndpoint',
+                    type: 'relationship',
+                    relationTo: 'endpoints',
+                    admin: { description: 'The API endpoint used to calculate and retrieve member credit scores.' }
+                },
+                {
+                    name: 'autoDeductionWorkflow',
+                    type: 'relationship',
+                    relationTo: 'workflows',
+                    admin: { description: 'The Workflow triggered weekly for rotational esusu auto-deductions.' }
+                },
+                {
+                    name: 'cbnReportingWorkflow',
+                    type: 'relationship',
+                    relationTo: 'workflows',
+                    admin: { description: 'The Workflow triggered for automated compliance logs stream to the CBN.' }
+                }
+            ]
         }
     ],
 }

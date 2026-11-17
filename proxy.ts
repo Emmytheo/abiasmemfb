@@ -13,10 +13,13 @@ const PUBLIC_PATTERNS = [
     "/support",
     "/personal-banking",
     "/business",
+    "/internet-banking",
     "/product",
     "/api/auth",
+    "/api/account-lookup",
     "/api/registry",
     "/api/workflows",
+    "/api/mock",
 ];
 
 // Admin dashboard routes — require 'admin' role
@@ -26,17 +29,10 @@ const ADMIN_PATTERNS = [
     "/blog-management",
     "/settings",
     "/workflows",
-];
-
-// Client portal routes — require at least 'user' role (authenticated)
-const CLIENT_PATTERNS = [
-    "/client-dashboard",
-    "/my-products",
-    "/my-loans",
-    "/my-services",
-    "/explore",
-    "/pay",
-    "/applications",
+    "/customers",
+    "/account-officers",
+    "/promotions",
+    "/endpoints",
 ];
 
 function isPublicRoute(pathname: string): boolean {
@@ -56,15 +52,70 @@ function isPayloadRoute(pathname: string): boolean {
     return pathname.startsWith("/admin");
 }
 
+// Short-lived in-memory cache for Banking auth checks
+const bankingAuthCache = new Map<string, { user: any; expiresAt: number }>();
+const bankingInFlightAuth = new Map<string, Promise<any>>();
+
+async function getCachedBankingUser(request: NextRequest): Promise<any> {
+    const authCookies = request.cookies
+        .getAll()
+        .filter((c) => c.name.includes("-auth-token") || c.name.startsWith("sb-"))
+        .map((c) => `${c.name}=${c.value}`)
+        .join(";");
+
+    if (!authCookies) return null;
+
+    const now = Date.now();
+    const cached = bankingAuthCache.get(authCookies);
+    if (cached && cached.expiresAt > now) {
+        return cached.user;
+    }
+
+    if (bankingInFlightAuth.has(authCookies)) {
+        return await bankingInFlightAuth.get(authCookies);
+    }
+
+    const authPromise = (async () => {
+        try {
+            const supabase = createServerClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                    cookies: {
+                        getAll() {
+                            return request.cookies.getAll();
+                        },
+                        setAll() {},
+                    },
+                }
+            );
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (user) {
+                bankingAuthCache.set(authCookies, { user, expiresAt: Date.now() + 30000 });
+            }
+            return user || null;
+        } catch (err: any) {
+            console.warn("[proxy.ts] banking auth check failed:", err.message);
+            return null;
+        } finally {
+            bankingInFlightAuth.delete(authCookies);
+        }
+    })();
+
+    bankingInFlightAuth.set(authCookies, authPromise);
+    return await authPromise;
+}
+
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-url', request.nextUrl.href);
-    requestHeaders.set('x-pathname', pathname);
+    requestHeaders.set("x-url", request.nextUrl.href);
+    requestHeaders.set("x-pathname", pathname);
 
-    // Always allow public routes, static assets, and API routes (except auth API)
+    // Always allow static assets
     if (
-        isPublicRoute(pathname) ||
         pathname.startsWith("/_next") ||
         pathname.startsWith("/favicon") ||
         pathname.startsWith("/opengraph") ||
@@ -74,41 +125,33 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // Payload admin routes — pass through, Payload's supabaseStrategy handles auth
+    // Redirect legacy /copteller* paths to the standalone Copteller application
+    if (pathname === "/copteller" || pathname.startsWith("/copteller/")) {
+        const coptellerBase = (process.env.NEXT_PUBLIC_COPTELLER_URL || "http://localhost:3001").replace(/\/$/, "");
+        return NextResponse.redirect(`${coptellerBase}${pathname}${request.nextUrl.search}`);
+    }
+
+    // Payload admin routes — Payload handles its own auth
     if (isPayloadRoute(pathname)) {
         return NextResponse.next();
     }
 
-    // Create Supabase client for session check
-    let supabaseResponse = NextResponse.next({ request });
+    // Banking public routes
+    if (isPublicRoute(pathname)) {
+        return NextResponse.next({ request: { headers: requestHeaders } });
+    }
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return request.cookies.getAll();
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) =>
-                        request.cookies.set(name, value)
-                    );
-                    supabaseResponse = NextResponse.next({ request });
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
-                    );
-                },
-            },
-        }
-    );
+    // Banking auth check with in-memory caching & deduplication
+    const user = await getCachedBankingUser(request);
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    // Not authenticated → redirect to login
+    // Not authenticated → return 401 JSON for API routes, or redirect to banking login for UI pages
     if (!user) {
+        if (pathname.startsWith("/api/")) {
+            return NextResponse.json(
+                { error: "Unauthorized. Please sign in to Abia SME Microfinance Bank." },
+                { status: 401 }
+            );
+        }
         const url = request.nextUrl.clone();
         url.pathname = "/auth/login";
         url.searchParams.set("redirect", pathname);
@@ -127,7 +170,6 @@ export async function proxy(request: NextRequest) {
         }
     }
 
-    // All other authenticated routes are allowed
     return NextResponse.next({
         request: {
             headers: requestHeaders,
@@ -137,12 +179,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except:
-         * - _next/static (static files)
-         * - _next/image (image optimization)
-         * - favicon.ico, sitemap.xml, robots.txt
-         */
         "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
     ],
 };

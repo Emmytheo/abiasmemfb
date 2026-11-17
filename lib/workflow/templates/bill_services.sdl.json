@@ -143,6 +143,194 @@
                     "required": true
                 }
             ]
+        },
+        {
+            "name": "Community & Family Health HMO Plan",
+            "categorySlug": "insurance",
+            "provider_service_code": "INS-HMO-HEALTH",
+            "service_intent": "bill_insurance",
+            "execution_workflow_slug": "Bill Payment Workflow",
+            "fee_type": "none",
+            "fee_value": 0,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "insuredName",
+                    "name": "insuredName",
+                    "label": "Beneficiary Full Name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. Chinyere Kalu"
+                },
+                {
+                    "id": "phoneNumber",
+                    "name": "phoneNumber",
+                    "label": "Beneficiary Phone Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "08031234567"
+                },
+                {
+                    "id": "dob",
+                    "name": "dob",
+                    "label": "Date of Birth",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "DD/MM/YYYY"
+                },
+                {
+                    "id": "planTier",
+                    "name": "planTier",
+                    "label": "Select Health Plan Tier",
+                    "type": "select",
+                    "required": true,
+                    "options": "Basic Community Health (₦3,500/mo) - basic_3500, Standard Family Care (₦9,500/mo) - standard_9500, Premium Comprehensive (₦18,000/mo) - premium_18000"
+                },
+                {
+                    "id": "hospitalZone",
+                    "name": "hospitalZone",
+                    "label": "Preferred Primary Hospital",
+                    "type": "select",
+                    "required": true,
+                    "options": "FMC Umuahia - FMC_UMUAHIA, Abia State Univ Teaching Hosp Aba - ABSUTH_ABA, St. Anthony Specialist Clinic Aba - ST_ANTHONY, Living Word Mission Hospital Aba - LIVING_WORD, General Hospital Okigwe Rd - GEN_HOSP"
+                },
+                {
+                    "id": "duration",
+                    "name": "duration",
+                    "label": "Coverage Duration",
+                    "type": "select",
+                    "required": true,
+                    "options": "1 Month - 1, 3 Months (Quarterly) - 3, 6 Months - 6, 12 Months (Annual) - 12"
+                },
+                {
+                    "id": "amount",
+                    "name": "amount",
+                    "label": "Total Premium Payable (NGN)",
+                    "type": "number",
+                    "required": true,
+                    "placeholder": "3500"
+                }
+            ]
+        },
+        {
+            "name": "Artisan & Transport Riders Accident Shield",
+            "categorySlug": "insurance",
+            "provider_service_code": "INS-ACCIDENT-RIDER",
+            "service_intent": "bill_insurance",
+            "execution_workflow_slug": "Bill Payment Workflow",
+            "fee_type": "none",
+            "fee_value": 0,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "riderName",
+                    "name": "riderName",
+                    "label": "Rider / Artisan Full Name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. Emeka Okafor"
+                },
+                {
+                    "id": "phoneNumber",
+                    "name": "phoneNumber",
+                    "label": "Mobile Phone Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "08029876543"
+                },
+                {
+                    "id": "unionUnit",
+                    "name": "unionUnit",
+                    "label": "Park Unit or Trade Chapter",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. ATORDA Aba Main Park, Ariaria Welders Unit"
+                },
+                {
+                    "id": "nextOfKin",
+                    "name": "nextOfKin",
+                    "label": "Next of Kin Full Name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. Blessing Okafor"
+                },
+                {
+                    "id": "nextOfKinPhone",
+                    "name": "nextOfKinPhone",
+                    "label": "Next of Kin Phone Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "08139988776"
+                },
+                {
+                    "id": "coverageOption",
+                    "name": "coverageOption",
+                    "label": "Shield Coverage Option",
+                    "type": "select",
+                    "required": true,
+                    "options": "Monthly Basic Shield (₦1,200/mo) - basic_1200, Quarterly Shield (₦3,500/quarter) - quarter_3500, Annual Complete Shield (₦12,000/yr) - annual_12000"
+                },
+                {
+                    "id": "amount",
+                    "name": "amount",
+                    "label": "Premium Amount (NGN)",
+                    "type": "number",
+                    "required": true,
+                    "placeholder": "1200"
+                }
+            ]
+        },
+        {
+            "name": "Motor Vehicle Third-Party Insurance",
+            "categorySlug": "insurance",
+            "provider_service_code": "INS-AUTO-THIRDPARTY",
+            "service_intent": "bill_insurance",
+            "execution_workflow_slug": "Bill Payment Workflow",
+            "fee_type": "none",
+            "fee_value": 0,
+            "status": "active",
+            "form_schema": [
+                {
+                    "id": "vehicleCategory",
+                    "name": "vehicleCategory",
+                    "label": "Select Vehicle Category",
+                    "type": "select",
+                    "required": true,
+                    "options": "Tricycle (Keke) - ₦5,000/yr - TRICYCLE, Motorcycle (Okada) - ₦3,000/yr - MOTORCYCLE, Private Saloon Car - ₦15,000/yr - PRIVATE_CAR, Commercial Bus / Minibus - ₦20,000/yr - COMMERCIAL_BUS, Light Truck / Van - ₦25,000/yr - TRUCK"
+                },
+                {
+                    "id": "vehicleRegNumber",
+                    "name": "vehicleRegNumber",
+                    "label": "Vehicle License Plate Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. ABA-432-XY"
+                },
+                {
+                    "id": "chassisNumber",
+                    "name": "chassisNumber",
+                    "label": "Chassis / VIN Number",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Enter Chassis Number"
+                },
+                {
+                    "id": "ownerName",
+                    "name": "ownerName",
+                    "label": "Registered Policy Holder Name",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "e.g. Chief Uche Nwachukwu"
+                },
+                {
+                    "id": "amount",
+                    "name": "amount",
+                    "label": "Total Annual Premium (NGN)",
+                    "type": "number",
+                    "required": true,
+                    "placeholder": "5000"
+                }
+            ]
         }
     ]
 }

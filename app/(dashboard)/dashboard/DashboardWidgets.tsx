@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { UploadCloud, Edit3, Loader2, CheckCircle2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { revalidateHomepage } from './actions'
 import { api } from '@/lib/api'
+import { useBankProfile } from '@/context/bank-profile-context'
 
 export function UpdateLiveSiteButton() {
     const [loading, setLoading] = useState(false)
@@ -36,11 +37,18 @@ export function UpdateLiveSiteButton() {
 }
 
 export function QuickCommandWidget() {
-    const [headline, setHeadline] = useState('Secure Your Future with AbiaSMEMFB')
-    const [ctaLink, setCtaLink] = useState('AbiaSMEMFB.com/apply-now')
-    const [statusMsg, setStatusMsg] = useState('Our interest rates just dropped! Explore the new SME loan offers today.')
+    const { activeProfile } = useBankProfile()
+    const [headline, setHeadline] = useState(`Secure Your Future with ${activeProfile.shortName}`)
+    const [ctaLink, setCtaLink] = useState(`${activeProfile.domain}/apply-now`)
+    const [statusMsg, setStatusMsg] = useState(`Instant transfers, school collections & credit lines — powered by ${activeProfile.shortName}.`)
     const [loading, setLoading] = useState(false)
     const [saved, setSaved] = useState(false)
+
+    useEffect(() => {
+        setHeadline(`Secure Your Future with ${activeProfile.shortName}`)
+        setCtaLink(`${activeProfile.domain}/apply-now`)
+        setStatusMsg(`Instant transfers, school collections & credit lines — powered by ${activeProfile.shortName}.`)
+    }, [activeProfile.id, activeProfile.shortName, activeProfile.domain])
 
     const handlePublish = async () => {
         setLoading(true)

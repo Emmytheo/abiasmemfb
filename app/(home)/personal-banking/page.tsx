@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { ProductType } from "@/lib/api/types";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 // Helper to map an icon to a string
 function getIconForProduct(name: string) {
@@ -38,6 +39,7 @@ function getIconForProduct(name: string) {
 }
 
 export default function PersonalBanking() {
+  const { activeProfile } = useBankProfile();
   const [products, setProducts] = useState<ProductType[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,14 +92,14 @@ export default function PersonalBanking() {
           </h1>
 
           <p className="max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-zinc-300 font-light leading-relaxed">
-            From Kiddies accounts built for legacy, to high-yield Esusu thrifts and secure fixed terms—experience licensed microfinance tailored for Abia’s commercial drive.
+            Savings, checking, and voluntary target wealth plans tailored for personnel, families, and enterprises across {activeProfile.regionLabel} — backed by {activeProfile.legalName}.
           </p>
 
           {/* Quick trust metrics */}
           <div className="flex flex-wrap justify-center items-center gap-6 pt-4 text-xs font-semibold text-zinc-400">
-            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-400" /> CBN Licensed</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-400" /> {activeProfile.licenseBadge}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-zinc-700 hidden sm:inline" />
-            <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-emerald-400" /> NDIC Insured (Up to ₦500k)</span>
+            <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-emerald-400" /> USSD {activeProfile.ussdCode}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-zinc-700 hidden sm:inline" />
             <span className="flex items-center gap-1.5"><Percent className="w-4 h-4 text-emerald-400" /> Competative Rates</span>
           </div>

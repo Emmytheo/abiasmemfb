@@ -17,11 +17,17 @@ import {
     CheckCircle,
     Info,
     CreditCard,
-    ArrowRight
+    ArrowRight,
+    Receipt,
+    FileText
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+
+import { useScope } from "@/context/scope-context"
+import { useBankProfile } from "@/context/bank-profile-context"
+
 
 interface ApiKey {
     id: string
@@ -48,6 +54,8 @@ interface WebhookEvent {
 }
 
 export default function MerchantClientPage() {
+    const { activeScopeId, activeScope, setScopeId } = useScope();
+    const { activeProfile } = useBankProfile();
     const [apiKeys, setApiKeys] = React.useState<ApiKey[]>([])
     const [checkouts, setCheckouts] = React.useState<CheckoutLog[]>([])
     const [webhookEvents, setWebhookEvents] = React.useState<WebhookEvent[]>([])
@@ -59,6 +67,8 @@ export default function MerchantClientPage() {
     const [revealedSecretKey, setRevealedSecretKey] = React.useState('')
     const [copied, setCopied] = React.useState(false)
 
+
+
     // Checkout Simulator
     const [showCheckoutSimulator, setShowCheckoutSimulator] = React.useState(false)
     const [checkoutAmount, setCheckoutAmount] = React.useState<number>(1500) // Default ₦1,500
@@ -67,7 +77,7 @@ export default function MerchantClientPage() {
     const [activePaymentMethod, setActivePaymentMethod] = React.useState<'card' | 'transfer'>('card')
 
     // Webhook Settings
-    const [webhookUrl, setWebhookUrl] = React.useState('https://api.my-sme-store.com/webhooks/abia')
+    const [webhookUrl, setWebhookUrl] = React.useState('https://api.my-sme-store.com/webhooks/mfb-pay')
     const [businessName, setBusinessName] = React.useState('Julian Sterling SME Retailers')
 
     React.useEffect(() => {
@@ -144,6 +154,8 @@ export default function MerchantClientPage() {
                             { id: 'evt_1', event: 'checkout.successful', payload: JSON.stringify({ event: 'checkout.successful', reference: 'REF-802931-AB', amount: 450000, customer: 'jennifer.eze@outlook.com' }, null, 2), fired_at: new Date().toISOString() }
                         ])
                     }
+
+
                 }
             } catch (e) {
                 console.error(e)
@@ -253,7 +265,7 @@ export default function MerchantClientPage() {
                 body: JSON.stringify({
                     checkout_id: initData.checkout.id,
                     source_type: activePaymentMethod,
-                    details: activePaymentMethod === 'card' ? { pan_masked: '4111********9028', name: 'MOCK CUSTOMER' } : { bank: 'Abia MFB', account: '3092817263' }
+                    details: activePaymentMethod === 'card' ? { pan_masked: '4111********9028', name: 'MOCK CUSTOMER' } : { bank: activeProfile.shortName, account: activeProfile.demoAccountNumber }
                 })
             })
             const chargeData = await chargeRes.json()
@@ -285,7 +297,7 @@ export default function MerchantClientPage() {
                             reference: initData.checkout.reference,
                             amount: checkoutAmount * 100,
                             customer: payerEmail,
-                            gateway: 'AbiaPay Checkout v1'
+                            gateway: `${activeProfile.internalPayBrand} Checkout v1`
                         }, null, 2),
                         fired_at: new Date().toISOString()
                     },
@@ -313,6 +325,28 @@ export default function MerchantClientPage() {
             <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 <p className="text-muted-foreground font-medium text-sm">Securing merchant checkout API vaults...</p>
+            </div>
+        )
+    }
+
+    if (activeScope.type !== "business") {
+        return (
+            <div className="max-w-md mx-auto my-12 text-center p-8 bg-card border rounded-3xl shadow-xl space-y-6 animate-in fade-in zoom-in duration-500">
+                <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto">
+                    <Briefcase className="h-8 w-8" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black">Business Scope Required</h2>
+                    <p className="text-xs text-muted-foreground font-semibold leading-relaxed">
+                        The Merchant Payments Suite is exclusive to registered business ledgers and SME profiles. Switch your active scope to access invoice generation, API integrations, and checkout sandboxes.
+                    </p>
+                </div>
+                <Button 
+                    onClick={() => setScopeId("business")}
+                    className="w-full bg-primary font-black text-primary-foreground rounded-xl h-12 shadow-lg hover:shadow-primary/10 transition-all"
+                >
+                    Switch to {activeScope.name}
+                </Button>
             </div>
         )
     }
@@ -396,7 +430,7 @@ export default function MerchantClientPage() {
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     <Key className="h-5 w-5 text-primary" /> Cryptographic API Keys
                                 </h2>
-                                <p className="text-xs text-muted-foreground font-semibold mt-0.5">Integration credentials to initiate Abia Pay checkouts.</p>
+                                <p className="text-xs text-muted-foreground font-semibold mt-0.5">Integration credentials to initiate {activeProfile.internalPayBrand} checkouts.</p>
                             </div>
                             <Button 
                                 onClick={handleGenerateKeys}
@@ -419,6 +453,7 @@ export default function MerchantClientPage() {
                             ))}
                         </div>
                     </div>
+
 
                     {/* Webhook endpoint URL set */}
                     <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-md space-y-4">
@@ -580,7 +615,7 @@ export default function MerchantClientPage() {
                         >
                             {/* Simulator Sandbox indicator */}
                             <div className="bg-purple-600 text-[9px] font-black text-center py-1 uppercase tracking-widest text-white shrink-0">
-                                Abia Pay Sandboxed Checkout Integration
+                                {activeProfile.internalPayBrand} Sandboxed Checkout Integration
                             </div>
 
                             {simulatedCheckoutState === 'init' && (

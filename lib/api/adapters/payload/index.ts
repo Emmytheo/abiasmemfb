@@ -142,4 +142,10 @@ export const PayloadAdapter: ApiAdapter = {
     createStandingOrder: (...args) => actions.createStandingOrder(...args),
     updateStandingOrder: (...args) => actions.updateStandingOrder(...args),
     deleteStandingOrder: (...args) => actions.deleteStandingOrder(...args),
+
+    // Invoices
+    getInvoices: (...args) => actions.getInvoices(...args),
+    createInvoice: (...args) => actions.createInvoice(...args),
+    updateInvoice: (...args) => actions.updateInvoice(...args),
+    deleteInvoice: (...args) => actions.deleteInvoice(...args),
 };

@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { useBankProfile } from "@/context/bank-profile-context"
 
 interface SmartCard {
     id: string
@@ -40,6 +41,7 @@ interface SmartCard {
 }
 
 export default function CardsAdminPage() {
+    const { activeProfile } = useBankProfile()
     const [cards, setCards] = React.useState<SmartCard[]>([])
     const [loading, setLoading] = React.useState(true)
     const [submitting, setSubmitting] = React.useState<string | null>(null)
@@ -60,7 +62,7 @@ export default function CardsAdminPage() {
                         fetchedCards = cardData.docs.map((d: any) => ({
                             id: d.id,
                             cardholderName: d.cardholder_name || 'Card Holder',
-                            email: d.email || 'customer@abiamfb.com',
+                            email: d.email || `customer@${activeProfile.domain}`,
                             card_type: d.card_type || 'Verve',
                             card_number_masked: d.card_number_masked || '5061********0000',
                             card_token: d.card_token || 'tok_vc_xxxx',
@@ -76,7 +78,7 @@ export default function CardsAdminPage() {
                 // Demo fallback if DB is empty
                 if (fetchedCards.length === 0) {
                     fetchedCards = [
-                        { id: 'card_1', cardholderName: 'Mgbaramuko Chidi', email: 'chidi@abiamfb.com', card_type: 'Verve', card_number_masked: '5061********4490', card_token: 'tok_vc_8892', is_frozen: false, daily_limit: 50000000, status: 'active' },
+                        { id: 'card_1', cardholderName: 'Cardholder Primary', email: `cardholder@${activeProfile.domain}`, card_type: 'Verve', card_number_masked: '5061********4490', card_token: 'tok_vc_8892', is_frozen: false, daily_limit: 50000000, status: 'active' },
                         { id: 'card_2', cardholderName: 'Kalu Nwosu', email: 'kalu@gmail.com', card_type: 'Visa', card_number_masked: '4000********9928', card_token: 'tok_vc_1203', is_frozen: false, daily_limit: 25000000, status: 'active' },
                         { id: 'card_3', cardholderName: 'Amara Okafor', email: 'amara.o@outlook.com', card_type: 'MasterCard', card_number_masked: '5120********1192', card_token: 'tok_vc_7720', is_frozen: true, daily_limit: 100000000, status: 'frozen' },
                         { id: 'card_4', cardholderName: 'Ibrahim Musa', email: 'ibrahim@yahoo.com', card_type: 'Verve', card_number_masked: '5061********7829', card_token: 'tok_vc_5521', is_frozen: false, daily_limit: 15000000, status: 'active' }

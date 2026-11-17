@@ -1,19 +1,36 @@
 import Link from "next/link";
-import { api, BlogPost } from "@/lib/api";
+import { unstable_cache } from "next/cache";
+import { api } from "@/lib/api";
+import { getServerBankProfile } from "@/lib/banking/bank-profile-server";
+
+const getCachedBlogPosts = unstable_cache(
+    async () => {
+        return await Promise.race([
+            api.getBlogPosts().catch(() => []),
+            new Promise<any[]>((resolve) => setTimeout(() => resolve([]), 1500)),
+        ]);
+    },
+    ["home-blog-posts"],
+    { revalidate: 120 }
+);
 
 export async function NewsInsights() {
-    // Fetch posts and take the latest 3
-    const posts = await api.getBlogPosts();
-    const latestPosts = posts.slice(0, 3);
+    const [{ profile }, posts] = await Promise.all([
+        getServerBankProfile(),
+        getCachedBlogPosts(),
+    ]);
+    const latestPosts = (posts || []).slice(0, 3);
+
+    if (latestPosts.length === 0) return null;
 
     return (
         <section className="py-24 bg-card transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
                     <div className="max-w-2xl">
-                        <h2 className="text-accent font-bold tracking-wider uppercase text-sm mb-3">News & Insights</h2>
+                        <h2 className="text-accent font-bold tracking-wider uppercase text-sm mb-3">News &amp; Insights</h2>
                         <h3 className="text-3xl md:text-4xl font-display font-bold text-card-foreground">
-                            Latest Updates from AbiaSMEMFB
+                            Latest Updates from {profile.shortName}
                         </h3>
                     </div>
                     <Link
@@ -64,4 +81,3 @@ export async function NewsInsights() {
         </section>
     );
 }
-

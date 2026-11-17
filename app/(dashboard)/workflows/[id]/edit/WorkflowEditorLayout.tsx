@@ -1,5 +1,6 @@
 'use client'
-import React, { useRef, useState, useCallback } from 'react'
+import React, { useRef, useState, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { ArrowLeft, Play, Save, Loader2, Check, Pencil, Zap } from 'lucide-react'
 import { ThemeCustomizer } from '@/components/theme-customizer'
@@ -29,6 +30,11 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
     const [wfName, setWfName] = useState(workflow?.name || 'Untitled Workflow')
     const [isEditingName, setIsEditingName] = useState(false)
     const nameInputRef = useRef<HTMLInputElement>(null)
+
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const handleReady = useCallback((fn: SaveWorkflowFn) => {
         saveFnRef.current = fn
@@ -95,8 +101,10 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
         }
     }
 
-    return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-muted/40 animate-in fade-in duration-200">
+    if (!mounted) return null
+
+    return createPortal(
+        <div className="fixed inset-0 z-[99999] flex flex-col bg-background animate-in fade-in duration-200">
             <header className="h-14 bg-background border-b flex items-center justify-between px-2 sm:px-4 gap-2 shrink-0 overflow-hidden">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     <Link href="/workflows" className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground shrink-0">
@@ -210,6 +218,7 @@ export function WorkflowEditorLayout({ workflowId, workflow, dynamicOptions }: W
                     </div>
                 </Tabs>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }

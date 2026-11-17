@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useScope } from "@/context/scope-context";
 import {
     Dialog,
     DialogContent,
@@ -31,6 +32,7 @@ export default function BeneficiariesPage() {
     const [editingBeneficiary, setEditingBeneficiary] = useState<Beneficiary | null>(null);
     const [editName, setEditName] = useState("");
     const [isSaving, setIsSaving] = useState(false);
+    const { activeScopeId, activeScope } = useScope();
 
     async function loadBeneficiaries() {
         try {
@@ -42,7 +44,18 @@ export default function BeneficiariesPage() {
             }
             setUserId(user.id);
             const data = await api.getUserBeneficiaries(user.id);
-            setBeneficiaries(data);
+
+            // Filter beneficiaries by scope heuristically
+            let scopedBeneficiaries = data;
+            if (activeScope.type === 'business') {
+                scopedBeneficiaries = data.filter(b => b.account_name.toLowerCase().match(/ltd|limited|inc|enterprise|services|ventures|group/));
+            } else if (activeScope.type === 'coop') {
+                scopedBeneficiaries = data.filter(b => b.account_name.toLowerCase().match(/union|coop|society|association/));
+            } else {
+                scopedBeneficiaries = data.filter(b => !b.account_name.toLowerCase().match(/ltd|limited|inc|enterprise|services|ventures|group|union|coop|society|association/));
+            }
+
+            setBeneficiaries(scopedBeneficiaries);
         } catch (err) {
             console.error(err);
             toast.error("Failed to load beneficiaries");

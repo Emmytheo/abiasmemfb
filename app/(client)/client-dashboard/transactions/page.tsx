@@ -7,8 +7,9 @@ import { ArrowLeft, ArrowDownLeft, ArrowUpRight, ShoppingBag, Receipt, Filter, X
 import { api, Transaction } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { useScope } from "@/context/scope-context";
 
 const formatNaira = (n: number) => `₦${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -43,6 +44,7 @@ export default function ClientTransactionsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
+    const { activeScopeId, activeScope } = useScope();
 
     useEffect(() => {
         async function fetchHistory() {
@@ -50,8 +52,42 @@ export default function ClientTransactionsPage() {
                 const supabase = createClient();
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
-                const data = await api.getUserTransactions(user.id);
-                setTransactions(data);
+                const [data, accounts] = await Promise.all([
+                    api.getUserTransactions(user.id),
+                    api.getUserAccounts(user.id)
+                ]);
+
+                // Filter accounts by scope
+                let allowedAccountIds = new Set<string>();
+                let filteredAccounts = accounts;
+                if (activeScope.type === 'business') {
+                    filteredAccounts = accounts.filter(a => a.account_type === 'Current' || a.metadata?.is_corporate);
+                } else if (activeScope.type === 'coop') {
+                    filteredAccounts = accounts.filter(a => a.metadata?.is_coop);
+                } else {
+                    filteredAccounts = accounts.filter(a => a.account_type === 'Savings' || a.account_type === 'Fixed Deposit' || a.is_primary);
+                }
+                
+                // If there are no accounts for this scope, let's still just rely on a fallback heuristic or empty.
+                filteredAccounts.forEach(a => allowedAccountIds.add(a.id));
+
+                const scopedTransactions = data.filter(tx => {
+                    const fromId = typeof tx.from_account === 'string' ? tx.from_account : tx.from_account?.id;
+                    const toId = typeof tx.to_account === 'string' ? tx.to_account : tx.to_account?.id;
+                    
+                    // If either from or to account matches the scope accounts, include it
+                    if (fromId && allowedAccountIds.has(fromId)) return true;
+                    if (toId && allowedAccountIds.has(toId)) return true;
+                    
+                    // Fallback heuristic if accounts aren't perfectly mapped in mock
+                    if (activeScope.type === 'business' && tx.amount >= 50000) return true;
+                    if (activeScope.type === 'coop' && tx.amount >= 10000 && tx.amount < 50000) return true;
+                    if (activeScope.type === 'personal' && tx.amount < 10000) return true;
+
+                    return false;
+                });
+
+                setTransactions(scopedTransactions);
             } finally {
                 setLoading(false);
             }
@@ -118,7 +154,7 @@ export default function ClientTransactionsPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
                         value={search}
-                        onChange={e => setSearch(e.target.value)}
+                        onChange={(e: any) => setSearch(e.target.value)}
                         placeholder="Search by reference, narration…"
                         className="pl-9 h-10 bg-background"
                     />

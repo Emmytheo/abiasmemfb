@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 const profileSchema = z.object({
     firstName: z.string().min(2, "First name is too short"),
@@ -34,6 +35,7 @@ interface ProfileStepProps {
 }
 
 export function ProfileStep({ data, onUpdate, onNext }: ProfileStepProps) {
+    const { activeProfile } = useBankProfile();
     const {
         register,
         handleSubmit,
@@ -78,8 +80,8 @@ export function ProfileStep({ data, onUpdate, onNext }: ProfileStepProps) {
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2 text-center">
-                <h2 className="text-3xl font-bold tracking-tight">Welcome to ABIASMEMFB</h2>
-                <p className="text-muted-foreground">Let's start with your basic profile details.</p>
+                <h2 className="text-3xl font-bold tracking-tight">Welcome to {activeProfile.shortName}</h2>
+                <p className="text-muted-foreground">Let&apos;s start with your basic profile details.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -121,7 +123,7 @@ export function ProfileStep({ data, onUpdate, onNext }: ProfileStepProps) {
                 </div>
                 <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="address">Residential Address</Label>
-                    <Input id="address" {...register("address")} placeholder="123 Example Street, Abia" />
+                    <Input id="address" {...register("address")} placeholder={`123 Example Street, ${activeProfile.regionLabel}`} />
                     {errors.address && <p className="text-sm text-destructive">{errors.address.message as string}</p>}
                 </div>
             </div>

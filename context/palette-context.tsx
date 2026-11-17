@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 
-export type Palette = "default" | "nature" | "electric" | "ocean" | "sunset"
+export type Palette = "default" | "nature" | "navy" | "electric" | "ocean" | "sunset"
 
 interface PaletteContextType {
     palette: Palette
@@ -11,28 +11,33 @@ interface PaletteContextType {
 
 const PaletteContext = createContext<PaletteContextType | undefined>(undefined)
 
-export function PaletteProvider({ children }: { children: React.ReactNode }) {
-    const [palette, setPalette] = useState<Palette>("nature")
+export function PaletteProvider({
+    children,
+    initialPalette = "navy",
+}: {
+    children: React.ReactNode
+    initialPalette?: Palette
+}) {
+    const [palette, setPaletteState] = useState<Palette>(initialPalette)
+
+    // Always follow initialPalette when server/profile changes
+    useEffect(() => {
+        setPaletteState(initialPalette)
+    }, [initialPalette])
 
     useEffect(() => {
-        // Load persisted palette on mount
-        const saved = localStorage.getItem("theme-palette") as Palette
-        if (saved) {
-            setPalette(saved)
-        }
-    }, [])
-
-    useEffect(() => {
-        // Apply palette to <html> or <body>
         const root = document.documentElement
         if (palette === "default") {
             root.removeAttribute("data-palette")
         } else {
             root.setAttribute("data-palette", palette)
         }
-        // Persist
         localStorage.setItem("theme-palette", palette)
     }, [palette])
+
+    const setPalette = (next: Palette) => {
+        setPaletteState(next)
+    }
 
     return (
         <PaletteContext.Provider value={{ palette, setPalette }}>
@@ -43,13 +48,10 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
 
 export function usePalette() {
     const context = useContext(PaletteContext)
-    
-    // Defensive check for SSR. If context is missing, return a dummy but safe object
-    // to prevent crashing the entire application during initial server render.
     if (!context) {
         return {
-            palette: "nature" as Palette,
-            setPalette: () => {}
+            palette: "navy" as Palette,
+            setPalette: () => {},
         }
     }
     return context

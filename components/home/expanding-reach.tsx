@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CreditCard, Hash, Store, ArrowRight, RefreshCw, Smartphone, CheckCircle, ChevronRight, Zap } from "lucide-react";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 export function ExpandingReach() {
+  const { activeProfile } = useBankProfile();
   // ATM Card State
   const [cardBrand, setCardBrand] = useState<"Visa" | "Mastercard" | "Verve">("Verve");
   const brands: ("Visa" | "Mastercard" | "Verve")[] = ["Verve", "Visa", "Mastercard"];
@@ -23,24 +25,29 @@ export function ExpandingReach() {
   const [ussdState, setUssdState] = useState<"idle" | "dialing" | "menu" | "success">("idle");
   const [ussdOutput, setUssdOutput] = useState("");
 
+  useEffect(() => {
+    setUssdState("idle");
+    setUssdOutput("");
+  }, [activeProfile.id]);
+
   const triggerUssd = (command: string) => {
     setUssdState("dialing");
     setTimeout(() => {
-      if (command === "*5125#") {
+      if (command === activeProfile.ussdCode) {
         setUssdState("menu");
       } else if (command === "1") {
-        setUssdOutput("Balance: ₦1,240,500.00\nAjo Esusu: ₦250,000.00\n[0] Back");
+        setUssdOutput("Balance: ₦1,240,500.00\nTarget Vault: ₦250,000.00\n[0] Back");
         setUssdState("success");
       } else if (command === "2") {
-        setUssdOutput("Select Cycle:\n1. Ariaria Market Thrift\n2. Aba Shoe Union\n[0] Back");
+        setUssdOutput(`Institutional Pay:\n1. School Fee Collection\n2. ${activeProfile.demoCoopName.slice(0, 22)}\n[0] Back`);
         setUssdState("success");
       } else if (command === "3") {
-        setUssdOutput("Transfers:\n1. To Abia MFB Account\n2. To Other Banks\n[0] Back");
+        setUssdOutput(`Transfers:\n1. To ${activeProfile.shortName} Account\n2. To Other Banks\n[0] Back`);
         setUssdState("success");
       } else {
         setUssdState("idle");
       }
-    }, 800);
+    }, 700);
   };
 
   // Agency POS State
@@ -87,8 +94,8 @@ export function ExpandingReach() {
               <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
               
               <div className="flex justify-between items-start z-10">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Abia MFB</span>
-                <span className="text-[10px] font-extrabold uppercase bg-white/10 px-2 py-0.5 rounded backdrop-blur">Smart Card</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{activeProfile.shortName}</span>
+                <span className="text-[10px] font-extrabold uppercase bg-white/10 px-2 py-0.5 rounded backdrop-blur">Contactless Card</span>
               </div>
 
               {/* Gold Chip Mock */}
@@ -134,10 +141,10 @@ export function ExpandingReach() {
           </div>
 
           <h4 className="text-2xl font-black text-foreground mb-3 tracking-tight">
-            Offline USSD (*5125#)
+            Offline USSD ({activeProfile.ussdCode})
           </h4>
           <p className="text-muted-foreground leading-relaxed text-sm mb-6">
-            No active data? Run rapid offline banking checks, Esusu thrift pool transfers, and utility payments from any basic phone.
+            No active data? Run rapid offline banking checks, school fee &amp; utility payments, and cooperative transfers from any basic phone.
           </p>
 
           {/* Simulated Retro Mobile Device screen */}
@@ -145,9 +152,9 @@ export function ExpandingReach() {
             {ussdState === "idle" && (
               <div className="flex flex-col items-center justify-center h-full my-auto text-center space-y-2">
                 <span className="text-slate-500 text-[10px]">Mobile Signal Active</span>
-                <span className="text-sm font-bold text-white tracking-widest">*5125#</span>
+                <span className="text-sm font-bold text-white tracking-widest">{activeProfile.ussdCode}</span>
                 <button 
-                  onClick={() => triggerUssd("*5125#")}
+                  onClick={() => triggerUssd(activeProfile.ussdCode)}
                   className="bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold px-4 py-1.5 rounded-full text-[10px] border border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all animate-pulse"
                 >
                   Dial Code
@@ -164,11 +171,11 @@ export function ExpandingReach() {
 
             {ussdState === "menu" && (
               <div className="space-y-1.5">
-                <p className="text-white border-b border-slate-800 pb-1 font-bold text-[10px] uppercase text-emerald-500">ABIA MFB MOBILE</p>
+                <p className="text-white border-b border-slate-800 pb-1 font-bold text-[10px] uppercase text-emerald-500">{activeProfile.shortName} MOBILE</p>
                 <div className="space-y-0.5 text-[10px]">
                   <p className="hover:text-white cursor-pointer" onClick={() => triggerUssd("1")}>1. Account Balance</p>
-                  <p className="hover:text-white cursor-pointer" onClick={() => triggerUssd("2")}>2. My Esusu Cycles</p>
-                  <p className="hover:text-white cursor-pointer" onClick={() => triggerUssd("3")}>3. Local Transfer</p>
+                  <p className="hover:text-white cursor-pointer" onClick={() => triggerUssd("2")}>2. School &amp; Co-op Pay</p>
+                  <p className="hover:text-white cursor-pointer" onClick={() => triggerUssd("3")}>3. Inter-Bank Transfer</p>
                 </div>
                 <div className="flex justify-between items-center pt-2 mt-1 border-t border-slate-900">
                   <span className="text-[8px] text-slate-500">Press option to select</span>

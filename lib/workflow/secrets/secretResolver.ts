@@ -6,18 +6,25 @@ import { decryptSecret } from './encryption'
  * Returns the decrypted plaintext value — only available server-side.
  */
 export async function resolveSecret(secretId: string): Promise<string> {
-    const payload = await getPayloadClient()
-    const secret = await payload.findByID({
-        collection: 'secrets',
-        id: secretId,
-    }) as any
+    try {
+        const payload = await getPayloadClient()
+        const secret = await payload.findByID({
+            collection: 'secrets',
+            id: secretId,
+            overrideAccess: true,
+        }) as any
 
-    if (!secret) throw new Error(`Secret ${secretId} not found`)
-    if (!secret.encryptedValue || !secret.iv || !secret.tag) {
-        throw new Error(`Secret ${secretId} is missing encrypted data. Re-save the secret.`)
+        if (secret && (secret.encryptedValue || secret.encrypted_value) && secret.iv && secret.tag) {
+            return await decryptSecret(secret.encryptedValue || secret.encrypted_value, secret.iv, secret.tag)
+        }
+        if (secret && secret.value) {
+            return secret.value
+        }
+    } catch (err: any) {
+        console.warn('[resolveSecret] Payload lookup failed:', err.message)
     }
 
-    return await decryptSecret(secret.encryptedValue, secret.iv, secret.tag)
+    throw new Error(`Secret ${secretId} not found or missing encrypted payload`)
 }
 
 /**

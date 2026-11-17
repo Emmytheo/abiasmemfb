@@ -2,382 +2,324 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-    ArrowRight, ShieldCheck, Landmark, Users2, Sparkles, Building2,
-    Store, CreditCard, Zap, TrendingUp, Globe, Play, Pause
+    ArrowRight, ShieldCheck, GraduationCap, Wifi,
+    CreditCard, Hash, CheckCircle2, Smartphone, Sparkles, SlidersHorizontal
 } from "lucide-react";
+import { useBankProfile } from "@/context/bank-profile-context";
+import { Logo } from "@/components/ui/logo";
 
-// ─── Hero Slide Definitions ────────────────────────────────────────────────
-const SLIDES = [
-    {
-        id: "pillar",
-        badge: "Abia State's Financial Pillar",
-        headline: ["Abia State's", "Financial Pillar."],
-        accentLine: "Financial Pillar.",
-        body: "Since inception, we've been the silent engine behind thousands of Abia entrepreneurs, providing secure, modern, and accessible financial infrastructure that turns ambition into legacy.",
-        cta: { label: "Open Your Account", href: "/auth/sign-up" },
-        ctaSecondary: { label: "Explore Banking", href: "/personal-banking" },
-        stats: [
-            { value: "12,000+", label: "Active Members" },
-            { value: "₦4.2B", label: "Loans Disbursed" },
-            { value: "18 yrs", label: "Of Trust" },
-        ],
-        orbA: "bg-primary/30",
-        orbB: "bg-blue-500/20",
-        accentGradient: "from-primary via-primary/80 to-accent",
-        floatCard: {
-            icon: <Building2 className="w-5 h-5 text-primary" />,
-            title: "Umuahia Head Office",
-            sub: "Serving Abia State Since 2006",
-        },
-    },
-    {
-        id: "trade",
-        badge: "State-of-the-Art Banking",
-        headline: ["Modernizing Abia Trade.", "Seeding Co-ops."],
-        accentLine: "Seeding Co-ops.",
-        body: "AbiaSME MFB is the engine empowering entrepreneurs, digitized Esusu thrifts, local trade unions, and market merchants with secure loans, smart cards, and agent banking solutions built for Abia.",
-        cta: { label: "Unions & Business Suite", href: "/business" },
-        ctaSecondary: { label: "Esusu Calculator", href: "/business#esusu" },
-        stats: [
-            { value: "340+", label: "Active Cooperatives" },
-            { value: "₦250K", label: "Avg Esusu Pool" },
-            { value: "1%", label: "Platform Fee" },
-        ],
-        orbA: "bg-emerald-500/25",
-        orbB: "bg-primary/20",
-        accentGradient: "from-emerald-500 via-primary/80 to-primary",
-        floatCard: {
-            icon: <Users2 className="w-5 h-5 text-emerald-500" />,
-            title: "Digital Esusu Live",
-            sub: "340 Active Thrift Cycles Running",
-        },
-    },
-    {
-        id: "agency",
-        badge: "Neighborhood Banking Points",
-        headline: ["Your Neighborhood.", "Your Bank."],
-        accentLine: "Your Bank.",
-        body: "Our expanding POS Agency network puts a licensed cashpoint in every corner of Abia—deposits, withdrawals, utility clearance, and Esusu collections—powered by our instant settlement rails.",
-        cta: { label: "Become an Agent", href: "/business#agency" },
-        ctaSecondary: { label: "Commission Estimator", href: "/business#agency" },
-        stats: [
-            { value: "500+", label: "Agent Terminals" },
-            { value: "₦120", label: "Per-Tx Commission" },
-            { value: "99.8%", label: "Uptime SLA" },
-        ],
-        orbA: "bg-amber-500/25",
-        orbB: "bg-orange-500/15",
-        accentGradient: "from-amber-500 via-primary/70 to-primary",
-        floatCard: {
-            icon: <Store className="w-5 h-5 text-amber-500" />,
-            title: "POS Agency Partner",
-            sub: "Apply — Get Terminal in 48hrs",
-        },
-    },
-    {
-        id: "cards",
-        badge: "Smart Digital Payments",
-        headline: ["Physical Security.", "Digital Freedom."],
-        accentLine: "Digital Freedom.",
-        body: "Issue Visa, Mastercard, and Verve debit cards instantly. Freeze, unblock, and set spending limits from your app. Our PCI-DSS compliant smart card system is built for the modern Abia merchant.",
-        cta: { label: "Design Your Smart Card", href: "/business#cards" },
-        ctaSecondary: { label: "Merchant Checkout", href: "/business#merchant" },
-        stats: [
-            { value: "3 Networks", label: "Visa · MC · Verve" },
-            { value: "< 2.5s", label: "POS Latency" },
-            { value: "PCI-DSS", label: "Compliant" },
-        ],
-        orbA: "bg-violet-500/25",
-        orbB: "bg-indigo-500/15",
-        accentGradient: "from-violet-500 via-primary/70 to-primary",
-        floatCard: {
-            icon: <CreditCard className="w-5 h-5 text-violet-500" />,
-            title: "Smart Card Issuing",
-            sub: "Physical & Virtual — Instant Activation",
-        },
-    },
-] as const;
-
-// Floating particle positions (static for SSR safety)
-const PARTICLES = [
-    { top: "15%", left: "8%", size: "w-1 h-1", delay: "0ms", duration: "3s" },
-    { top: "25%", left: "92%", size: "w-1.5 h-1.5", delay: "500ms", duration: "4s" },
-    { top: "60%", left: "5%", size: "w-1 h-1", delay: "1000ms", duration: "5s" },
-    { top: "75%", left: "88%", size: "w-2 h-2", delay: "200ms", duration: "3.5s" },
-    { top: "40%", left: "95%", size: "w-1 h-1", delay: "800ms", duration: "4.5s" },
-    { top: "85%", left: "15%", size: "w-1.5 h-1.5", delay: "300ms", duration: "3s" },
-    { top: "10%", left: "50%", size: "w-1 h-1", delay: "1500ms", duration: "6s" },
-    { top: "55%", left: "98%", size: "w-1 h-1", delay: "700ms", duration: "4s" },
-];
-
-const CYCLE_DURATION = 7000; // 7 seconds per slide
+const CYCLE_DURATION = 8000;
 
 export function HeroExpository() {
+    const { activeProfile } = useBankProfile();
+    const slides = activeProfile.heroSlides;
+    const isDarkHero = activeProfile.themeStyle.useBrandedDarkHero;
+
     const [activeIdx, setActiveIdx] = useState(0);
-    const [prevIdx, setPrevIdx] = useState<number | null>(null);
-    const [transitioning, setTransitioning] = useState(false);
     const [paused, setPaused] = useState(false);
-    const [progress, setProgress] = useState(0);
+    const [dockTab, setDockTab] = useState<"card" | "school" | "ussd">("card");
+
+    useEffect(() => {
+        setActiveIdx(0);
+    }, [activeProfile.id]);
 
     const goToSlide = useCallback((idx: number) => {
-        if (transitioning || idx === activeIdx) return;
-        setTransitioning(true);
-        setPrevIdx(activeIdx);
-        setTimeout(() => {
-            setActiveIdx(idx);
-            setProgress(0);
-            setTimeout(() => setTransitioning(false), 600);
-        }, 300);
-    }, [activeIdx, transitioning]);
+        setActiveIdx(idx % Math.max(slides.length, 1));
+    }, [slides.length]);
 
-    // Auto-advance timer
     useEffect(() => {
-        if (paused) return;
+        if (paused || slides.length <= 1) return;
         const interval = setInterval(() => {
-            setProgress(p => {
-                if (p >= 100) {
-                    const next = (activeIdx + 1) % SLIDES.length;
-                    goToSlide(next);
-                    return 0;
-                }
-                return p + (100 / (CYCLE_DURATION / 100));
-            });
-        }, 100);
+            setActiveIdx((i) => (i + 1) % slides.length);
+        }, CYCLE_DURATION);
         return () => clearInterval(interval);
-    }, [paused, activeIdx, goToSlide]);
+    }, [paused, slides.length]);
 
-    const slide = SLIDES[activeIdx];
+    const slide = slides[activeIdx % slides.length] || slides[0];
 
     return (
-        <section className="relative min-h-[95vh] flex items-center justify-center overflow-hidden bg-background">
-            {/* ── Ambient Background Orbs (color-shifts per slide) ── */}
-            <div className="absolute inset-0 pointer-events-none">
-                <div
-                    key={`orbA-${slide.id}`}
-                    className={`absolute top-[-15%] left-[-10%] w-[50%] h-[50%] ${slide.orbA} rounded-full blur-[140px] transition-all duration-1000`}
-                />
-                <div
-                    key={`orbB-${slide.id}`}
-                    className={`absolute bottom-[-15%] right-[-10%] w-[45%] h-[45%] ${slide.orbB} rounded-full blur-[140px] transition-all duration-1000`}
-                />
-                {/* Center pulse */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] animate-pulse" />
-            </div>
-
-            {/* ── Floating Particles ── */}
-            {PARTICLES.map((p, i) => (
-                <div
-                    key={i}
-                    className={`absolute ${p.size} bg-primary/40 rounded-full opacity-60`}
-                    style={{
-                        top: p.top,
-                        left: p.left,
-                        animationDuration: p.duration,
-                        animationDelay: p.delay,
-                        animation: `bounce ${p.duration} ${p.delay} infinite alternate ease-in-out`,
-                    }}
-                />
-            ))}
-
-            {/* ── Grid/Pattern Overlay ── */}
+        <section
+            className={`relative overflow-hidden ${
+                isDarkHero ? "text-white pt-28 sm:pt-36 pb-16 sm:pb-24" : "bg-background text-foreground pt-28 pb-20"
+            }`}
+            style={
+                isDarkHero
+                    ? {
+                          background: `radial-gradient(1100px circle at 82% 18%, rgba(244, 196, 20, 0.16), transparent 55%), radial-gradient(900px circle at 10% 85%, rgba(59, 130, 246, 0.22), transparent 55%), linear-gradient(135deg, ${activeProfile.themeStyle.topBarBgHex} 0%, ${activeProfile.themeStyle.heroBgHex} 55%, #040836 100%)`,
+                      }
+                    : undefined
+            }
+        >
+            {/* Architectural Coordinate Grid */}
             <div
-                className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                className={`absolute inset-0 pointer-events-none ${isDarkHero ? "opacity-[0.07]" : "opacity-[0.04]"}`}
                 style={{
-                    backgroundImage: "url('/images/elephant-1.png')",
-                    backgroundSize: "contain",
-                    backgroundRepeat: "repeat",
+                    backgroundImage:
+                        "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
+                    backgroundSize: "52px 52px",
                 }}
             />
 
-            {/* ── Main Content ── */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 pt-28 pb-16 lg:pt-36 lg:pb-28 w-full">
-
-                {/* Slide Progress Indicator — top right */}
-                <div className="absolute top-0 right-4 sm:right-8 pt-4 flex items-center gap-3 z-20">
-                    <button
-                        onClick={() => setPaused(p => !p)}
-                        className="w-7 h-7 rounded-full bg-foreground/5 border border-foreground/10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all"
-                        aria-label={paused ? "Resume" : "Pause"}
-                    >
-                        {paused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-                    </button>
-                    {SLIDES.map((s, i) => (
-                        <button
-                            key={s.id}
-                            onClick={() => goToSlide(i)}
-                            className="relative h-1 rounded-full overflow-hidden transition-all duration-300"
-                            style={{ width: i === activeIdx ? 48 : 20 }}
-                            aria-label={`Go to slide ${i + 1}`}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center">
+                    {/* Left: Editorial Hero Copy */}
+                    <div className="lg:col-span-7 space-y-7">
+                        <motion.div
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`inline-flex items-center gap-2.5 py-1.5 px-4 rounded-full border backdrop-blur-md text-[11px] font-black uppercase tracking-[0.18em] ${
+                                isDarkHero
+                                    ? "bg-white/10 border-white/20 text-[#F4C414]"
+                                    : "bg-primary/10 border-primary/20 text-primary"
+                            }`}
                         >
-                            <span className="absolute inset-0 bg-foreground/15 rounded-full" />
-                            {i === activeIdx && (
-                                <span
-                                    className="absolute inset-y-0 left-0 bg-primary rounded-full transition-none"
-                                    style={{ width: `${progress}%` }}
-                                />
-                            )}
-                            {i !== activeIdx && (
-                                <span className={`absolute inset-0 rounded-full ${i < activeIdx ? "bg-primary/60" : "bg-foreground/15"}`} />
-                            )}
-                        </button>
-                    ))}
-                </div>
+                            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                            <span>{slide.badge}</span>
+                        </motion.div>
 
-                {/* ── Slide Transition Wrapper ── */}
-                <div
-                    className={`transition-all duration-500 ${transitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"}`}
-                >
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-
-                        {/* ── LEFT: Text Content ── */}
-                        <div className="lg:col-span-7 space-y-8">
-
-                            {/* Badge pill */}
-                            <div className="inline-flex items-center gap-3 py-2 px-4 rounded-2xl bg-foreground/5 border border-foreground/10 backdrop-blur-xl">
-                                <span className="flex h-2 w-2 rounded-full bg-primary animate-ping" />
-                                <span className="text-foreground/80 text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]">
-                                    {slide.badge}
-                                </span>
-                            </div>
-
-                            {/* Headline */}
-                            <div className="space-y-1">
-                                {slide.headline.map((line, i) => (
-                                    <h1
-                                        key={`${slide.id}-line-${i}`}
-                                        className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display font-black leading-[1.0] tracking-tight ${line === slide.accentLine
-                                                ? `text-transparent bg-clip-text bg-gradient-to-r ${slide.accentGradient}`
-                                                : "text-foreground"
-                                            }`}
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={`${activeProfile.id}-${slide.id}`}
+                                initial={{ opacity: 0, y: 14 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.35 }}
+                                className="space-y-5"
+                            >
+                                <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-[4.4rem] font-display font-black leading-[1.03] tracking-tight">
+                                    {slide.headlineTop}
+                                    <span
+                                        className={`block mt-1 text-transparent bg-clip-text bg-gradient-to-r ${slide.accentGradient}`}
                                     >
-                                        {line}
-                                    </h1>
-                                ))}
-                            </div>
+                                        {slide.headlineAccent}
+                                    </span>
+                                </h1>
 
-                            {/* Body */}
-                            <p className="text-lg sm:text-xl text-muted-foreground font-medium max-w-2xl leading-relaxed">
-                                {slide.body}
-                            </p>
-
-                            {/* CTAs */}
-                            <div className="flex flex-wrap gap-4 sm:gap-5">
-                                <Link
-                                    href={slide.cta.href}
-                                    className="px-8 sm:px-10 py-4 sm:py-5 bg-primary text-primary-foreground font-black rounded-2xl hover:bg-foreground hover:text-background transition-all duration-500 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] group flex items-center gap-3 text-sm sm:text-base"
+                                <p
+                                    className={`text-base sm:text-lg max-w-xl leading-relaxed font-medium ${
+                                        isDarkHero ? "text-slate-200" : "text-muted-foreground"
+                                    }`}
                                 >
-                                    {slide.cta.label}
-                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
-                                </Link>
-                                <Link
-                                    href={slide.ctaSecondary.href}
-                                    className="px-8 sm:px-10 py-4 sm:py-5 bg-foreground/5 text-foreground font-black rounded-2xl border border-foreground/10 hover:bg-foreground/10 transition-all duration-500 backdrop-blur-md text-sm sm:text-base"
-                                >
-                                    {slide.ctaSecondary.label}
-                                </Link>
-                            </div>
+                                    {slide.body}
+                                </p>
+                            </motion.div>
+                        </AnimatePresence>
 
-                            {/* Live Stats Row */}
-                            <div className="grid grid-cols-3 gap-6 pt-8 border-t border-foreground/5">
-                                {slide.stats.map((stat, i) => (
-                                    <div key={`${slide.id}-stat-${i}`} className="space-y-1">
-                                        <p className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">{stat.value}</p>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{stat.label}</p>
-                                    </div>
-                                ))}
-                            </div>
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-3.5 pt-1">
+                            <Link
+                                href={slide.ctaHref}
+                                className="px-7 py-4 bg-accent text-accent-foreground font-black rounded-2xl hover:bg-white hover:text-[#070D59] transition-all shadow-xl shadow-black/20 flex items-center gap-2.5 text-sm group"
+                            >
+                                {slide.ctaLabel}
+                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                            <Link
+                                href={slide.ctaSecondaryHref}
+                                className={`px-7 py-4 rounded-2xl font-bold text-sm border backdrop-blur-md transition-all ${
+                                    isDarkHero
+                                        ? "border-white/30 bg-white/5 text-white hover:bg-white/15"
+                                        : "border-border bg-card text-foreground hover:bg-muted"
+                                }`}
+                            >
+                                {slide.ctaSecondaryLabel}
+                            </Link>
                         </div>
 
-                        {/* ── RIGHT: Visual Showcase ── */}
-                        <div className="lg:col-span-5 relative">
+                        {/* Interactive Story Chapter Pills */}
+                        {slides.length > 1 && (
+                            <div className="pt-4 space-y-3">
+                                <div className="flex flex-wrap gap-2">
+                                    {slides.map((s, i) => (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setPaused(true);
+                                                goToSlide(i);
+                                            }}
+                                            className={`px-3.5 py-1.5 rounded-full text-[11px] font-black transition-all border ${
+                                                i === activeIdx
+                                                    ? "bg-accent text-accent-foreground border-accent shadow-md"
+                                                    : isDarkHero
+                                                      ? "bg-white/5 border-white/15 text-white/75 hover:text-white hover:bg-white/10"
+                                                      : "bg-muted border-border text-muted-foreground hover:text-foreground"
+                                            }`}
+                                        >
+                                            0{i + 1} · {s.headlineAccent.replace(".", "")}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
-                            {/* Outer glow ring */}
-                            <div className="absolute -inset-4 bg-primary/5 rounded-[3rem] blur-2xl -z-10 animate-pulse" />
+                        {/* Grounded Institution Anchors */}
+                        <div
+                            className={`grid grid-cols-3 gap-4 pt-6 border-t ${
+                                isDarkHero ? "border-white/15" : "border-border"
+                            }`}
+                        >
+                            {slide.highlights.map((stat, i) => (
+                                <div key={i} className="space-y-0.5">
+                                    <p className={`text-base sm:text-xl font-black ${isDarkHero ? "text-[#F4C414]" : "text-primary"}`}>
+                                        {stat.value}
+                                    </p>
+                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isDarkHero ? "text-slate-300" : "text-muted-foreground"}`}>
+                                        {stat.label}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                            {/* Main card box */}
-                            <div className="relative z-10 rounded-[2rem] sm:rounded-[3rem] overflow-hidden border border-foreground/10 shadow-2xl bg-background group">
-                                <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10" />
-                                {/* Shimmer overlay */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent z-10 pointer-events-none" />
+                    {/* Right: Interactive Glassmorphic Executive Showcase Dock */}
+                    <div className="lg:col-span-5">
+                        <div className="relative mx-auto max-w-md">
+                            {/* Subtle Ambient Crest Aura */}
+                            <div className="absolute -inset-6 bg-gradient-to-tr from-[#F4C414]/25 via-blue-500/15 to-transparent rounded-[3rem] blur-2xl pointer-events-none" />
 
-                                <img
-                                    src="/images/elephant-1.png"
-                                    alt="Abia MFB — Modern Banking Building"
-                                    className="w-full h-auto object-cover grayscale-[0.4] group-hover:grayscale-0 transition-all duration-1000 scale-105 group-hover:scale-100"
-                                />
+                            <div className="relative rounded-[28px] border border-white/15 bg-slate-950/90 text-white p-5 sm:p-6 shadow-[0_32px_80px_-15px_rgba(0,0,0,0.65)] backdrop-blur-2xl space-y-5">
+                                {/* Top Emblem & Dock Switcher */}
+                                <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <Logo iconOnly iconClassName="w-11 h-11 shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-[#F4C414] truncate">
+                                                {activeProfile.holdingEntity}
+                                            </p>
+                                            <h3 className="text-sm font-black text-white truncate">{activeProfile.legalName}</h3>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-white/10 text-[#F4C414] shrink-0">
+                                        {activeProfile.ussdCode}
+                                    </span>
+                                </div>
 
-                                {/* Floating Info Card */}
-                                <div className="absolute bottom-4 left-4 right-4 sm:bottom-8 sm:left-8 sm:right-8 z-20">
-                                    <div className="p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] bg-background/20 backdrop-blur-2xl border border-foreground/20 shadow-2xl">
-                                        <div className="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3">
-                                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-primary flex items-center justify-center text-primary-foreground shrink-0">
-                                                {slide.floatCard.icon}
-                                            </div>
+                                {/* Interactive Mini Mode Tabs */}
+                                <div className="grid grid-cols-3 gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10">
+                                    {[
+                                        { id: "card", label: "Smart Card", icon: CreditCard },
+                                        { id: "school", label: "School Pay", icon: GraduationCap },
+                                        { id: "ussd", label: `USSD ${activeProfile.ussdCode}`, icon: Hash },
+                                    ].map((t) => (
+                                        <button
+                                            key={t.id}
+                                            type="button"
+                                            onClick={() => setDockTab(t.id as "card" | "school" | "ussd")}
+                                            className={`py-2 px-2 rounded-lg text-[10px] font-black flex items-center justify-center gap-1 transition-all truncate ${
+                                                dockTab === t.id
+                                                    ? "bg-[#F4C414] text-[#070D59] shadow"
+                                                    : "text-slate-300 hover:text-white"
+                                            }`}
+                                        >
+                                            <t.icon className="w-3 h-3 shrink-0" />
+                                            <span className="truncate">{t.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Active Showcase Card inside Dock */}
+                                {dockTab === "card" && (
+                                    <div
+                                        className="rounded-2xl p-5 space-y-5 relative overflow-hidden border border-[#F4C414]/40 shadow-xl"
+                                        style={{
+                                            background: `linear-gradient(135deg, ${activeProfile.themeStyle.heroBgHex} 0%, #030630 100%)`,
+                                        }}
+                                    >
+                                        <div className="absolute -right-10 -top-10 w-36 h-36 bg-[#F4C414]/15 rounded-full blur-2xl pointer-events-none" />
+                                        <div className="flex justify-between items-start relative z-10">
                                             <div>
-                                                <h4 className="text-foreground font-black text-base sm:text-lg leading-tight">
-                                                    {slide.floatCard.title}
-                                                </h4>
-                                                <p className="text-foreground/60 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
-                                                    {slide.floatCard.sub}
+                                                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#F4C414]">
+                                                    {activeProfile.shortName} Contactless
                                                 </p>
+                                                <p className="text-xs font-bold text-white/90 mt-0.5">Personnel &amp; Retail Debit</p>
+                                            </div>
+                                            <Wifi className="w-4 h-4 text-[#F4C414] rotate-90" />
+                                        </div>
+
+                                        <div className="flex items-center gap-3 relative z-10">
+                                            <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-200 via-[#F4C414] to-amber-600 border border-yellow-200/60" />
+                                            <span className="font-mono text-sm tracking-[0.22em] text-white/90">
+                                                5061 •••• •••• 3701
+                                            </span>
+                                        </div>
+
+                                        <div className="flex justify-between items-end text-[11px] relative z-10 pt-1">
+                                            <div>
+                                                <p className="text-[9px] uppercase text-slate-400">Account Ref</p>
+                                                <p className="font-mono font-bold text-white">{activeProfile.demoAccountNumber}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-xs font-black italic text-[#F4C414]">VERVE · VISA · MC</span>
                                             </div>
                                         </div>
                                     </div>
+                                )}
+
+                                {dockTab === "school" && (
+                                    <div className="rounded-2xl p-5 bg-white text-slate-900 space-y-3 shadow-xl border-t-4 border-[#F4C414]">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                                                {activeProfile.shortName} School Collection
+                                            </span>
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                                <CheckCircle2 className="w-3 h-3" /> Verified
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-500 font-semibold">Institutional Bursar Settlement</p>
+                                            <p className="text-base font-black text-slate-900">
+                                                {activeProfile.id === "nnmfb" ? "Nigerian Navy Command Secondary" : `${activeProfile.shortName} Partner Institution`}
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                            <div>
+                                                <p className="text-[9px] uppercase font-bold text-slate-400">Tuition Credit</p>
+                                                <p className="font-black text-slate-900">Instant Settlement</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] uppercase font-bold text-slate-400">Parent Receipt</p>
+                                                <p className="font-mono font-black text-primary">RCT-2026-084</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {dockTab === "ussd" && (
+                                    <div className="rounded-2xl p-5 bg-black border border-emerald-500/30 font-mono text-xs text-emerald-400 space-y-2 shadow-inner">
+                                        <div className="flex items-center justify-between text-[10px] text-slate-400 border-b border-slate-800 pb-2">
+                                            <span className="text-[#F4C414] font-bold">{activeProfile.shortName} OFFLINE USSD</span>
+                                            <span>{activeProfile.ussdCode}</span>
+                                        </div>
+                                        <p className="text-white text-[11px]">Welcome to {activeProfile.shortName}</p>
+                                        <div className="space-y-1 text-[11px] text-emerald-300">
+                                            <p>1. Check Account Balance</p>
+                                            <p>2. Instant Transfers &amp; Airtime</p>
+                                            <p>3. School Fees &amp; Bill Pay</p>
+                                            <p>4. Micro-Loan Quick Status</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Dock Footer Info */}
+                                <div className="flex items-center justify-between text-[11px] text-slate-300 pt-1">
+                                    <span className="inline-flex items-center gap-1.5 font-semibold">
+                                        <Smartphone className="w-3.5 h-3.5 text-[#F4C414]" />
+                                        iOS · Android · Web · {activeProfile.ussdCode}
+                                    </span>
+                                    <Link
+                                        href="/auth/login"
+                                        className="font-black text-[#F4C414] hover:underline inline-flex items-center gap-1"
+                                    >
+                                        Enter Portal <ArrowRight className="w-3 h-3" />
+                                    </Link>
                                 </div>
                             </div>
-
-                            {/* Floating Badge Top-right */}
-                            <div className="absolute -top-5 -right-3 sm:-right-6 z-20 bg-card/90 backdrop-blur-xl border border-border/60 rounded-2xl px-4 py-3 shadow-xl flex items-center gap-2.5">
-                                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                                <div className="leading-none">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">CBN Licensed</p>
-                                    <p className="text-[9px] font-black text-foreground mt-0.5">NDIC Insured</p>
-                                </div>
-                            </div>
-
-                            {/* Floating Stat Bottom-left */}
-                            <div className="absolute -bottom-5 -left-3 sm:-left-6 z-20 bg-primary rounded-2xl px-4 py-3 shadow-xl flex items-center gap-2.5">
-                                <TrendingUp className="w-4 h-4 text-primary-foreground shrink-0 animate-pulse" />
-                                <div className="leading-none">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-primary-foreground/70">Total Deposits</p>
-                                    <p className="text-[10px] font-black text-primary-foreground mt-0.5">₦8.4B+ Under Mgmt.</p>
-                                </div>
-                            </div>
-
-                            {/* Decorative floaters */}
-                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-accent/20 rounded-full blur-3xl -z-10 animate-bounce" style={{ animationDuration: "5s" }} />
-                            <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-primary/10 rounded-full blur-3xl -z-10" />
                         </div>
                     </div>
                 </div>
-
-                {/* ── Trust Badges Row ── */}
-                <div className={`mt-16 transition-all duration-700 delay-200 ${transitioning ? "opacity-0" : "opacity-100"}`}>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-5 pt-10 border-t border-foreground/5">
-                        {[
-                            { icon: <ShieldCheck className="w-5 h-5" />, label: "CBN\nLicensed" },
-                            { icon: <Building2 className="w-5 h-5" />, label: "NDIC\nInsured" },
-                            { icon: <Users2 className="w-5 h-5" />, label: "Digital Esusu\nCooperative" },
-                            { icon: <Landmark className="w-5 h-5" />, label: "PCI-DSS Card\nCompliant" },
-                        ].map((badge, i) => (
-                            <div key={i} className="flex items-center gap-3 group">
-                                <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-primary border border-foreground/10 shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                                    {badge.icon}
-                                </div>
-                                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest leading-tight whitespace-pre-line">
-                                    {badge.label}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Scroll Indicator ── */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30 animate-bounce">
-                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">Scroll</span>
-                <div className="w-[1px] h-8 bg-foreground" />
             </div>
         </section>
     );

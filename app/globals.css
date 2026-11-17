@@ -201,6 +201,40 @@
     --ring: 262 83% 68%;
   }
 
+  /* --- NAVAL PALETTE (NNMFB White-Label) --- */
+  /* Deep Naval Royal Blue (#070D59) + Naval Gold (#F4C414) */
+  [data-palette="navy"] {
+    --primary: 236 86% 20%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 47 80% 94%;
+    --secondary-foreground: 236 86% 20%;
+    --accent: 47 91% 52%;
+    --accent-foreground: 236 86% 12%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 236 22% 88%;
+    --input: 236 22% 88%;
+    --ring: 236 86% 20%;
+  }
+
+  [data-palette="navy"].dark {
+    --background: 236 58% 7%;
+    --card: 236 45% 11.5%;
+    --popover: 236 45% 11.5%;
+    --primary: 232 82% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 47 50% 18%;
+    --secondary-foreground: 47 92% 76%;
+    --accent: 47 91% 52%;
+    --accent-foreground: 236 86% 10%;
+    --muted: 236 38% 16%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 236 32% 18%;
+    --input: 236 32% 18%;
+    --ring: 47 91% 52%;
+  }
+
   .pattern-dots {
     background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
     background-size: 20px 20px;
@@ -264,36 +298,25 @@
 }
 
 :root {
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(240 5.3% 26.1%);
-  --sidebar-primary: hsl(240 5.9% 10%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(240 4.8% 95.9%);
-  --sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --sidebar-border: hsl(220 13% 91%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --sidebar: 0 0% 98%;
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 240 5.9% 10%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 240 4.8% 95.9%;
+  --sidebar-accent-foreground: 240 5.9% 10%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
 .dark {
-  --sidebar: hsl(240 5.9% 10%);
-  --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 3.7% 15.9%);
-  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
-}
-
-@theme inline {
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --sidebar: 223 49% 10%;
+  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-primary: 224.3 76.3% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 3.7% 15.9%;
+  --sidebar-accent-foreground: 240 4.8% 95.9%;
+  --sidebar-border: 215 28% 17%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
 @layer utilities {
@@ -310,5 +333,92 @@
     .marketing-scale {
       zoom: 0.90;
     }
+  }
+
+  /* --- PLATFORM WIDE RESPONSIVE SIDEPANELS --- */
+  @media (min-width: 1024px) {
+    .responsive-sidepanel {
+      position: sticky !important;
+      top: 5rem !important; /* top-20 (80px) to clear header */
+      max-height: calc(100vh - 120px) !important;
+      overflow-y: auto !important;
+      padding-bottom: 1.5rem !important;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    /* Legacy sidepanel fallback: hide container on mobile in favor of SidePanelWrapper */
+    .responsive-sidepanel {
+      display: none !important;
+    }
+
+    /* Seamlessly flatten active cards inside mobile bottom sheet modal */
+    .sidepanel-mobile-sheet-content > div,
+    .sidepanel-mobile-sheet-content .active-sidepanel-card {
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+    }
+    .sidepanel-mobile-sheet-content > div > div:first-child button:has(svg),
+    .sidepanel-mobile-sheet-content .active-sidepanel-card > div:first-child button:has(svg) {
+      display: none !important;
+    }
+  }
+}
+
+@keyframes slide-up-mobile {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* --- PRINT RULES FOR OFFLINE FORMS --- */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  /* Hide all wrappers, headers, sidebars, page footers, theme widgets, and overlay background */
+  body > *:not(.print-root),
+  header,
+  footer,
+  aside,
+  nav,
+  [role="dialog"] > *:not(.print-root),
+  .print-toolbar,
+  .theme-customizer {
+    display: none !important;
+  }
+  .print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  .printable-a4-form {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

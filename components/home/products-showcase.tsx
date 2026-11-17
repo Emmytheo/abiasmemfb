@@ -13,9 +13,11 @@ export function ProductsShowcase() {
     useEffect(() => {
         async function fetchProducts() {
             try {
-                // Fetch dynamic products from Payload CMS
-                const data = await api.getAllProductTypes();
-                // Filter active and prioritize some for the homepage
+                // Bounded client fetch so slow cold-starts never leave a blocking spinner
+                const data = await Promise.race([
+                    api.getAllProductTypes(),
+                    new Promise<ProductType[]>((resolve) => setTimeout(() => resolve([]), 3000)),
+                ]);
                 const activeProducts = data.filter(p => p.status === 'active').slice(0, 3);
                 setProducts(activeProducts);
             } catch (error) {

@@ -7,6 +7,7 @@ import { Globe2, Wallet, Building2 } from 'lucide-react'
 import { ServiceExecutionForm } from '@/components/service-execution-form'
 import { Service } from '@/lib/api/types'
 import { api } from '@/lib/api'
+import { useBankProfile } from '@/context/bank-profile-context'
 
 interface TransferTabsProps {
     services: Service[]
@@ -15,6 +16,7 @@ interface TransferTabsProps {
 export function TransferTabs({ services }: TransferTabsProps) {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { activeProfile } = useBankProfile()
     const pathname = useSearchParams().get('x-pathname') || '/pay/transfer' // Fallback for safety
 
     const tabParam = searchParams.get('tab') as string
@@ -38,7 +40,12 @@ export function TransferTabs({ services }: TransferTabsProps) {
                     const ben = await api.getBeneficiaryById(beneficiaryId)
                     if (ben) {
                         if (ben.is_international) setActiveTab('international')
-                        else if (ben.bank_code === 'abiasmemfb' || !ben.bank_code) setActiveTab('internal')
+                        else if (
+                            ben.bank_code === activeProfile.id ||
+                            ben.bank_code === activeProfile.internalBankCode ||
+                            ben.bank_code === 'abiasmemfb' ||
+                            !ben.bank_code
+                        ) setActiveTab('internal')
                         else setActiveTab('interbank')
                     }
                 } catch (e) {
@@ -64,7 +71,7 @@ export function TransferTabs({ services }: TransferTabsProps) {
             <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="internal" className="flex items-center gap-2">
                     <Wallet size={16} className="hidden sm:inline-block" />
-                    <span>ABIASMEMFB</span>
+                    <span>{activeProfile.shortName}</span>
                 </TabsTrigger>
                 <TabsTrigger value="interbank" className="flex items-center gap-2">
                     <Building2 size={16} className="hidden sm:inline-block" />

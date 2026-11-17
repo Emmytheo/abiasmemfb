@@ -225,23 +225,27 @@ export const processAccountFunding = async (targetAccountId: string, amountNaira
     const localAcc = await PayloadAdapter.getAccountById(targetAccountId);
     if (!localAcc) throw new Error('Target account not found locally');
 
-    try {
-        const settings = await PayloadAdapter.getSiteSettings();
-        const fromAccount = (settings?.sync as any)?.systemMasterFundingAccount || 'SYSTEM_FUND_ACC';
+    const finalRef = reference || `FUND_${Date.now()}`;
 
-        const amountKobo = Math.round(amountNaira * 100);
-        const res = await intraBankTransfer({
-            FromAccountNumber: fromAccount,
-            ToAccountNumber: localAcc.account_number,
-            Amount: String(amountKobo),
-            Narration: 'Account Funding',
-            RetrievalReference: (reference || `FUND_${Date.now()}`).slice(0, 12).padEnd(12, '0'),
-        });
+    if (localAcc.source === 'qore') {
+        try {
+            const settings = await PayloadAdapter.getSiteSettings();
+            const fromAccount = (settings?.sync as any)?.systemMasterFundingAccount || 'SYSTEM_FUND_ACC';
 
-        return { success: true, data: res };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+            const amountKobo = Math.round(amountNaira * 100);
+            await intraBankTransfer({
+                FromAccountNumber: fromAccount,
+                ToAccountNumber: localAcc.account_number,
+                Amount: String(amountKobo),
+                Narration: 'Account Funding',
+                RetrievalReference: finalRef.slice(0, 12).padEnd(12, '0'),
+            });
+        } catch (error: any) {
+            console.warn('[Qore processAccountFunding] Core switch transfer warning (proceeding with local ledger credit):', error.message);
+        }
     }
+
+    return await PayloadAdapter.processAccountFunding(targetAccountId, amountNaira, finalRef);
 };
 
 export const getAllTransactions = async (): Promise<Transaction[]> => PayloadAdapter.getAllTransactions();

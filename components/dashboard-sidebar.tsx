@@ -49,8 +49,23 @@ import { ThemeCustomizer } from "@/components/theme-customizer";
 import { Logo } from "@/components/ui/logo";
 import { NavUser } from "@/components/nav-user";
 import { ScopeSelector } from "@/components/scope-selector";
+import { useBankProfile } from "@/context/bank-profile-context";
+import type { ModuleKey } from "@/lib/banking/bank-profiles";
 
-const navGroups = [
+type AdminNavItem = {
+    title: string;
+    url: string;
+    icon: any;
+    moduleKey?: ModuleKey;
+};
+
+type AdminNavGroup = {
+    title: string;
+    moduleKey?: ModuleKey;
+    items: AdminNavItem[];
+};
+
+const navGroups: AdminNavGroup[] = [
     {
         title: "General",
         items: [
@@ -58,6 +73,11 @@ const navGroups = [
                 title: "Dashboard",
                 url: "/dashboard",
                 icon: LayoutDashboard,
+            },
+            {
+                title: "White-Label Profiles",
+                url: "/settings/bank-profiles",
+                icon: Building,
             },
             {
                 title: "Infrastructure & Sync",
@@ -108,21 +128,25 @@ const navGroups = [
                 title: "Esusu Cooperatives",
                 url: "/dashboard/esusu",
                 icon: Users,
+                moduleKey: "cooperativeEsusu",
             },
             {
                 title: "POS Partner Agency",
                 url: "/dashboard/agency",
                 icon: Landmark,
+                moduleKey: "agencyPos",
             },
             {
                 title: "Card Registry",
                 url: "/dashboard/cards",
                 icon: CreditCard,
+                moduleKey: "smartCards",
             },
             {
                 title: "Merchant Accounts",
                 url: "/dashboard/merchant",
                 icon: Briefcase,
+                moduleKey: "merchantApiAndPayroll",
             },
         ],
     },
@@ -173,6 +197,7 @@ const navGroups = [
     },
     {
         title: "Workflows & Automation",
+        moduleKey: "workflowEngine",
         items: [
             {
                 title: "Workflows",
@@ -234,6 +259,19 @@ interface DashboardSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function DashboardSidebar({ userName, userEmail, ...props }: DashboardSidebarProps) {
+    const { activeProfile } = useBankProfile();
+    const mods = activeProfile.enabledModules;
+
+    const gatedGroups = React.useMemo(() => {
+        return navGroups
+            .filter((group) => !group.moduleKey || mods[group.moduleKey])
+            .map((group) => ({
+                ...group,
+                items: group.items.filter((item) => !item.moduleKey || mods[item.moduleKey]),
+            }))
+            .filter((group) => group.items.length > 0);
+    }, [mods]);
+
     const sidebarUser = {
         name: userName || "Admin",
         email: userEmail || "",
@@ -250,7 +288,7 @@ export function DashboardSidebar({ userName, userEmail, ...props }: DashboardSid
                                 <Logo
                                     className="w-full"
                                     iconClassName="bg-sidebar-primary text-sidebar-primary-foreground size-8"
-                                    subtitle="Admin Portal"
+                                    subtitle={`${activeProfile.shortName} Admin`}
                                     subtitleClassName="text-primary/80 uppercase tracking-widest font-medium"
                                 />
                             </a>
@@ -283,7 +321,7 @@ export function DashboardSidebar({ userName, userEmail, ...props }: DashboardSid
                 </SidebarGroup>
             </SidebarHeader>
             <SidebarContent className="px-2 py-4">
-                <NavMain groups={navGroups} />
+                <NavMain groups={gatedGroups} />
             </SidebarContent>
             <SidebarFooter>
                 <div className="sm:hidden px-2 pb-2 flex justify-center">

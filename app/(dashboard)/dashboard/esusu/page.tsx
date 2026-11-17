@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { useBankProfile } from "@/context/bank-profile-context"
 
 interface Cooperative {
     id: string
@@ -54,6 +55,7 @@ interface EsusuMember {
 }
 
 export default function EsusuAdminPage() {
+    const { activeProfile } = useBankProfile()
     const [cooperatives, setCooperatives] = React.useState<Cooperative[]>([])
     const [activeCycles, setActiveCycles] = React.useState<EsusuCycle[]>([])
     const [cycleMembers, setCycleMembers] = React.useState<Record<string, EsusuMember[]>>({})
@@ -172,9 +174,9 @@ export default function EsusuAdminPage() {
                 // Rich fallbacks if empty
                 if (fetchedCooperatives.length === 0) {
                     fetchedCooperatives = [
-                        { id: 'coop_1', name: 'Abia Agro-Traders Association', description: 'Empowering small-scale local farmers across Aba North.', status: 'active', union_leader: 'John Nwosu' },
-                        { id: 'coop_2', name: 'Aba Leather & Shoe Makers Union', description: 'Funding machinery and bulk raw material procurement.', status: 'active', union_leader: 'Chidi Ebere' },
-                        { id: 'coop_3', name: 'Ariaria Market General Traders', description: 'Retailers cooperative group for quick microfinance access.', status: 'pending', union_leader: 'Ngozi Okoye' }
+                        { id: 'coop_1', name: activeProfile.demoCoopName, description: `Verified cooperative guild and transport/enterprise group across ${activeProfile.regionLabel}.`, status: 'active', union_leader: 'John Nwosu' },
+                        { id: 'coop_2', name: `${activeProfile.shortName} Artisans & Trade Union`, description: 'Funding machinery and bulk raw material procurement.', status: 'active', union_leader: 'Chidi Ebere' },
+                        { id: 'coop_3', name: 'Regional Market General Traders', description: 'Retailers cooperative group for quick microfinance access.', status: 'pending', union_leader: 'Ngozi Okoye' }
                     ]
                 }
                 if (fetchedCycles.length === 0) {
@@ -787,7 +789,7 @@ export default function EsusuAdminPage() {
                                         required
                                         value={newCoopName}
                                         onChange={(e) => setNewCoopName(e.target.value)}
-                                        placeholder="e.g. Abia Agro-Traders Association"
+                                        placeholder={`e.g. ${activeProfile.demoCoopName}`}
                                         className="w-full h-11 px-4 rounded-xl border bg-muted/30 text-sm focus:outline-none focus:border-primary transition-colors"
                                     />
                                 </div>

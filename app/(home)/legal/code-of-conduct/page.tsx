@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Plus, Minus, Check } from "lucide-react";
 import { LegalSeeAlso } from "@/components/legal/see-also";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 export default function CodeOfConduct() {
+    const { activeProfile } = useBankProfile();
     const [openIndex, setOpenIndex] = useState<number | null>(null);
 
     const toggleAccordion = (index: number) => {
@@ -29,7 +31,7 @@ export default function CodeOfConduct() {
                         Third-Party Code of Conduct
                     </h1>
                     <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed font-light">
-                        AbiaSMEMFB is committed to working with third-party vendors to promote responsible practices in general and throughout our operations.
+                        {activeProfile.shortName} is committed to working with third-party vendors to promote responsible, ethical practices across all institutional operations.
                     </p>
                 </div>
             </header>
@@ -39,19 +41,19 @@ export default function CodeOfConduct() {
                     <h2 className="font-display text-3xl font-bold text-primary dark:text-white mb-8 text-center">Code of Conduct</h2>
                     <div className="prose prose-lg prose-slate dark:prose-invert max-w-none">
                         <p className="mb-6">
-                            AbiaSMEMFB is committed to conducting business with the utmost level of integrity, transparency, and compliance with legal, ethical and regulatory standards. Our reputation and success as an organization is built upon this foundation as we strive to maintain our position as a leading organization both locally and internationally.
+                            {activeProfile.legalName} ({activeProfile.shortName}) conducts business with integrity, transparency, and strict adherence to regulatory and ethical standards.
                         </p>
                         <p className="mb-6">
-                            AbiaSMEMFB is committed to working with third-party vendors to promote responsible practices in general and throughout our operations. The Bank aims to ensure that all third-party vendors/ suppliers acknowledge its values and share its commitment to conduct business in an ethical, legal and socially responsible manner.
+                            {activeProfile.shortName} ensures that all third-party vendors and suppliers acknowledge these governance standards and maintain ethical business conduct.
                         </p>
                         <div className="bg-blue-50 dark:bg-primary/30 border-l-4 border-accent p-6 my-8 rounded-r-lg">
                             <p className="mb-2 font-medium text-primary dark:text-white">Whistleblowing Hotline</p>
                             <p className="text-sm">
-                                For reporting misconduct anonymously, call the hotline <strong className="text-primary dark:text-accent">0812716677, 09070366415</strong> or send an email to <a className="text-accent hover:underline" href="mailto:whistleblowing@AbiaSMEMFB.com">whistleblowing@AbiaSMEMFB.com</a>.
+                                For reporting misconduct anonymously, contact <strong className="text-primary dark:text-accent">{activeProfile.supportPhones[0]}</strong> or email <a className="text-accent hover:underline" href={`mailto:${activeProfile.whistleblowerEmail}`}>{activeProfile.whistleblowerEmail}</a>.
                             </p>
                         </div>
                         <p>
-                            This Code of Conduct applies to all entities with whom AbiaSMEMFB does business with; these include suppliers, contractors, sub-contractors, consultants, service providers, agents, sub-agent or sub-representative and joint venture partners but for easy reference will be interchangeably called "Third Party Vendors", Third Parties" or "Suppliers" in this document.
+                            This Code of Conduct applies to all entities conducting business with {activeProfile.legalName}, including suppliers, contractors, consultants, agents, and sub-representatives.
                         </p>
                     </div>
                 </div>

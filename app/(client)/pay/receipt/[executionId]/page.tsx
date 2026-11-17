@@ -6,6 +6,7 @@ import { CheckCircle2, XCircle, Clock, Loader2, Share2, Printer, ArrowLeft, Copy
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 interface ReceiptPageProps {
     params: Promise<{ executionId: string }>;
@@ -113,8 +114,10 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
     const isFailed = execution?.status === "FAILED";
     const isPending = !execution || execution.status === "PENDING" || execution.status === "RUNNING";
 
+    const { activeProfile } = useBankProfile();
+
     const handleShare = async () => {
-        const text = `✅ Transaction Confirmed\nReference: ${reference}\nAmount: ${amount ? `₦${Number(amount).toLocaleString()}` : "N/A"}\nDate: ${execution?.completedAt ? new Date(execution.completedAt).toLocaleString() : new Date().toLocaleString()}\n\nPowered by AbiaSMEMFB`;
+        const text = `✅ Transaction Confirmed\nReference: ${reference}\nAmount: ${amount ? `₦${Number(amount).toLocaleString()}` : "N/A"}\nDate: ${execution?.completedAt ? new Date(execution.completedAt).toLocaleString() : new Date().toLocaleString()}\n\nPowered by ${activeProfile.shortName}`;
         try {
             await navigator.clipboard.writeText(text);
             toast.success("Receipt copied to clipboard!");
@@ -149,7 +152,7 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
                             {/* Bank branding */}
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-bold">Abia Microfinance Bank</p>
+                                    <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-bold">{activeProfile.legalName}</p>
                                     <p className="text-xs text-muted-foreground">Licensed by CBN</p>
                                 </div>
                                 <BadgeCheck className="h-8 w-8 text-primary" />

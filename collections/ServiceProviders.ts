@@ -141,6 +141,15 @@ export const ServiceProviders: CollectionConfig = {
             type: 'json',
             admin: { description: 'Provider-specific config (e.g. Twilio accountSid, region).' },
         },
+        {
+            name: 'cooperative',
+            type: 'relationship',
+            relationTo: 'cooperatives',
+            admin: {
+                position: 'sidebar',
+                description: 'Scope this provider to a specific cooperative union. Leave empty for system-wide/global.',
+            }
+        },
         // Server-written health fields
         {
             name: 'lastHealthStatus',

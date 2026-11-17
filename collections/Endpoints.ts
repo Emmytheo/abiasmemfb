@@ -119,6 +119,15 @@ export const Endpoints: CollectionConfig = {
             name: 'responseSchema',
             type: 'json',
             admin: { description: 'A JSON mapping/schema telling the Workflow Engine how to extract output values from the raw API response.' }
+        },
+        {
+            name: 'cooperative',
+            type: 'relationship',
+            relationTo: 'cooperatives',
+            admin: {
+                position: 'sidebar',
+                description: 'Scope this endpoint to a specific cooperative union. Leave empty for system-wide/global.',
+            }
         }
     ],
     timestamps: true,

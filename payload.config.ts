@@ -134,6 +134,8 @@ export default buildConfig({
         pool: {
             connectionString: process.env.DATABASE_URI || '',
         },
+        // Disable auto-push: tables are managed via Supabase migrations.
+        push: false,
     }),
     plugins: [
         // SEO Plugin: adds meta title, description, image, and og preview to Pages and Posts

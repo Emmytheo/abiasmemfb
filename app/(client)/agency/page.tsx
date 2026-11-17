@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { useBankProfile } from "@/context/bank-profile-context"
 
 interface Terminal {
     id: string
@@ -37,6 +38,7 @@ interface CommissionReport {
 }
 
 export default function AgencyClientPage() {
+    const { activeProfile } = useBankProfile()
     const [terminals, setTerminals] = React.useState<Terminal[]>([])
     const [commissions, setCommissions] = React.useState<CommissionReport>({
         total_commission: 0,
@@ -416,7 +418,7 @@ export default function AgencyClientPage() {
                             <div className="absolute inset-0 bg-blue-500/5 pointer-events-none" />
 
                             <div className="flex justify-between items-center text-[10px] text-blue-500 font-bold shrink-0">
-                                <span>ABIA MFB POS</span>
+                                <span>{activeProfile.posBrandName}</span>
                                 <span>ONLINE 📶</span>
                             </div>
 

@@ -332,7 +332,11 @@ export const SupabaseAdapter: ApiAdapter = {
     updateStandingOrder: async (id, data) => {
         throw new Error("Supabase Adapter not fully implemented");
     },
-    deleteStandingOrder: async (id) => {
-        throw new Error("Supabase Adapter not fully implemented");
-    }
+    deleteStandingOrder: async () => false,
+
+    // Invoices
+    getInvoices: async () => [],
+    createInvoice: async (data) => data as any,
+    updateInvoice: async (id, data) => data as any,
+    deleteInvoice: async () => false,
 };

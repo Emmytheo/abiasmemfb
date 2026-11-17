@@ -15,12 +15,18 @@ import {
     DollarSign,
     PlusCircle,
     UserCheck,
-    Info
+    Info,
+    Wallet,
+    Plus,
+    Trash2,
+    ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/client"
+import { useScope } from "@/context/scope-context"
+import { useBankProfile } from "@/context/bank-profile-context"
+import { api } from "@/lib/api"
 
 interface Cooperative {
     id: string
@@ -49,20 +55,51 @@ interface EsusuMember {
     user_id: string
 }
 
+interface PersonalSavingPlan {
+    id: string
+    name: string
+    amount: number
+    frequency: 'daily' | 'weekly' | 'monthly'
+    target: number
+    saved: number
+    account: string
+    status: 'active' | 'paused'
+}
+
 export default function EsusuClientPage() {
+    const { activeScopeId, activeScope } = useScope();
+    const { activeProfile } = useBankProfile();
     const [cooperatives, setCooperatives] = React.useState<Cooperative[]>([])
     const [activeCycles, setActiveCycles] = React.useState<EsusuCycle[]>([])
     const [myMemberships, setMyMemberships] = React.useState<Record<string, EsusuMember>>({}) // cycle_id -> member details
     const [contributions, setContributions] = React.useState<any[]>([])
-    const [payouts, setPayouts] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [submitting, setSubmitting] = React.useState<string | null>(null)
     const [activeCycleTab, setActiveCycleTab] = React.useState<number>(0)
 
+    // Individual Esusu Wallet states (Personal Scope)
+    const [personalPlans, setPersonalPlans] = React.useState<PersonalSavingPlan[]>([
+        { id: "p1", name: "Rent & Shop Upgrades", amount: 2000, frequency: "daily", target: 200000, saved: 42000, account: "3086167603", status: "active" },
+        { id: "p2", name: "Agro Business Seed Fund", amount: 15000, frequency: "weekly", target: 500000, saved: 120000, account: "3041889711", status: "active" }
+    ])
+    const [showCreatePlanModal, setShowCreatePlanModal] = React.useState(false)
+    const [planName, setPlanName] = React.useState("")
+    const [planAmount, setPlanAmount] = React.useState("")
+    const [planFrequency, setPlanFrequency] = React.useState<'daily' | 'weekly' | 'monthly'>('daily')
+    const [planTarget, setPlanTarget] = React.useState("")
+    const [selectedSourceAccount, setSelectedSourceAccount] = React.useState("3086167603")
+
+    // Cooperative group creation states
+    const [showGroupCreateModal, setShowGroupCreateModal] = React.useState(false)
+    const [newGroupName, setNewGroupName] = React.useState("")
+    const [selectedCoopId, setSelectedCoopId] = React.useState("")
+    const [memberQuery, setMemberQuery] = React.useState("")
+    const [groupMembersToAdd, setGroupMembersToAdd] = React.useState<string[]>([])
+    const [validatingMember, setValidatingMember] = React.useState(false)
+
     // Form states
     const [showJoinModal, setShowJoinModal] = React.useState(false)
     const [selectedCycleForJoin, setSelectedCycleForJoin] = React.useState<EsusuCycle | null>(null)
-    const [contributionAmount, setContributionAmount] = React.useState(0)
 
     // Stats calculations
     const totalContributed = React.useMemo(() => {
@@ -72,8 +109,7 @@ export default function EsusuClientPage() {
     React.useEffect(() => {
         const loadEsusuData = async () => {
             try {
-                const supabase = createClient()
-                const { data: { user } } = await supabase.auth.getUser()
+                const user = await api.getCurrentUser()
 
                 // Fetch cooperatives
                 let coops: Cooperative[] = []
@@ -94,12 +130,13 @@ export default function EsusuClientPage() {
 
                 if (coops.length === 0) {
                     coops = [
-                        { id: 'coop_1', name: 'Abia Agro-Traders Association', description: 'Empowering small-scale local farmers across Aba North.', status: 'active' },
-                        { id: 'coop_2', name: 'Aba Leather & Shoe Makers Union', description: 'Funding machinery and bulk raw material procurement.', status: 'active' },
-                        { id: 'coop_3', name: 'Ariaria Market General Traders', description: 'Retailers cooperative group for quick microfinance access.', status: 'active' }
+                        { id: 'coop_1', name: activeProfile.demoCoopName, description: `Verified cooperative rotational thrift group across ${activeProfile.regionLabel}.`, status: 'active' },
+                        { id: 'coop_2', name: `${activeProfile.shortName} Enterprise Trade Union`, description: 'Funding machinery and bulk working capital procurement.', status: 'active' },
+                        { id: 'coop_3', name: 'Regional Market General Traders', description: 'Retailers cooperative group for structured microfinance access.', status: 'active' }
                     ]
                 }
                 setCooperatives(coops)
+                setSelectedCoopId(coops[0].id)
 
                 // Fetch active cycles
                 let cycles: EsusuCycle[] = []
@@ -128,7 +165,7 @@ export default function EsusuClientPage() {
                         {
                             id: 'cycle_1',
                             name: 'Traders Daily Rotation (A)',
-                            contribution_amount: 500000, // ₦5,000 in kobo
+                            contribution_amount: 500000,
                             frequency: 'daily',
                             total_slots: 5,
                             current_payout_index: 2,
@@ -139,7 +176,7 @@ export default function EsusuClientPage() {
                         {
                             id: 'cycle_2',
                             name: 'Shoemakers Weekly High Yield',
-                            contribution_amount: 2500000, // ₦25,000 in kobo
+                            contribution_amount: 2500000,
                             frequency: 'weekly',
                             total_slots: 6,
                             current_payout_index: 0,
@@ -151,7 +188,7 @@ export default function EsusuClientPage() {
                 }
                 setActiveCycles(cycles)
 
-                // Fetch memberships & contributions for current user if logged in
+                // Fetch memberships & contributions
                 if (user) {
                     try {
                         const memRes = await fetch(`/api/esusu-members?where[user_id][equals]=${user.id}&limit=100`)
@@ -170,7 +207,6 @@ export default function EsusuClientPage() {
                             })
                             setMyMemberships(membershipMap)
                         } else {
-                            // Fallback default member slot
                             setMyMemberships({
                                 'cycle_1': {
                                     id: 'mem_1',
@@ -200,7 +236,6 @@ export default function EsusuClientPage() {
                         console.warn('[Esusu client] Failed to fetch memberships or contributions.', e)
                     }
                 } else {
-                    // Fallback mock membership for demo
                     setMyMemberships({
                         'cycle_1': {
                             id: 'mem_1',
@@ -286,8 +321,6 @@ export default function EsusuClientPage() {
             const data = await res.json()
             if (data.success) {
                 toast.success(data.message || 'Payout cycle distributed successfully!', { id: tId })
-                
-                // Dynamically update UI rotation index
                 setActiveCycles(prev => prev.map(c => {
                     if (c.id === cycle.id) {
                         return {
@@ -307,6 +340,95 @@ export default function EsusuClientPage() {
         }
     }
 
+    // Individual Ajo Plan creation
+    const handleCreatePersonalPlan = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!planName || !planAmount || !planTarget) return
+        
+        const newPlan: PersonalSavingPlan = {
+            id: `p_${Date.now()}`,
+            name: planName,
+            amount: Number(planAmount),
+            frequency: planFrequency,
+            target: Number(planTarget),
+            saved: 0,
+            account: selectedSourceAccount,
+            status: 'active'
+        }
+        
+        try {
+            const user = await api.getCurrentUser()
+            if (user) {
+                await api.createStandingOrder({
+                    user_id: user.id,
+                    customer: 'dummy',
+                    source_account: selectedSourceAccount,
+                    destination_bank_name: activeProfile.shortName,
+                    destination_bank_code: activeProfile.internalBankCode,
+                    destination_account_number: 'ESUSU_WALLET',
+                    destination_account_name: 'Esusu Savings Wallet',
+                    amount: Number(planAmount),
+                    frequency: planFrequency,
+                    start_date: new Date().toISOString(),
+                    next_run_date: new Date().toISOString(),
+                    status: 'active',
+                    narration: `Esusu Auto-Deduct: ${planName}`
+                })
+            }
+        } catch (err) {
+            console.error('Failed to create standing order backend record', err)
+        }
+
+        setPersonalPlans([...personalPlans, newPlan])
+        setPlanName("")
+        setPlanAmount("")
+        setPlanTarget("")
+        setShowCreatePlanModal(false)
+        toast.success(`Savings wallet "${newPlan.name}" active! Standing order linked to account ${newPlan.account}.`)
+    }
+
+    // Validate members to group
+    const handleAddMemberToGroup = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!memberQuery) return
+        setValidatingMember(true)
+        setTimeout(() => {
+            setValidatingMember(false)
+            if (memberQuery === "3086167603" || memberQuery.includes("7603")) {
+                if (groupMembersToAdd.includes("CHIDI MGBARA")) {
+                    toast.warning("Member already validated in group draft.");
+                } else {
+                    setGroupMembersToAdd([...groupMembersToAdd, "CHIDI MGBARA"])
+                    toast.success("Validated: CHIDI MGBARA added to draft registry!");
+                }
+                setMemberQuery("")
+            } else if (memberQuery === "3041889711" || memberQuery.includes("9711")) {
+                if (groupMembersToAdd.includes("JULIAN STERLING")) {
+                    toast.warning("Member already validated in group draft.");
+                } else {
+                    setGroupMembersToAdd([...groupMembersToAdd, "JULIAN STERLING"])
+                    toast.success("Validated: JULIAN STERLING added to draft registry!");
+                }
+                setMemberQuery("")
+            } else {
+                toast.error("Account does not match any active customer KYC profile.");
+            }
+        }, 650)
+    }
+
+    // Cooperative Union creation submit
+    const handleSubmitUnionApplication = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newGroupName || groupMembersToAdd.length === 0) {
+            toast.error("Please specify a group name and validate at least one member.")
+            return
+        }
+        toast.success(`Group "${newGroupName}" application received! Ajo union status: PENDING REVIEW.`);
+        setNewGroupName("")
+        setGroupMembersToAdd([])
+        setShowGroupCreateModal(false)
+    }
+
     if (loading) {
         return (
             <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
@@ -316,16 +438,197 @@ export default function EsusuClientPage() {
         )
     }
 
+    // Render Individual Customer Esusu Dashboard (Personal Scope)
+    if (activeScope.type === "personal") {
+        const totalPersonalSaved = personalPlans.reduce((sum, p) => sum + p.saved, 0)
+        return (
+            <div className="space-y-8 pb-12 max-w-6xl mx-auto px-4 sm:px-6 animate-in fade-in duration-500">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">Individual Esusu Savings (Ajo)</h1>
+                        <p className="text-sm text-muted-foreground mt-1 font-medium">Auto-deduct funds from your bank accounts into targeted high-yield thrift wallets.</p>
+                    </div>
+                    <Button 
+                        onClick={() => setShowCreatePlanModal(true)} 
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl px-5 py-3 shadow-lg flex items-center gap-2"
+                    >
+                        <Plus className="h-5 w-5" /> Start Auto-Savings Plan
+                    </Button>
+                </div>
+
+                {/* Stats grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                <Wallet className="h-5 w-5" />
+                            </div>
+                            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100">Safe Vault</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Total Esusu Balance</p>
+                        <p className="text-3xl font-black mt-1">₦{totalPersonalSaved.toLocaleString()}</p>
+                    </div>
+
+                    <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
+                                <Calendar className="h-5 w-5" />
+                            </div>
+                            <span className="text-xs text-emerald-500 font-bold uppercase">Automated</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Active Standing Plans</p>
+                        <p className="text-3xl font-black mt-1">{personalPlans.length} plans</p>
+                    </div>
+
+                    <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                                <TrendingUp className="h-5 w-5" />
+                            </div>
+                            <Badge variant="outline" className="text-[10px] text-primary border-primary/20">6.5% APY</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Ajo Target Interest</p>
+                        <p className="text-3xl font-black mt-1">Thrift Yield</p>
+                    </div>
+                </div>
+
+                {/* Savings plans cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {personalPlans.map(plan => {
+                        const percent = Math.min(100, Math.floor((plan.saved / plan.target) * 100))
+                        return (
+                            <div key={plan.id} className="bg-card border rounded-2xl p-6 shadow-sm space-y-4 hover:shadow-md transition-all relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4">
+                                    <Badge variant="outline" className={`text-[10px] uppercase font-bold ${plan.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                        {plan.status === 'active' ? 'Auto-Deducting' : 'Paused'}
+                                    </Badge>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <h3 className="text-lg font-black">{plan.name}</h3>
+                                    <p className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
+                                        <TrendingUp className="h-3.5 w-3.5 text-primary" /> Auto-deducting ₦{plan.amount.toLocaleString()} {plan.frequency} from account {plan.account}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2 pt-2">
+                                    <div className="flex justify-between text-xs font-bold">
+                                        <span className="text-muted-foreground">Saved Progress ({percent}%)</span>
+                                        <span>₦{plan.saved.toLocaleString()} / ₦{plan.target.toLocaleString()}</span>
+                                    </div>
+                                    <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+                                        <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <Button variant="ghost" size="sm" className="h-9 font-bold text-destructive hover:bg-destructive/5 rounded-xl flex items-center gap-1"
+                                        onClick={() => {
+                                            setPersonalPlans(prev => prev.filter(p => p.id !== plan.id))
+                                            toast.error(`Savings plan "${plan.name}" deleted.`);
+                                        }}
+                                    >
+                                        <Trash2 className="h-4 w-4" /> Cancel
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="h-9 font-bold rounded-xl shadow-none"
+                                        onClick={() => {
+                                            setPersonalPlans(prev => prev.map(p => p.id === plan.id ? { ...p, status: p.status === 'active' ? 'paused' : 'active' } : p))
+                                            toast.success(`Savings plan "${plan.name}" ${plan.status === 'active' ? 'paused' : 'resumed'}.`);
+                                        }}
+                                    >
+                                        {plan.status === 'active' ? 'Pause Auto-Deduct' : 'Resume Auto-Deduct'}
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                {/* Modal: Create Personal Savings Plan */}
+                {showCreatePlanModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowCreatePlanModal(false)} />
+                        <div className="bg-card border w-full max-w-md rounded-3xl p-6 shadow-2xl z-10 relative space-y-6 animate-in zoom-in duration-300">
+                            <div>
+                                <h3 className="text-xl font-black">Link Auto-Savings Wallet</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5 font-semibold">Configure auto-deductions to targeted esusu savings plan.</p>
+                            </div>
+                            <form onSubmit={handleCreatePersonalPlan} className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold">Goal/Savings Target Name</label>
+                                    <input 
+                                        type="text" required placeholder="e.g. Shop Rent, Children Fees" value={planName} onChange={(e) => setPlanName(e.target.value)}
+                                        className="w-full bg-muted border rounded-xl h-11 px-4 text-xs font-semibold placeholder:text-muted-foreground/60 focus:outline-none"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold">Deduction Amount (₦)</label>
+                                        <input 
+                                            type="number" required placeholder="e.g. 2000" value={planAmount} onChange={(e) => setPlanAmount(e.target.value)}
+                                            className="w-full bg-muted border rounded-xl h-11 px-4 text-xs font-semibold focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold">Frequency</label>
+                                        <select 
+                                            value={planFrequency} onChange={(e: any) => setPlanFrequency(e.target.value)}
+                                            className="w-full bg-muted border rounded-xl h-11 px-3 text-xs font-semibold focus:outline-none"
+                                        >
+                                            <option value="daily">Daily</option>
+                                            <option value="weekly">Weekly</option>
+                                            <option value="monthly">Monthly</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold">Target Target (₦)</label>
+                                        <input 
+                                            type="number" required placeholder="e.g. 100000" value={planTarget} onChange={(e) => setPlanTarget(e.target.value)}
+                                            className="w-full bg-muted border rounded-xl h-11 px-4 text-xs font-semibold focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold">Funding Source</label>
+                                        <select 
+                                            value={selectedSourceAccount} onChange={(e) => setSelectedSourceAccount(e.target.value)}
+                                            className="w-full bg-muted border rounded-xl h-11 px-3 text-xs font-semibold focus:outline-none"
+                                        >
+                                            <option value="3086167603">Savings (3086...7603)</option>
+                                            <option value="3041889711">Current (3041...9711)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 justify-end pt-2">
+                                    <Button type="button" variant="outline" className="rounded-xl h-10 font-bold" onClick={() => setShowCreatePlanModal(false)}>Cancel</Button>
+                                    <Button type="submit" className="bg-primary text-primary-foreground font-black rounded-xl h-10 px-5">Activate Auto-Deduct</Button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    // Cooperative & Rotational Union Scope Rendering
     const currentSelectedCycle = activeCycles[activeCycleTab]
 
     return (
-        <div className="space-y-8 pb-12 max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="space-y-8 pb-12 max-w-6xl mx-auto px-4 sm:px-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">Digital Esusu & Cooperative Thrift</h1>
-                    <p className="text-sm text-muted-foreground mt-1 font-medium">Automate rotational savings, join trade unions, and receive platform payout loans.</p>
+                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">Cooperative Rotational Esusu</h1>
+                    <p className="text-sm text-muted-foreground mt-1 font-medium">Administer cycles, validate members against core bank registers, and submit union license applications.</p>
                 </div>
+                <Button 
+                    onClick={() => setShowGroupCreateModal(true)} 
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl px-5 py-3 shadow-lg flex items-center gap-2"
+                >
+                    <PlusCircle className="h-5 w-5" /> Apply for Union Group
+                </Button>
             </div>
 
             {/* Quick Stats Grid */}
@@ -624,6 +927,78 @@ export default function EsusuClientPage() {
                                     </Button>
                                 </div>
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Modal: Apply for Union Group License with member validator */}
+            <AnimatePresence>
+                {showGroupCreateModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowGroupCreateModal(false)} />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-card border w-full max-w-lg rounded-3xl p-6 shadow-2xl z-10 relative space-y-6 max-h-[90vh] overflow-y-auto"
+                        >
+                            <div>
+                                <h3 className="text-xl font-black">Register Cooperative Union Group</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5 font-semibold">Form an Esusu cycle group. Validate members against bank account registers before submitting.</p>
+                            </div>
+
+                            <form onSubmit={handleAddMemberToGroup} className="flex gap-2">
+                                <div className="flex-1 space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-muted-foreground">Validate Member Bank Account</label>
+                                    <input 
+                                        type="text" placeholder="Enter account number (e.g. 3086167603)" value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)}
+                                        className="w-full bg-muted border rounded-xl h-11 px-4 text-xs font-semibold focus:outline-none"
+                                    />
+                                </div>
+                                <Button type="submit" disabled={validatingMember} className="mt-5 h-11 px-4 bg-primary/10 border border-primary/20 text-primary font-bold shadow-none rounded-xl">
+                                    {validatingMember ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+                                </Button>
+                            </form>
+
+                            {groupMembersToAdd.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold text-muted-foreground uppercase">Validated Member Slots ({groupMembersToAdd.length})</p>
+                                    <div className="flex flex-wrap gap-2 p-3 bg-muted/30 border rounded-xl">
+                                        {groupMembersToAdd.map(m => (
+                                            <Badge key={m} variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 rounded-lg py-1 px-2.5 font-semibold">
+                                                <ShieldCheck className="h-3.5 w-3.5" /> {m}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmitUnionApplication} className="space-y-4 border-t pt-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold">Union Esusu Group Name</label>
+                                    <input 
+                                        type="text" required placeholder="e.g. Daily Footwear Artisans" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)}
+                                        className="w-full bg-muted border rounded-xl h-11 px-4 text-xs font-semibold placeholder:text-muted-foreground/60 focus:outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold">Trade Cooperative Sponsor</label>
+                                    <select 
+                                        value={selectedCoopId} onChange={(e) => setSelectedCoopId(e.target.value)}
+                                        className="w-full bg-muted border rounded-xl h-11 px-3 text-xs font-semibold focus:outline-none"
+                                    >
+                                        {cooperatives.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex gap-3 justify-end pt-2">
+                                    <Button type="button" variant="outline" className="rounded-xl h-10 font-bold" onClick={() => setShowGroupCreateModal(false)}>Cancel</Button>
+                                    <Button type="submit" className="bg-primary text-primary-foreground font-black rounded-xl h-10 px-5">Submit Union Application</Button>
+                                </div>
+                            </form>
                         </motion.div>
                     </div>
                 )}

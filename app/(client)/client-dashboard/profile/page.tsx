@@ -12,7 +12,9 @@ import {
     Save, 
     RefreshCw,
     Info,
-    AlertTriangle
+    AlertTriangle,
+    Briefcase,
+    Building
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,21 +26,15 @@ import { toast } from "sonner";
 import { api, Customer, User as AuthUser } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { z } from "zod";
-
-const profileSchema = z.object({
-    firstName: z.string().min(2, "First name is too short"),
-    lastName: z.string().min(2, "Last name is too short"),
-    email: z.string().email("Invalid email address"),
-    phone_number: z.string().min(10, "Invalid phone number"),
-    address: z.string().optional().nullable(),
-});
+import { useScope } from "@/context/scope-context";
 
 export default function ClientProfilePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [customer, setCustomer] = useState<Customer | null>(null);
-    const [formData, setFormData] = useState<Partial<Customer>>({});
-    const [initialData, setInitialData] = useState<Partial<Customer>>({});
+    const [formData, setFormData] = useState<any>({});
+    const [initialData, setInitialData] = useState<any>({});
+    const { activeScopeId, activeScope } = useScope();
 
     useEffect(() => {
         async function loadProfile() {
@@ -47,7 +43,6 @@ export default function ClientProfilePage() {
                 const { data: { user: supaUser } } = await supabase.auth.getUser();
                 if (!supaUser) return;
 
-                // Lookup by email to bridge Supabase -> Payload Customer
                 const allCustomers = await api.getAllCustomers();
                 const currentCust = allCustomers.find(c => 
                     c.email === supaUser.email || c.supabase_id === supaUser.id
@@ -55,12 +50,18 @@ export default function ClientProfilePage() {
 
                 if (currentCust) {
                     setCustomer(currentCust);
+                    const meta = currentCust.metadata || {};
                     const initial = {
                         firstName: currentCust.firstName,
                         lastName: currentCust.lastName,
                         email: currentCust.email,
-                        phone_number: currentCust.phone_number,
-                        address: currentCust.address,
+                        phone_number: currentCust.phone_number || "",
+                        address: currentCust.address || "",
+                        companyName: meta.companyName || "",
+                        rcNumber: meta.rcNumber || "",
+                        taxId: meta.taxId || "",
+                        unionName: meta.unionName || "",
+                        registrationDate: meta.registrationDate || "",
                     };
                     setFormData(initial);
                     setInitialData(initial);
@@ -82,10 +83,15 @@ export default function ClientProfilePage() {
         e.preventDefault();
         if (!customer) return;
 
-        const validation = profileSchema.safeParse(formData);
-        if (!validation.success) {
-            toast.error(validation.error.issues[0]?.message || "Invalid form data");
-            return;
+        // Basic validation
+        if (activeScope.type === 'business' && (!formData.companyName || formData.companyName.length < 2)) {
+            return toast.error("Company Name is too short");
+        }
+        if (activeScope.type === 'coop' && (!formData.unionName || formData.unionName.length < 2)) {
+            return toast.error("Union Name is too short");
+        }
+        if (activeScope.type === 'personal' && (!formData.firstName || formData.firstName.length < 2)) {
+            return toast.error("First Name is too short");
         }
 
         if (isProtectedFieldChanged) {
@@ -96,7 +102,24 @@ export default function ClientProfilePage() {
 
         setIsSaving(true);
         try {
-            const updated = await api.updateCustomer(customer.id, formData);
+            // Update customer payload
+            const payload: Partial<Customer> = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                phone_number: formData.phone_number,
+                address: formData.address,
+                metadata: {
+                    ...(customer.metadata || {}),
+                    companyName: formData.companyName,
+                    rcNumber: formData.rcNumber,
+                    taxId: formData.taxId,
+                    unionName: formData.unionName,
+                    registrationDate: formData.registrationDate,
+                }
+            };
+
+            const updated = await api.updateCustomer(customer.id, payload);
             if (updated) {
                 setCustomer(updated);
                 setInitialData(formData);
@@ -130,12 +153,21 @@ export default function ClientProfilePage() {
     }
 
     return (
-        <div className="mx-auto  p-2 md:p-4 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="mx-auto p-2 md:p-4 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <header>
-                <p className="text-xs font-bold uppercase tracking-widest text-primary/70 mb-1">Account Management</p>
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-1">Profile Profile</h1>
+                <div className="flex items-center gap-3 mb-1">
+                    <p className="text-xs font-bold uppercase tracking-widest text-primary/70">
+                        {activeScope.type === 'business' ? 'Corporate Management' : activeScope.type === 'coop' ? 'Union Management' : 'Account Management'}
+                    </p>
+                    <Badge variant="outline" className="uppercase text-[10px] tracking-widest">{activeScope.type} Scope</Badge>
+                </div>
+                <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-1">
+                    {activeScope.type === 'business' ? 'Business Profile' : activeScope.type === 'coop' ? 'Cooperative Profile' : 'Identity Profile'}
+                </h1>
                 <p className="text-muted-foreground mt-2 max-w-2xl">
-                    Manage your personal identity data and security communications.
+                    {activeScope.type === 'business' ? 'Manage your corporate entity data and compliance communications.' : 
+                     activeScope.type === 'coop' ? 'Manage your cooperative union data and member notifications.' :
+                     'Manage your personal identity data and security communications.'}
                 </p>
             </header>
 
@@ -143,34 +175,97 @@ export default function ClientProfilePage() {
                 {/* Left: Form */}
                 <Card className="lg:col-span-2 border-primary/5 shadow-xl shadow-primary/5">
                     <CardHeader className="bg-primary/[0.02] border-b">
-                        <CardTitle className="text-lg">Identity Details</CardTitle>
+                        <CardTitle className="text-lg">
+                            {activeScope.type === 'business' ? 'Corporate Details' : activeScope.type === 'coop' ? 'Union Details' : 'Identity Details'}
+                        </CardTitle>
                         <CardDescription>Updates to protected fields will trigger re-onboarding.</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-8">
                         <form onSubmit={handleSave} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="firstName" className="text-xs font-black uppercase tracking-wider text-muted-foreground">First Name</Label>
-                                    <Input 
-                                        id="firstName" 
-                                        value={formData.firstName || ""} 
-                                        onChange={e => setFormData({...formData, firstName: e.target.value})}
-                                        className="h-11 bg-accent/20 border-accent/40"
-                                    />
+                            
+                            {activeScope.type === 'business' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="companyName" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Corporate Entity Name</Label>
+                                        <div className="relative">
+                                            <Building className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                                            <Input 
+                                                id="companyName" 
+                                                value={formData.companyName || ""} 
+                                                onChange={e => setFormData({...formData, companyName: e.target.value})}
+                                                className="h-11 pl-10 bg-accent/20 border-accent/40"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="rcNumber" className="text-xs font-black uppercase tracking-wider text-muted-foreground">RC Number</Label>
+                                        <Input 
+                                            id="rcNumber" 
+                                            value={formData.rcNumber || ""} 
+                                            onChange={e => setFormData({...formData, rcNumber: e.target.value})}
+                                            className="h-11 bg-accent/20 border-accent/40"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="taxId" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Tax ID Number (TIN)</Label>
+                                        <Input 
+                                            id="taxId" 
+                                            value={formData.taxId || ""} 
+                                            onChange={e => setFormData({...formData, taxId: e.target.value})}
+                                            className="h-11 bg-accent/20 border-accent/40"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="lastName" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Last Name</Label>
-                                    <Input 
-                                        id="lastName" 
-                                        value={formData.lastName || ""} 
-                                        onChange={e => setFormData({...formData, lastName: e.target.value})}
-                                        className="h-11 bg-accent/20 border-accent/40"
-                                    />
+                            ) : activeScope.type === 'coop' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="unionName" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Registered Union Name</Label>
+                                        <div className="relative">
+                                            <Briefcase className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                                            <Input 
+                                                id="unionName" 
+                                                value={formData.unionName || ""} 
+                                                onChange={e => setFormData({...formData, unionName: e.target.value})}
+                                                className="h-11 pl-10 bg-accent/20 border-accent/40"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="registrationDate" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Registration Date</Label>
+                                        <Input 
+                                            id="registrationDate" 
+                                            type="date"
+                                            value={formData.registrationDate || ""} 
+                                            onChange={e => setFormData({...formData, registrationDate: e.target.value})}
+                                            className="h-11 bg-accent/20 border-accent/40"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="firstName" className="text-xs font-black uppercase tracking-wider text-muted-foreground">First Name</Label>
+                                        <Input 
+                                            id="firstName" 
+                                            value={formData.firstName || ""} 
+                                            onChange={e => setFormData({...formData, firstName: e.target.value})}
+                                            className="h-11 bg-accent/20 border-accent/40"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lastName" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Last Name</Label>
+                                        <Input 
+                                            id="lastName" 
+                                            value={formData.lastName || ""} 
+                                            onChange={e => setFormData({...formData, lastName: e.target.value})}
+                                            className="h-11 bg-accent/20 border-accent/40"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Email Address</Label>
+                                <Label htmlFor="email" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Official Email Address</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                     <Input 
@@ -184,7 +279,7 @@ export default function ClientProfilePage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="phone" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Phone Number</Label>
+                                <Label htmlFor="phone" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Primary Contact Number</Label>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                     <Input 
@@ -197,7 +292,9 @@ export default function ClientProfilePage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="address" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Residential Address</Label>
+                                <Label htmlFor="address" className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                                    {activeScope.type === 'business' ? 'Headquarters Address' : 'Residential Address'}
+                                </Label>
                                 <div className="relative">
                                     <MapPin className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                     <Textarea 

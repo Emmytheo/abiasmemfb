@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { useBankProfile } from "@/context/bank-profile-context"
 
 interface MerchantProfile {
     id: string
@@ -50,6 +51,7 @@ interface CheckoutTransaction {
 }
 
 export default function MerchantAdminPage() {
+    const { activeProfile } = useBankProfile()
     const [merchants, setMerchants] = React.useState<MerchantProfile[]>([])
     const [checkouts, setCheckouts] = React.useState<CheckoutTransaction[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -70,7 +72,7 @@ export default function MerchantAdminPage() {
                             id: d.id,
                             business_name: d.business_name,
                             ownerName: d.ownerName || 'Business Owner',
-                            email: d.email || 'business@abiamfb.com',
+                            email: d.email || `business@${activeProfile.domain}`,
                             settlement_account: typeof d.settlement_account === 'object' && d.settlement_account
                                 ? `${d.settlement_account.account_number} (${d.settlement_account.account_type || 'Primary'})`
                                 : d.settlement_account || '0092819209 (Primary)',
@@ -106,7 +108,7 @@ export default function MerchantAdminPage() {
                 if (fetchedMerchants.length === 0) {
                     fetchedMerchants = [
                         { id: 'merch_1', business_name: 'Aba Leathercraft Hub', ownerName: 'Chidi Ebere', email: 'chidi@abaleather.ng', settlement_account: '0092819209 (Primary)', webhook_url: 'https://api.abaleather.ng/webhooks/pay', api_prefix: 'pk_live_f8b1...', is_verified: true, successRate: 99.1, volumeKobo: 250000000 },
-                        { id: 'merch_2', business_name: 'AgroMart Logistics Aba', ownerName: 'Amadi Kalu', email: 'amadi@agromart.com', settlement_account: '0055102910', webhook_url: 'https://agromart.com/webhooks/abia', api_prefix: 'pk_live_1a2b...', is_verified: true, successRate: 98.4, volumeKobo: 120000000 },
+                        { id: 'merch_2', business_name: 'AgroMart Logistics Hub', ownerName: 'Amadi Kalu', email: 'amadi@agromart.com', settlement_account: '0055102910', webhook_url: `https://agromart.com/webhooks/${activeProfile.id}`, api_prefix: 'pk_live_1a2b...', is_verified: true, successRate: 98.4, volumeKobo: 120000000 },
                         { id: 'merch_3', business_name: 'FashionVibe Design Studio', ownerName: 'Ngozi Okoye', email: 'ngozi@fashionvibe.ng', settlement_account: '0032910281', webhook_url: 'https://example.com/payment-webhook', api_prefix: 'pk_live_pending', is_verified: false, successRate: 0, volumeKobo: 0 }
                     ]
                 }

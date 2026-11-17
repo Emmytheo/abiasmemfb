@@ -6,10 +6,11 @@ import {
     CheckCircle, ArrowRight, HeartHandshake, Store, Users, Bike, Rocket,
     Banknote, Sprout, ScrollText, Building, Loader2, CreditCard, ShieldCheck,
     Sparkles, Landmark, Phone, MapPin, Briefcase, Code, Smartphone, Zap,
-    QrCode, Lock, Unlock, Check, Calculator, Building2
+    QrCode, Lock, Unlock, Check, Calculator, Building2, GraduationCap, Receipt
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { ProductType } from "@/lib/api/types";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 // Helper to map dynamic icons for Database Loans
 function getIconForLoan(name: string) {
@@ -24,11 +25,15 @@ function getIconForLoan(name: string) {
     return <Store size={24} />;
 }
 
-type TabType = "business" | "esusu" | "agency" | "merchant" | "cards" | "credit";
+type TabType = "business" | "collections" | "esusu" | "agency" | "merchant" | "cards" | "credit";
 
 export default function Business() {
+    const { activeProfile } = useBankProfile();
     // Tab Control State
     const [activeTab, setActiveTab] = useState<TabType>("business");
+    const [schoolTier, setSchoolTier] = useState<"primary" | "secondary" | "tertiary">("secondary");
+    const [studentRef, setStudentRef] = useState("NNSS-2026-0418");
+    const [feePaid, setFeePaid] = useState(false);
 
     // Dynamic Database Loan Products
     const [products, setProducts] = useState<ProductType[]>([]);
@@ -137,7 +142,9 @@ export default function Business() {
     useEffect(() => {
         if (typeof window !== "undefined" && window.location.hash) {
             const hash = window.location.hash.toLowerCase();
-            if (hash.includes("esusu") || hash.includes("cooperative")) {
+            if (hash.includes("collection") || hash.includes("school")) {
+                setActiveTab("collections");
+            } else if (hash.includes("esusu") || hash.includes("cooperative")) {
                 setActiveTab("esusu");
             } else if (hash.includes("agency") || hash.includes("agent")) {
                 setActiveTab("agency");
@@ -179,7 +186,8 @@ export default function Business() {
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16 relative z-20">
                 <div className="bg-card/80 backdrop-blur-xl border border-border/80 p-2 rounded-[2rem] shadow-xl overflow-x-auto scrollbar-none flex whitespace-nowrap gap-1">
                     {[
-                        { id: "business", label: "Business Suite", icon: <Building size={16} /> },
+                        { id: "business", label: "Business & Payroll", icon: <Building size={16} /> },
+                        { id: "collections", label: "School Collections", icon: <GraduationCap size={16} /> },
                         { id: "esusu", label: "Cooperative & Thrift", icon: <Users size={16} /> },
                         { id: "agency", label: "Agency Banking", icon: <Store size={16} /> },
                         { id: "merchant", label: "Merchant Solutions", icon: <QrCode size={16} /> },
@@ -220,7 +228,7 @@ export default function Business() {
                                         SME Growth Suite
                                     </h2>
                                     <p className="text-muted-foreground text-lg leading-relaxed">
-                                        Scale your company with zero business account maintenance fees, advanced web payroll disbursement tools, and streamlined corporate deposits customized for Abia businesses.
+                                        Scale your organization with zero maintenance fees, streamlined bulk salary payroll disbursement, and dedicated corporate settlements tailored for {activeProfile.regionLabel}.
                                     </p>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -294,6 +302,132 @@ export default function Business() {
                                             <p className="text-sm font-bold text-foreground font-mono">₦{Math.round(savingsDeposit + calculateSmeYield(savingsDeposit, savingsTenure)).toLocaleString()}</p>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB 1B: SCHOOL & INSTITUTIONAL COLLECTIONS */}
+                    {activeTab === "collections" && (
+                        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-500" id="collections">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                                <div className="lg:col-span-6 space-y-6">
+                                    <div className="inline-flex items-center gap-2">
+                                        <GraduationCap className="text-primary w-5 h-5" />
+                                        <span className="text-primary font-black uppercase text-xs tracking-widest">
+                                            {activeProfile.shortName} School Collection Service
+                                        </span>
+                                    </div>
+                                    <h2 className="text-3xl md:text-5xl font-display font-black text-foreground leading-tight">
+                                        Automated School Fee Collections &amp; E-Receipts
+                                    </h2>
+                                    <p className="text-muted-foreground text-base sm:text-lg leading-relaxed">
+                                        Built for primary, secondary, and higher institutions — parents settle tuition via web, mobile app, or USSD ({activeProfile.ussdCode}) while bursars receive live class-by-class reconciliation inside {activeProfile.shortName}.
+                                    </p>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {[
+                                            "Instant verified digital receipt per student ID",
+                                            "Zero bank-hall queues or unverified teller slips",
+                                            "Real-time bursar reporting & term fee splits",
+                                            "Multi-campus school & welfare settlement accounts",
+                                        ].map((feat, idx) => (
+                                            <div key={idx} className="flex items-start gap-2 text-sm font-semibold">
+                                                <CheckCircle size={16} className="text-primary shrink-0 mt-0.5" />
+                                                <span>{feat}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-3 pt-2">
+                                        <Link
+                                            href="/auth/login"
+                                            className="px-6 py-3.5 rounded-2xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider hover:opacity-90 transition-all inline-flex items-center gap-2"
+                                        >
+                                            Open Bursar &amp; Parent Portal <ArrowRight size={15} />
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-6 bg-background/80 border border-border rounded-3xl p-6 sm:p-8 shadow-xl space-y-5">
+                                    <div className="flex items-center justify-between border-b border-border pb-4">
+                                        <div className="flex items-center gap-2.5">
+                                            <Receipt className="w-5 h-5 text-primary" />
+                                            <div>
+                                                <h3 className="text-sm font-black">School Collection Simulator</h3>
+                                                <p className="text-[11px] text-muted-foreground">Preview instant tuition clearing &amp; parent receipt</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600">
+                                            {activeProfile.shortName} Clearing
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {([
+                                            { id: "primary", label: "Primary School", amt: "₦45,000" },
+                                            { id: "secondary", label: "Secondary / Command", amt: "₦82,500" },
+                                            { id: "tertiary", label: "Poly / Academy", amt: "₦120,000" },
+                                        ] as const).map((tier) => (
+                                            <button
+                                                key={tier.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setSchoolTier(tier.id);
+                                                    setFeePaid(false);
+                                                }}
+                                                className={`p-3 rounded-2xl border text-left transition-all ${
+                                                    schoolTier === tier.id
+                                                        ? "border-primary bg-primary/10"
+                                                        : "border-border hover:border-primary/40"
+                                                }`}
+                                            >
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase">{tier.label}</p>
+                                                <p className="text-sm font-black mt-0.5">{tier.amt}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">Student Admission / Reference ID</label>
+                                        <input
+                                            type="text"
+                                            value={studentRef}
+                                            onChange={(e) => setStudentRef(e.target.value.toUpperCase())}
+                                            className="w-full h-10 px-3 rounded-xl border border-border bg-card text-xs font-mono font-bold"
+                                        />
+                                    </div>
+
+                                    <div className="bg-slate-950 text-white rounded-2xl p-4 space-y-2 text-xs">
+                                        <div className="flex justify-between text-slate-400">
+                                            <span>Collecting Bank</span>
+                                            <span className="font-bold text-white">{activeProfile.shortName}</span>
+                                        </div>
+                                        <div className="flex justify-between text-slate-400">
+                                            <span>Student Ref</span>
+                                            <span className="font-mono font-bold text-accent">{studentRef || "STU-2026-001"}</span>
+                                        </div>
+                                        <div className="flex justify-between text-slate-400">
+                                            <span>Term Billing Total</span>
+                                            <span className="font-black text-emerald-400">
+                                                {schoolTier === "primary" ? "₦45,000.00" : schoolTier === "secondary" ? "₦82,500.00" : "₦120,000.00"}
+                                            </span>
+                                        </div>
+                                        {feePaid && (
+                                            <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-emerald-400 font-bold">
+                                                <span>E-Receipt Issued · Synced to Bursar</span>
+                                                <CheckCircle size={15} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setFeePaid(true)}
+                                        className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider hover:opacity-90 transition-all"
+                                    >
+                                        {feePaid ? "Verified E-Receipt Generated" : "Simulate Instant Tuition Payment"}
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -715,8 +849,8 @@ export default function Business() {
 
                                             <div className="flex justify-between items-start z-10">
                                                 <div>
-                                                    <h4 className="text-xs font-black tracking-widest leading-none">ABIA MFB</h4>
-                                                    <p className="text-[7px] text-slate-300 uppercase tracking-widest mt-0.5 font-bold">State-Of-The-Art</p>
+                                                    <h4 className="text-xs font-black tracking-widest leading-none">{activeProfile.shortName}</h4>
+                                                    <p className="text-[7px] text-slate-300 uppercase tracking-widest mt-0.5 font-bold">Contactless &amp; Web</p>
                                                 </div>
                                                 <span className="text-[9px] font-black uppercase bg-white/10 px-2 py-0.5 rounded backdrop-blur border border-white/15">
                                                     {cardType === "physical" ? "PHYSICAL CHIP" : "VIRTUAL CLOUD"}
@@ -890,7 +1024,7 @@ export default function Business() {
                                     Financing & Loans
                                 </h2>
                                 <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-                                    Comprehensive credit products pulled directly from our database, providing trade union loans, retail advances, and agricultural development capital across Abia.
+                                    Comprehensive credit products pulled dynamically from our database — covering personnel advances, SME working capital, and union loans across {activeProfile.regionLabel}.
                                 </p>
                             </div>
 
@@ -940,7 +1074,7 @@ export default function Business() {
                                             We design customized cooperative loans or supply discounting contracts for unique corporate scenarios. Speak directly with a loan officer.
                                         </p>
                                         <Link
-                                            href="mailto:support@abiamfb.com"
+                                            href={`mailto:${activeProfile.supportEmail}`}
                                             className="bg-white text-primary font-black px-6 py-3.5 rounded-full hover:bg-slate-100 transition-colors w-full shadow-md z-10 text-xs uppercase tracking-wider"
                                         >
                                             Contact Loan Officer

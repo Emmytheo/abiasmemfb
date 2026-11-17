@@ -25,6 +25,7 @@ export interface Account {
     is_primary: boolean;
     is_archived: boolean;
     customer?: string | Customer;
+    metadata?: any;
 }
 
 export interface Customer {
@@ -466,6 +467,12 @@ export interface ApiAdapter {
     createStandingOrder: (data: Omit<StandingOrder, 'id' | 'created_at'>) => Promise<StandingOrder>;
     updateStandingOrder: (id: string, data: Partial<StandingOrder>) => Promise<StandingOrder>;
     deleteStandingOrder: (id: string) => Promise<boolean>;
+
+    // Invoices
+    getInvoices: (merchantId: string) => Promise<Invoice[]>;
+    createInvoice: (data: Omit<Invoice, 'id' | 'created_at'>) => Promise<Invoice>;
+    updateInvoice: (id: string, data: Partial<Invoice>) => Promise<Invoice>;
+    deleteInvoice: (id: string) => Promise<boolean>;
 }
 
 export interface StandingOrder {
@@ -484,6 +491,17 @@ export interface StandingOrder {
     next_run_date: string;
     status: 'active' | 'paused' | 'completed' | 'cancelled';
     narration?: string;
+    created_at: string;
+}
+
+export interface Invoice {
+    id: string;
+    user_id: string;
+    client_name: string;
+    amount: number;
+    status: 'paid' | 'unpaid' | 'overdue' | 'cancelled';
+    issue_date: string;
+    due_date?: string;
     created_at: string;
 }
 

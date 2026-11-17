@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, UserCheck, ShieldAlert, UserSquare2, Link2, Ghost } from "lucide-react";
 import { toast } from "sonner";
 import { StaffLinkDialog } from "@/components/dashboard/StaffLinkDialog";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 export default function AccountOfficersPage() {
+    const { activeProfile } = useBankProfile();
     const [data, setData] = useState<AccountOfficer[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -176,7 +178,7 @@ export default function AccountOfficersPage() {
                             <div className="space-y-3 mb-6">
                                 <div className="p-3 rounded-xl bg-muted/30 text-[10px] border border-black/5">
                                     <p className="text-muted-foreground mb-1 uppercase tracking-widest font-black opacity-60">Operations Unit</p>
-                                    <p className="font-bold">{item.branch || 'Abia State HQ'}</p>
+                                    <p className="font-bold">{item.branch || `${activeProfile.shortName} HQ`}</p>
                                 </div>
 
                                 <div className="p-3 rounded-xl bg-primary/5 text-[10px] border border-primary/10">

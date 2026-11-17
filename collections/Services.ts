@@ -213,6 +213,126 @@ export const Services: CollectionConfig = {
             ]
         },
         {
+            name: 'description',
+            type: 'textarea',
+            admin: { description: 'Short summary of what this service does and who can use it.' }
+        },
+        {
+            name: 'icon',
+            type: 'text',
+            admin: { description: 'Lucide icon name (e.g., "Send", "Zap", "Phone", "Shield", "CreditCard", "PiggyBank").' }
+        },
+        // ── Copteller Multi-Tenant Access Matrix ───────────────────────────────
+        {
+            type: 'collapsible',
+            label: 'Copteller Access & Persona Matrix',
+            admin: {
+                initCollapsed: false,
+                description: 'Granular visibility and permission controls for Copteller user personas.'
+            },
+            fields: [
+                {
+                    name: 'allowed_roles',
+                    type: 'json',
+                    required: false,
+                    defaultValue: ['member', 'coop_admin', 'superadmin'],
+                    admin: {
+                        description: 'JSON array of roles that can view/execute this service. Valid values: member, coop_admin, investor, superadmin, agent, public. Example: ["member","coop_admin"]'
+                    }
+                },
+                {
+                    name: 'sector_tags',
+                    type: 'json',
+                    required: false,
+                    defaultValue: ['all'],
+                    admin: {
+                        description: 'JSON array of economic sectors this service targets. Use ["all"] for all sectors. Valid: all, transport, agriculture, commerce, artisan, health, education, technology, other.'
+                    }
+                },
+                {
+                    type: 'row',
+                    fields: [
+                        {
+                            name: 'cooperative_scope',
+                            type: 'select',
+                            required: true,
+                            defaultValue: 'all_cooperatives',
+                            options: [
+                                { label: 'All Cooperatives', value: 'all_cooperatives' },
+                                { label: 'Specific Cooperatives Only', value: 'specific_cooperatives' },
+                            ],
+                            admin: { width: '50%' }
+                        },
+                        {
+                            name: 'min_kyc_tier',
+                            type: 'select',
+                            required: true,
+                            defaultValue: 'tier_1',
+                            options: [
+                                { label: 'Tier 0 (Unverified)', value: 'tier_0' },
+                                { label: 'Tier 1 (Basic BVN/NIN)', value: 'tier_1' },
+                                { label: 'Tier 2 (Full KYC & Address)', value: 'tier_2' },
+                                { label: 'Tier 3 (Enhanced Verification)', value: 'tier_3' },
+                            ],
+                            admin: { width: '50%' }
+                        },
+                    ]
+                },
+                {
+                    name: 'cooperatives',
+                    type: 'relationship',
+                    relationTo: 'cooperatives',
+                    hasMany: true,
+                    admin: {
+                        description: 'Whitelist specific cooperative unions that have access to this service.',
+                        condition: (data) => data?.cooperative_scope === 'specific_cooperatives'
+                    }
+                },
+            ]
+        },
+        // ── Execution & Sandboxing Configuration ──────────────────────────────
+        {
+            type: 'collapsible',
+            label: 'Execution & Settlement Mode',
+            admin: {
+                initCollapsed: false,
+                description: 'Financial settlement mechanics and simulation settings.'
+            },
+            fields: [
+                {
+                    type: 'row',
+                    fields: [
+                        {
+                            name: 'settlement_type',
+                            type: 'select',
+                            required: true,
+                            defaultValue: 'wallet_debit',
+                            options: [
+                                { label: 'Direct Wallet Debit', value: 'wallet_debit' },
+                                { label: 'Escrow Vault Clearing', value: 'escrow_clearing' },
+                                { label: 'Agent Cash Collection', value: 'cash_agent' },
+                                { label: 'Informational / Free Action', value: 'informational' },
+                                { label: 'Workflow Direct Only', value: 'workflow_only' },
+                            ],
+                            admin: { width: '50%', description: 'How funds are debited or held for this service.' }
+                        },
+                        {
+                            name: 'sandbox_enabled',
+                            type: 'checkbox',
+                            defaultValue: true,
+                            admin: { width: '50%', description: 'Allow SuperAdmins and Coop Admins to dry-run test this service in sandbox mode.' }
+                        },
+                    ]
+                },
+                {
+                    name: 'union_markup_allowed',
+                    type: 'checkbox',
+                    defaultValue: true,
+                    admin: { description: 'Allow cooperative admins to configure custom union commission/markup on top of base fee.' }
+                },
+            ]
+        },
+        {
             name: 'status',
             type: 'select',
             required: true,
@@ -235,9 +355,12 @@ export const Services: CollectionConfig = {
                 { label: 'Airtime Recharge', value: 'bill_airtime' },
                 { label: 'Cable TV Subscription', value: 'bill_cable' },
                 { label: 'Electricity Bill Payment', value: 'bill_electricity' },
+                { label: 'Cooperative Dues Settlement', value: 'coop_dues' },
+                { label: 'Ajo Contribution', value: 'ajo_contribution' },
+                { label: 'Asset Lease Repayment', value: 'hp_repayment' },
             ],
             admin: {
-                description: 'Used by the UI to place this service in specialized layouts (like Transfer Tabs).',
+                description: 'Used by the UI to place this service in specialized layouts (like Transfer Tabs or Quick Actions).',
                 position: 'sidebar'
             }
         }

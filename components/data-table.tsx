@@ -87,25 +87,25 @@ export function GenericDataTable<T extends { id: string | number }>({
 
     return (
         <Card className="w-full bg-background/50 backdrop-blur border-border/50 shadow-transparent border-0">
-            <CardHeader>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <CardHeader className="px-0 sm:px-6 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                     <div>
-                        <CardTitle className="text-2xl font-bold tracking-tight text-primary">
+                        <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight text-primary">
                             {title}
                         </CardTitle>
-                        <CardDescription>{description}</CardDescription>
+                        <CardDescription className="text-xs sm:text-sm">{description}</CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="relative flex-1 sm:flex-initial">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder={searchPlaceholder}
-                                className="pl-8 bg-background max-w-[200px] md:max-w-none"
+                                className="pl-8 bg-background w-full sm:w-[220px]"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        {actionButton}
+                        {actionButton && <div className="shrink-0">{actionButton}</div>}
                     </div>
                 </div>
             </CardHeader>

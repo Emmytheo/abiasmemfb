@@ -17,8 +17,10 @@ import { syncRegistryProductsAction, exportRegistryProductsAction } from "./acti
 
 import { api } from "@/lib/api";
 import { ProductType } from "@/lib/api/types";
+import { useBankProfile } from "@/context/bank-profile-context";
 
 export default function ProductTypesPage() {
+    const { activeProfile } = useBankProfile();
     const [data, setData] = React.useState<ProductType[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSyncing, setIsSyncing] = React.useState(false);
@@ -84,7 +86,7 @@ export default function ProductTypesPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `abia-registry-sdl-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `${activeProfile.id}-registry-sdl-${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             toast.success("Registry SDL exported successfully.");
         } else {

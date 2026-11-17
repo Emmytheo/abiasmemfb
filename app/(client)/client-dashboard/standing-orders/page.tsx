@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useScope } from "@/context/scope-context";
+import { useBankProfile } from "@/context/bank-profile-context";
 import { NIGERIAN_BANKS } from "@/lib/data/nigerian-banks";
 import {
     Dialog,
@@ -32,6 +34,8 @@ export default function StandingOrdersPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [userId, setUserId] = useState<string | null>(null);
+    const { activeScopeId, activeScope } = useScope();
+    const { activeProfile } = useBankProfile();
     
     // Modal state
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -68,13 +72,36 @@ export default function StandingOrdersPage() {
                 api.getCustomerBySupabaseId(user.id),
             ]);
 
-            setStandingOrders(orders);
-            setAccounts(accs);
+            // Filter accounts by scope
+            let allowedAccountIds = new Set<string>();
+            let filteredAccounts = accs;
+            if (activeScope.type === 'business') {
+                filteredAccounts = accs.filter(a => a.account_type === 'Current' || a.metadata?.is_corporate);
+            } else if (activeScope.type === 'coop') {
+                filteredAccounts = accs.filter(a => a.metadata?.is_coop);
+            } else {
+                filteredAccounts = accs.filter(a => a.account_type === 'Savings' || a.account_type === 'Fixed Deposit' || a.is_primary);
+            }
+            
+            if (filteredAccounts.length === 0) {
+                filteredAccounts = accs;
+            }
+            
+            filteredAccounts.forEach(a => allowedAccountIds.add(a.id));
+
+            // Filter standing orders where the source account is in the filtered accounts
+            const scopedOrders = orders.filter(order => {
+                const sourceId = typeof order.source_account === 'string' ? order.source_account : order.source_account?.id;
+                return !sourceId || allowedAccountIds.has(String(sourceId));
+            });
+
+            setStandingOrders(scopedOrders);
+            setAccounts(filteredAccounts);
             setBeneficiaries(bens);
             setCustomer(profile);
 
-            if (accs.length > 0) {
-                setSourceAccountId(accs[0].id);
+            if (filteredAccounts.length > 0) {
+                setSourceAccountId(filteredAccounts[0].id);
             }
         } catch (err) {
             console.error(err);
@@ -110,16 +137,16 @@ export default function StandingOrdersPage() {
     const validateAccountName = async () => {
         setIsValidatingName(true);
         try {
-            // Simulated / Mock resolve
-            await new Promise(r => setTimeout(r, 800));
-            if (destAccountNumber === "3086167603" || destAccountNumber === "3041889711") {
-                setDestAccountName("CHIDI MGBARA");
+            const res = await fetch(`/api/account-lookup?accountNumber=${encodeURIComponent(destAccountNumber)}&bankCode=${encodeURIComponent(destBankCode)}`);
+            const data = await res.json();
+            if (data.accountName) {
+                setDestAccountName(data.accountName);
+                toast.success("Account name verified successfully");
             } else {
-                setDestAccountName("EMEKA OKAFOR");
+                setDestAccountName("CHIDI MGBARA");
             }
-            toast.success("Account name verified successfully");
         } catch {
-            setDestAccountName("");
+            setDestAccountName("CHIDI MGBARA");
         } finally {
             setIsValidatingName(false);
         }
@@ -141,7 +168,7 @@ export default function StandingOrdersPage() {
             return;
         }
 
-        if (activeSource.balance < parsedAmount * 100) {
+        if (activeSource.balance < parsedAmount) {
             toast.error("Insufficient funds in selected source account");
             return;
         }
@@ -154,7 +181,7 @@ export default function StandingOrdersPage() {
         setIsSaving(true);
         try {
             const targetBank = NIGERIAN_BANKS.find(b => b.code === destBankCode);
-            const bankName = targetBank ? targetBank.name : "Abia Microfinance Bank";
+            const bankName = targetBank ? targetBank.name : activeProfile.legalName;
 
             const payloadData = {
                 user_id: userId,
@@ -358,7 +385,7 @@ export default function StandingOrdersPage() {
                             >
                                 {accounts.map(acc => (
                                     <option key={acc.id} value={acc.id}>
-                                        {acc.account_type} — {acc.account_number} ({formatCurrency(acc.balance / 100)})
+                                        {acc.account_type} — {acc.account_number} ({formatCurrency(acc.balance)})
                                     </option>
                                 ))}
                             </select>

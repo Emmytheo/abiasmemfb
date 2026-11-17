@@ -14,8 +14,13 @@ import {
     Tag,
     ListOrdered,
     Search,
+    RefreshCw,
+    Receipt,
+    Code,
+    Activity,
     History,
     Building,
+    Building2,
     MailIcon,
     PhoneCall,
     FileText,
@@ -24,7 +29,8 @@ import {
     ShieldCheck,
     ArrowRight,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Smartphone
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -55,7 +61,7 @@ type NavGroup = {
     minRole?: "user" | "customer";
 };
 
-const IconMap: Record<string, React.ElementType> = {
+const IconMap: Record<string, any> = {
     tag: Tag,
     wifi: Wifi,
     user: User,
@@ -97,7 +103,12 @@ const navGroups: NavGroup[] = [
             {
                 title: "Transaction History",
                 url: "/client-dashboard/transactions",
-                icon: History,
+                icon: Activity,
+            },
+            {
+                title: "Transfers",
+                url: "/client-dashboard/transfers",
+                icon: RefreshCw,
             },
             {
                 title: "Saved Beneficiaries",
@@ -179,6 +190,9 @@ const navGroups: NavGroup[] = [
 
 const ROLE_LEVEL: Record<string, number> = { user: 0, customer: 1, admin: 2 };
 
+import { useScope } from "@/context/scope-context";
+import { useBankProfile } from "@/context/bank-profile-context";
+
 interface ClientSidebarProps extends React.ComponentProps<typeof Sidebar> {
     userRole?: "user" | "customer" | "admin";
     userName?: string;
@@ -199,10 +213,228 @@ export function ClientSidebar({
 }: ClientSidebarProps) {
     const roleLevel = ROLE_LEVEL[userRole] ?? 0;
     const isPendingOnboarding = onboardingStatus === 'skipped' || onboardingStatus === 'pending';
+    const { activeScopeId, activeScope } = useScope();
+    const { activeProfile } = useBankProfile();
+    const mods = activeProfile.enabledModules;
 
-    // Dynamically insert the Services Hub group if there are active categories
-    const dynamicNavGroups = [...navGroups];
-    if (serviceCategories.length > 0) {
+    // Dynamically compile groups based on active scope and active bank profile modules
+    const scopeNavGroups = React.useMemo(() => {
+        if (activeScope.type === "business") {
+            return [
+                {
+                    title: "General",
+                    minRole: "user",
+                    items: [
+                        {
+                            title: "Business Overview",
+                            url: "/client-dashboard",
+                            icon: LayoutDashboard,
+                        },
+                    ],
+                },
+                ...(mods.merchantApiAndPayroll || mods.smartCards ? [{
+                    title: "Merchant Suite",
+                    minRole: "user",
+                    items: [
+                        ...(mods.merchantApiAndPayroll ? [
+                            { title: "Invoices & Billing", url: "/client-dashboard/invoices", icon: Receipt },
+                            { title: "Developer API Gateway", url: "/merchant", icon: Code },
+                        ] : []),
+                        ...(mods.smartCards ? [
+                            { title: "Corporate Expense Cards", url: "/my-cards", icon: CreditCard },
+                        ] : []),
+                    ],
+                }] : []),
+                {
+                    title: "Business Portfolio",
+                    minRole: "user",
+                    items: [
+                        {
+                            title: "Corporate Accounts",
+                            url: "/my-products",
+                            icon: Landmark,
+                        },
+                        {
+                            title: "SME Credit & Loans",
+                            url: "/my-loans",
+                            icon: CreditCard,
+                        },
+                        {
+                            title: "Business Transactions",
+                            url: "/client-dashboard/transactions",
+                            icon: Activity,
+                        },
+                        {
+                            title: "Transfers",
+                            url: "/client-dashboard/transfers",
+                            icon: RefreshCw,
+                        },
+                    ],
+                },
+                ...(mods.merchantApiAndPayroll ? [{
+                    title: "Organization Operations",
+                    minRole: "user",
+                    items: [
+                        { title: "Team Directory", url: "/merchant/team", icon: Users },
+                        { title: "HR & Bulk Payroll", url: "/merchant/payroll", icon: Briefcase },
+                    ],
+                }] : []),
+                ...(mods.agencyPos ? [{
+                    title: "Agency Network",
+                    minRole: "user",
+                    items: [
+                        { title: "Agent Portal", url: "/agent/dashboard", icon: Landmark },
+                        { title: "Hardware Management", url: "/agent/terminals", icon: Smartphone },
+                    ],
+                }] : []),
+                {
+                    title: "Support & Settings",
+                    minRole: "user",
+                    items: [
+                        {
+                            title: "Business Profile",
+                            url: "/client-dashboard/profile",
+                            icon: User,
+                        },
+                        {
+                            title: "Business Preferences",
+                            url: "/settings",
+                            icon: Settings,
+                        },
+                    ],
+                },
+            ];
+        }
+
+        if (activeScope.type === "coop") {
+            return [
+                {
+                    title: "General",
+                    minRole: "user",
+                    items: [
+                        {
+                            title: "Cooperative Overview",
+                            url: "/client-dashboard",
+                            icon: LayoutDashboard,
+                        },
+                    ],
+                },
+                ...(mods.cooperativeEsusu ? [{
+                    title: "Cooperative Hub",
+                    minRole: "user",
+                    items: [
+                        { title: "Rotational Cycles", url: "/esusu", icon: Users },
+                        { title: "Group Administration", url: "/esusu/manage", icon: ShieldCheck },
+                        { title: "Union Standing Orders", url: "/client-dashboard/standing-orders", icon: ListOrdered },
+                    ],
+                }] : []),
+                {
+                    title: "Support & Settings",
+                    minRole: "user",
+                    items: [
+                        {
+                            title: "Cooperative Profile",
+                            url: "/client-dashboard/profile",
+                            icon: User,
+                        },
+                        {
+                            title: "Union Preferences",
+                            url: "/settings",
+                            icon: Settings,
+                        },
+                    ],
+                },
+            ];
+        }
+
+        const digitalHubItems = [
+            ...(mods.smartCards ? [{ title: "Smart Cards", url: "/my-cards", icon: CreditCard }] : []),
+            ...(mods.cooperativeEsusu ? [{ title: "Digital Esusu", url: "/esusu", icon: Users }] : []),
+            ...(mods.agencyPos ? [{ title: "Agency Network", url: "/expansion/agent", icon: Landmark }] : []),
+            ...(mods.merchantApiAndPayroll ? [{ title: "Merchant Portal", url: "/merchant", icon: Briefcase }] : []),
+        ];
+
+        // Default: personal scope
+        return [
+            {
+                title: "General",
+                minRole: "user",
+                items: [
+                    {
+                        title: "Overview",
+                        url: "/client-dashboard",
+                        icon: LayoutDashboard,
+                    },
+                ],
+            },
+            {
+                title: "My Portfolio",
+                minRole: "user",
+                items: [
+                    {
+                        title: "My Assets & Accounts",
+                        url: "/my-products",
+                        icon: Landmark,
+                    },
+                    ...(mods.retailAndSalary ? [{ title: "My Loans", url: "/my-loans", icon: CreditCard }] : []),
+                    {
+                        title: "Transaction History",
+                        url: "/client-dashboard/transactions",
+                        icon: Activity,
+                    },
+                    {
+                        title: "Transfers",
+                        url: "/client-dashboard/transfers",
+                        icon: RefreshCw,
+                    },
+                    {
+                        title: "Saved Beneficiaries",
+                        url: "/client-dashboard/beneficiaries",
+                        icon: Users,
+                    },
+                    ...(mods.retailAndSalary ? [{ title: "Standing Orders", url: "/client-dashboard/standing-orders", icon: ListOrdered }] : []),
+                    {
+                        title: "My Applications",
+                        url: "/applications",
+                        icon: FileText,
+                    },
+                ],
+            },
+            ...(digitalHubItems.length > 0 ? [{
+                title: "Digital Hub",
+                minRole: "user",
+                items: digitalHubItems,
+            }] : []),
+            ...(mods.retailAndSalary ? [{
+                title: "Explore Products",
+                minRole: "user",
+                items: [
+                    { title: "Open Account", url: "/explore/accounts", icon: Package },
+                    { title: "Apply for Loan", url: "/explore/loans", icon: Briefcase },
+                ],
+            }] : []),
+            {
+                title: "Support & Settings",
+                minRole: "user",
+                items: [
+                    {
+                        title: "My Profile",
+                        url: "/client-dashboard/profile",
+                        icon: User,
+                    },
+                    {
+                        title: "Preferences",
+                        url: "/settings",
+                        icon: Settings,
+                    },
+                ],
+            },
+        ];
+    }, [activeScopeId, activeScope.type, mods]);
+
+    // Dynamically insert the Services Hub group if there are active categories and scope is personal
+    const dynamicNavGroups = [...scopeNavGroups];
+    if (serviceCategories.length > 0 && activeScope.type === 'personal') {
         // Insert right before "Support & Settings" (which is the last item)
         dynamicNavGroups.splice(dynamicNavGroups.length - 1, 0, {
             title: "Services Hub",
@@ -237,7 +469,7 @@ export function ClientSidebar({
                                 <Logo
                                     className="w-full"
                                     iconClassName="bg-sidebar-primary text-sidebar-primary-foreground size-8"
-                                    subtitle="Customer Portal"
+                                    subtitle={`${activeProfile.shortName} Portal`}
                                     subtitleClassName="text-primary/80 uppercase tracking-widest font-medium"
                                 />
                             </a>

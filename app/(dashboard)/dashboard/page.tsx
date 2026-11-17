@@ -15,13 +15,20 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { VolumeChart } from "@/components/dashboard/volume-chart";
 import { UpdateLiveSiteButton, QuickCommandWidget } from "./DashboardWidgets";
+import { getServerBankProfile } from "@/lib/banking/bank-profile-server";
+import { BANK_MODULE_DEFINITIONS } from "@/lib/banking/bank-profiles";
+import { Badge } from "@/components/ui/badge";
 
 async function DashboardOverviewContent() {
-    const accounts = await api.getAllAccounts();
-    const loans = await api.getAllLoans();
-    const transactions = await api.getAllTransactions();
-    const users = await api.getAllUsers();
-    const products = await api.getAllProductTypes();
+    const [accounts, loans, transactions, users, products, serverBank] = await Promise.all([
+        api.getAllAccounts(),
+        api.getAllLoans(),
+        api.getAllTransactions(),
+        api.getAllUsers(),
+        api.getAllProductTypes(),
+        getServerBankProfile(),
+    ]);
+    const bankProfile = serverBank.profile;
 
     const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
     const totalLoans = loans.reduce((acc, curr) => acc + curr.amount, 0);
@@ -38,15 +45,56 @@ async function DashboardOverviewContent() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 sm:p-4 md:p-8">
             {/* Welcome & Key Stats */}
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-                <div>
-                    <h2 className="text-3xl font-black tracking-tight mb-2">Central Command Dashboard</h2>
+                <div className="space-y-2">
+                    <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-black text-primary">
+                        <span>Active White-Label: {bankProfile.legalName}</span>
+                        <span className="text-muted-foreground font-mono">({bankProfile.ussdCode})</span>
+                    </div>
+                    <h2 className="text-3xl font-black tracking-tight">Central Command Dashboard</h2>
                     <p className="text-muted-foreground max-w-xl">
-                        Unified oversight for liquidity, risk assessment, and institutional growth across all digital touchpoints.
+                        Unified oversight for liquidity, risk assessment, and institutional growth across all {bankProfile.shortName} digital touchpoints.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button asChild variant="outline" className="font-bold rounded-xl">
+                        <Link href="/settings/bank-profiles">Swap Bank Profile</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="font-bold rounded-xl">
+                        <Link href="/" target="_blank">Preview Public Site</Link>
+                    </Button>
                     <UpdateLiveSiteButton />
                 </div>
+            </div>
+
+            {/* Active Suite Modules Telemetry Bar */}
+            <div className="rounded-2xl border border-border bg-card/60 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground mr-1">
+                        Active Suite Modules:
+                    </span>
+                    {BANK_MODULE_DEFINITIONS.map((m) => {
+                        const enabled = bankProfile.enabledModules[m.key];
+                        return (
+                            <Badge
+                                key={m.key}
+                                variant={enabled ? "secondary" : "outline"}
+                                className={`text-[10px] font-bold ${
+                                    enabled
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                        : "text-muted-foreground/60 line-through"
+                                }`}
+                            >
+                                {m.label}
+                            </Badge>
+                        );
+                    })}
+                </div>
+                <Link
+                    href="/settings/bank-profiles"
+                    className="text-xs font-black text-primary hover:underline shrink-0"
+                >
+                    Configure Modules &rarr;
+                </Link>
             </div>
 
             {/* Metric Grid */}
