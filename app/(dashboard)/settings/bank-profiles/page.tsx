@@ -135,7 +135,13 @@ export default function BankProfilesStudioPage() {
             isCustom: true,
         }
 
-        await saveCustomProfile(custom, true, activationScope)
+        const res = await saveCustomProfile(custom, true, activationScope)
+        if (!res.success) {
+            toast.error("Failed to save custom bank profile", {
+                description: res.error || "Check superadmin permissions and DATABASE_URI connectivity.",
+            })
+            return
+        }
         toast.success(`Created and activated "${custom.legalName}"`, {
             description:
                 activationScope === "global"
@@ -150,7 +156,7 @@ export default function BankProfilesStudioPage() {
 
     const handleSaveActiveOverrides = async (e: React.FormEvent) => {
         e.preventDefault()
-        await saveProfileOverride(
+        const res = await saveProfileOverride(
             activeProfile.id,
             {
                 tagline: editTagline.trim() || activeProfile.tagline,
@@ -163,6 +169,12 @@ export default function BankProfilesStudioPage() {
             },
             activationScope
         )
+        if (!res.success) {
+            toast.error(`Failed to save overrides for ${activeProfile.shortName}`, {
+                description: res.error || "Check superadmin session and database connection.",
+            })
+            return
+        }
         toast.success(`Saved branding & USSD settings for ${activeProfile.shortName}`, {
             description:
                 activationScope === "global"
@@ -550,10 +562,16 @@ export default function BankProfilesStudioPage() {
                                 <Button
                                     onClick={async () => {
                                         const res = await setActiveProfile(prof.id, true, activationScope)
+                                        if (!res.success) {
+                                            toast.error(`Could not switch to ${prof.shortName}`, {
+                                                description: res.error || "Database or permission error.",
+                                            })
+                                            return
+                                        }
                                         toast.success(`Swapped suite to ${prof.shortName}`, {
                                             description:
-                                                activationScope === "global" && res?.persistedGlobally
-                                                    ? `${prof.legalName} published globally on Vercel.`
+                                                activationScope === "global" && res.persistedGlobally
+                                                    ? `${prof.legalName} published globally.`
                                                     : `${prof.legalName} active in current session.`,
                                         })
                                     }}
@@ -629,7 +647,13 @@ export default function BankProfilesStudioPage() {
                                         disabled={isSwitching}
                                         variant={enabled ? "default" : "outline"}
                                         onClick={async () => {
-                                            await toggleModule(activeProfile.id, mod.key, !enabled, activationScope)
+                                            const res = await toggleModule(activeProfile.id, mod.key, !enabled, activationScope)
+                                            if (!res.success) {
+                                                toast.error(`Failed to update ${mod.label}`, {
+                                                    description: res.error || "Check superadmin session and database connection.",
+                                                })
+                                                return
+                                            }
                                             toast.success(`${!enabled ? "Enabled" : "Disabled"} ${mod.label} for ${activeProfile.shortName}`)
                                         }}
                                         className="rounded-xl text-xs font-black shrink-0 min-w-[84px]"

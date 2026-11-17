@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
                 },
                 user.email || "superadmin"
             )
-            revalidateTag("banksuite-profile", "max")
+            revalidateTag("banksuite-profile", { expire: 0 })
             revalidatePath("/", "layout")
         }
 
@@ -155,10 +155,18 @@ export async function POST(req: NextRequest) {
                 }
             }
         } else {
-            // Clear browser preview override so admin views the global deployment identically to Vercel visitors
+            // Mirror active global choice cleanly if DB wasn't configured; clear preview mode flag
             res.cookies.delete(BANK_PREVIEW_MODE_COOKIE)
-            res.cookies.delete(BANK_PROFILE_COOKIE)
-            res.cookies.delete(CUSTOM_BANK_PROFILES_COOKIE)
+            if (persistedGlobally) {
+                res.cookies.delete(BANK_PROFILE_COOKIE)
+                res.cookies.delete(CUSTOM_BANK_PROFILES_COOKIE)
+            } else {
+                res.cookies.set(BANK_PROFILE_COOKIE, resolved.id, {
+                    path: "/",
+                    maxAge: 60 * 60 * 24 * 30,
+                    sameSite: "lax",
+                })
+            }
         }
 
         return res

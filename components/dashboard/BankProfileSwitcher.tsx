@@ -21,9 +21,15 @@ export function BankProfileSwitcher({ compact = false }: { compact?: boolean }) 
     const handleSelect = async (id: string, name: string) => {
         if (id === activeProfile.id) return
         const result = await setActiveProfile(id, true, "global")
+        if (!result.success) {
+            toast.error(`Failed to switch profile to ${name}`, {
+                description: result.error || "Check superadmin authentication and database connectivity.",
+            })
+            return
+        }
         toast.success(`Switched active bank profile to ${name}`, {
-            description: result?.persistedGlobally
-                ? "Published globally across this Vercel deployment."
+            description: result.persistedGlobally
+                ? "Published globally across this deployment."
                 : "Updated theme palette, branding, channels & client portals.",
         })
     }

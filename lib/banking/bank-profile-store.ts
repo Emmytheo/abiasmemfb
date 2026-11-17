@@ -17,6 +17,7 @@ export interface PersistedBankProfileState {
 const g = globalThis as typeof globalThis & {
     __banksuitePgPool?: Pool
     __banksuiteTableReady?: boolean
+    __banksuiteMemState?: { state: PersistedBankProfileState; expiresAt: number }
 }
 
 function getPool(): Pool | null {
@@ -28,9 +29,9 @@ function getPool(): Pool | null {
             connString.includes("localhost") || connString.includes("127.0.0.1")
         g.__banksuitePgPool = new Pool({
             connectionString: connString,
-            max: 3,
-            connectionTimeoutMillis: 1500,
-            idleTimeoutMillis: 10000,
+            max: 5,
+            connectionTimeoutMillis: 8000,
+            idleTimeoutMillis: 30000,
             ssl: isLocal ? undefined : { rejectUnauthorized: false },
         })
     }
@@ -74,7 +75,7 @@ async function queryGlobalStateFromDb(): Promise<PersistedBankProfileState> {
         const row = res.rows[0]
         if (!row) return DEFAULT_STATE
 
-        return {
+        const parsed: PersistedBankProfileState = {
             activeProfileId:
                 String(row.active_profile_id || "").trim() ||
                 DEFAULT_STATE.activeProfileId,
@@ -88,9 +89,11 @@ async function queryGlobalStateFromDb(): Promise<PersistedBankProfileState> {
             updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : undefined,
             updatedBy: row.updated_by || undefined,
         }
+        g.__banksuiteMemState = { state: parsed, expiresAt: Date.now() + 15000 }
+        return parsed
     } catch (err) {
-        console.warn("[bank-profile-store] Falling back to default profile state:", err)
-        return DEFAULT_STATE
+        console.warn("[bank-profile-store] Falling back to memory/default profile state:", err)
+        return g.__banksuiteMemState?.state || DEFAULT_STATE
     }
 }
 
@@ -99,11 +102,11 @@ const readCachedGlobalState = unstable_cache(
         return await Promise.race([
             queryGlobalStateFromDb(),
             new Promise<PersistedBankProfileState>((resolve) =>
-                setTimeout(() => resolve(DEFAULT_STATE), 900)
+                setTimeout(() => resolve(g.__banksuiteMemState?.state || DEFAULT_STATE), 4500)
             ),
         ])
     },
-    ["banksuite-global-state-v1"],
+    ["banksuite-global-state-v2"],
     {
         revalidate: 30,
         tags: ["banksuite-profile"],
@@ -112,9 +115,12 @@ const readCachedGlobalState = unstable_cache(
 
 export async function readGlobalBankProfileState(): Promise<PersistedBankProfileState> {
     try {
+        if (g.__banksuiteMemState && g.__banksuiteMemState.expiresAt > Date.now()) {
+            return g.__banksuiteMemState.state
+        }
         return await readCachedGlobalState()
     } catch {
-        return DEFAULT_STATE
+        return g.__banksuiteMemState?.state || DEFAULT_STATE
     }
 }
 
@@ -147,5 +153,14 @@ export async function writeGlobalBankProfileState(
             actorEmail || "superadmin",
         ]
     )
+
+    g.__banksuiteMemState = {
+        state: {
+            ...nextState,
+            updatedAt: new Date().toISOString(),
+            updatedBy: actorEmail || "superadmin",
+        },
+        expiresAt: Date.now() + 15000,
+    }
     return true
 }

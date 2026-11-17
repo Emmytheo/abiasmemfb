@@ -15,6 +15,12 @@ import { usePalette, type Palette } from "@/context/palette-context"
 
 export type ActivationScope = "global" | "preview"
 
+export interface ProfileMutationResult {
+    success: boolean
+    persistedGlobally?: boolean
+    error?: string
+}
+
 interface BankProfileContextType {
     activeProfile: BankProfile
     allProfiles: BankProfile[]
@@ -26,25 +32,25 @@ interface BankProfileContextType {
         profileId: string,
         syncPalette?: boolean,
         scope?: ActivationScope
-    ) => Promise<{ persistedGlobally?: boolean }>
+    ) => Promise<ProfileMutationResult>
     toggleModule: (
         profileId: string,
         moduleKey: ModuleKey,
         enabled: boolean,
         scope?: ActivationScope
-    ) => Promise<void>
+    ) => Promise<ProfileMutationResult>
     saveProfileOverride: (
         profileId: string,
         patch: BankProfileOverride,
         scope?: ActivationScope
-    ) => Promise<void>
+    ) => Promise<ProfileMutationResult>
     saveCustomProfile: (
         profile: BankProfile,
         activate?: boolean,
         scope?: ActivationScope
-    ) => Promise<void>
-    deleteCustomProfile: (profileId: string) => Promise<void>
-    exitPreviewMode: () => Promise<void>
+    ) => Promise<ProfileMutationResult>
+    deleteCustomProfile: (profileId: string) => Promise<ProfileMutationResult>
+    exitPreviewMode: () => Promise<ProfileMutationResult>
 }
 
 const BankProfileContext = React.createContext<BankProfileContextType | undefined>(undefined)
@@ -101,7 +107,7 @@ export function BankProfileProvider({
         [activeId, customProfiles, profileOverrides]
     )
 
-    const postProfileUpdate = async (payload: Record<string, any>) => {
+    const postProfileUpdate = async (payload: Record<string, any>): Promise<ProfileMutationResult> => {
         setIsSwitching(true)
         try {
             const res = await fetch("/api/admin/bank-profile", {
@@ -116,10 +122,20 @@ export function BankProfileProvider({
                 if (data.profileOverrides) setProfileOverrides(data.profileOverrides)
                 setIsPreviewMode(Boolean(data.isPreviewMode))
                 router.refresh()
+                return {
+                    success: true,
+                    persistedGlobally: Boolean(data.persistedGlobally),
+                }
             }
-            return data
-        } catch {
-            return { success: false }
+            return {
+                success: false,
+                error: data?.error || `Server returned HTTP ${res.status}`,
+            }
+        } catch (err: any) {
+            return {
+                success: false,
+                error: err?.message || "Network error updating bank profile",
+            }
         } finally {
             setIsSwitching(false)
         }
@@ -130,15 +146,25 @@ export function BankProfileProvider({
         syncPalette = true,
         scope: ActivationScope = "global"
     ) => {
+        const prevId = activeId
+        const prevProfile = activeProfile
         const next = resolveBankProfile(profileId, customProfiles, profileOverrides)
         setActiveId(next.id)
         if (syncPalette) {
             setPalette(next.defaultPalette as Palette)
         }
-        return await postProfileUpdate({
+        const res = await postProfileUpdate({
             profileId: next.id,
             scope,
         })
+        if (!res.success) {
+            // Roll back optimistic UI state if server persistence failed
+            setActiveId(prevId)
+            if (syncPalette) {
+                setPalette(prevProfile.defaultPalette as Palette)
+            }
+        }
+        return res
     }
 
     const saveProfileOverride = async (
@@ -146,6 +172,8 @@ export function BankProfileProvider({
         patch: BankProfileOverride,
         scope: ActivationScope = "global"
     ) => {
+        const prevOverrides = profileOverrides
+        const prevPalette = activeProfile.defaultPalette
         setProfileOverrides((prev) => {
             const existing = prev[profileId] || {}
             return {
@@ -169,12 +197,19 @@ export function BankProfileProvider({
             setPalette(patch.defaultPalette as Palette)
         }
 
-        await postProfileUpdate({
+        const res = await postProfileUpdate({
             profileId: activeId,
             patchOverrideForId: profileId,
             overridePatch: patch,
             scope,
         })
+        if (!res.success) {
+            setProfileOverrides(prevOverrides)
+            if (profileId === activeId && patch.defaultPalette) {
+                setPalette(prevPalette as Palette)
+            }
+        }
+        return res
     }
 
     const toggleModule = async (
@@ -183,7 +218,7 @@ export function BankProfileProvider({
         enabled: boolean,
         scope: ActivationScope = "global"
     ) => {
-        await saveProfileOverride(
+        return await saveProfileOverride(
             profileId,
             { enabledModules: { [moduleKey]: enabled } },
             scope
@@ -195,6 +230,9 @@ export function BankProfileProvider({
         activate = true,
         scope: ActivationScope = "global"
     ) => {
+        const prevCustom = customProfiles
+        const prevId = activeId
+        const prevPalette = activeProfile.defaultPalette
         const updatedCustom = [
             ...customProfiles.filter((p) => p.id !== profile.id),
             profile,
@@ -207,14 +245,22 @@ export function BankProfileProvider({
             setPalette(profile.defaultPalette as Palette)
         }
 
-        await postProfileUpdate({
+        const res = await postProfileUpdate({
             profileId: targetId,
             upsertCustomProfile: profile,
             scope,
         })
+        if (!res.success) {
+            setCustomProfiles(prevCustom)
+            setActiveId(prevId)
+            setPalette(prevPalette as Palette)
+        }
+        return res
     }
 
     const deleteCustomProfile = async (profileId: string) => {
+        const prevCustom = customProfiles
+        const prevId = activeId
         const updatedCustom = customProfiles.filter((p) => p.id !== profileId)
         setCustomProfiles(updatedCustom)
 
@@ -222,15 +268,20 @@ export function BankProfileProvider({
             activeId === profileId ? DEFAULT_BANK_PROFILE_ID : activeId
         setActiveId(nextActiveId)
 
-        await postProfileUpdate({
+        const res = await postProfileUpdate({
             profileId: nextActiveId,
             deleteCustomProfileId: profileId,
             scope: "global",
         })
+        if (!res.success) {
+            setCustomProfiles(prevCustom)
+            setActiveId(prevId)
+        }
+        return res
     }
 
     const exitPreviewMode = async () => {
-        await postProfileUpdate({ scope: "global" })
+        return await postProfileUpdate({ scope: "global" })
     }
 
     return (
