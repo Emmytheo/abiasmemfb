@@ -93,7 +93,7 @@ async function getCachedBankingUser(request: NextRequest): Promise<any> {
                 data: { user },
             } = await supabase.auth.getUser();
             if (user) {
-                bankingAuthCache.set(authCookies, { user, expiresAt: Date.now() + 30000 });
+                bankingAuthCache.set(authCookies, { user, expiresAt: Date.now() + 5000 });
             }
             return user || null;
         } catch (err: any) {

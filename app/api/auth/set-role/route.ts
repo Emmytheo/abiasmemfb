@@ -1,65 +1,74 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
+import { getPayloadClient } from "@/lib/payload";
 
 /**
  * POST /api/auth/set-role
- * 
- * Called after signup to validate an optional admin secret
- * and set the user's role in user_metadata.
- * 
- * Body: { admin_secret?: string }
+ *
+ * Validates optional admin_secret, preserves existing user_metadata,
+ * ensures Payload shadow user for admins (with a strict timeout so login never hangs),
+ * and returns the role + target dashboard route.
  */
 export async function POST(request: Request) {
     try {
         const supabase = await createServerSupabase();
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        const {
+            data: { user },
+            error: authError,
+        } = await supabase.auth.getUser();
 
         if (authError || !user) {
             return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
         }
 
         const body = await request.json().catch(() => ({}));
-        const adminSecret = body.admin_secret;
+        const adminSecret = typeof body.admin_secret === "string" ? body.admin_secret.trim() : "";
 
         const currentRole = user.user_metadata?.role || "user";
         let role = currentRole;
+        let roleChanged = false;
 
-        if (adminSecret && process.env.ADMIN_SECRET && adminSecret === process.env.ADMIN_SECRET) {
-            role = "admin";
+        if (adminSecret) {
+            if (!process.env.ADMIN_SECRET || adminSecret !== process.env.ADMIN_SECRET) {
+                return NextResponse.json(
+                    { error: "Invalid Staff Admin Secret. Leave Staff Access unchecked for customer login." },
+                    { status: 403 }
+                );
+            }
+            if (role !== "admin") {
+                role = "admin";
+                roleChanged = true;
+            }
         }
 
-        // If no secret is provided and the user already has a role,
-        // we might not need to update user_metadata, but we'll do it to ensure consistency,
-        // or we could skip the update and just return the current role.
-        if (!adminSecret && currentRole !== "user") {
-            role = currentRole;
+        // Only update Supabase metadata when role needs to be initialized or elevated
+        if (roleChanged || !user.user_metadata?.role) {
+            if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+                const adminClient = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL,
+                    process.env.SUPABASE_SERVICE_ROLE_KEY,
+                    { auth: { autoRefreshToken: false, persistSession: false } }
+                );
+
+                const { error: updateError } = await adminClient.auth.admin.updateUserById(user.id, {
+                    user_metadata: {
+                        ...(user.user_metadata || {}),
+                        role,
+                    },
+                });
+
+                if (updateError) {
+                    console.error("Failed to set role:", updateError);
+                    return NextResponse.json({ error: "Failed to update account role" }, { status: 500 });
+                }
+            }
         }
 
-        // Use service role client to update user metadata
-        const adminClient = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-        );
-
-        const { error: updateError } = await adminClient.auth.admin.updateUserById(user.id, {
-            user_metadata: { role },
-        });
-
-        if (updateError) {
-            console.error("Failed to set role:", updateError);
-            return NextResponse.json({ error: "Failed to set role" }, { status: 500 });
-        }
-
-        // If newly promoted to admin, or already an admin, ensure they have a Payload shadow user
+        // Ensure Payload shadow user exists for admins, bounded to 2.5s so login never hangs
         if (role === "admin") {
-            try {
-                const { getPayload } = await import("payload");
-                const configPromise = (await import("@payload-config")).default;
-                const payload = await getPayload({ config: configPromise });
-
-                // Check if shadow already exists
+            const syncShadowUser = async () => {
+                const payload = await getPayloadClient();
                 const { docs } = await payload.find({
                     collection: "users",
                     overrideAccess: true,
@@ -79,14 +88,19 @@ export async function POST(request: Request) {
                         },
                     });
                 }
-            } catch (payloadError) {
-                console.error("Failed to sync Payload shadow user:", payloadError);
-                // We do not fail the login if Payload fails; they can still login to the Next.js React Dashboard
-            }
+            };
+
+            await Promise.race([
+                syncShadowUser().catch((payloadError) => {
+                    console.warn("Payload shadow user sync skipped:", payloadError?.message || payloadError);
+                }),
+                new Promise<void>((resolve) => setTimeout(resolve, 2500)),
+            ]);
         }
 
         return NextResponse.json({
             role,
+            roleChanged,
             redirect: role === "admin" ? "/dashboard" : "/client-dashboard",
         });
     } catch (e) {
@@ -102,15 +116,20 @@ export async function POST(request: Request) {
 export async function GET() {
     try {
         const supabase = await createServerSupabase();
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
 
-        if (error || !user) {
-            return NextResponse.json({ role: null }, { status: 401 });
+        if (!user) {
+            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
         }
 
         const role = user.user_metadata?.role || "user";
-        return NextResponse.json({ role });
-    } catch (e) {
+        return NextResponse.json({
+            role,
+            redirect: role === "admin" ? "/dashboard" : "/client-dashboard",
+        });
+    } catch {
         return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
 }

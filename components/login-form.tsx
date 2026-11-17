@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function LoginForm({
@@ -19,7 +18,6 @@ export function LoginForm({
   const [showAdminSecret, setShowAdminSecret] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,22 +32,54 @@ export function LoginForm({
       });
       if (error) throw error;
 
-      // Call set-role to process any pending admin_secret and get the correct redirect url
-      const response = await fetch('/api/auth/set-role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: showAdminSecret && adminSecret ? JSON.stringify({ admin_secret: adminSecret }) : undefined,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        router.push(data.redirect || "/client-dashboard");
-        router.refresh();
-      } else {
-        router.push("/client-dashboard");
-        router.refresh();
+      // Call set-role with a strict timeout so cold starts never hang login
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7000);
+      let response: Response | null = null;
+      try {
+        response = await fetch("/api/auth/set-role", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: showAdminSecret && adminSecret ? JSON.stringify({ admin_secret: adminSecret }) : "{}",
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
       }
+
+      const params = new URLSearchParams(window.location.search);
+      const requestedRedirect = params.get("redirect");
+      const safeRedirect =
+        requestedRedirect && requestedRedirect.startsWith("/") && !requestedRedirect.startsWith("//")
+          ? requestedRedirect
+          : null;
+
+      if (response && response.status === 403) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Invalid staff secret.");
+      }
+
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data.roleChanged) {
+          await supabase.auth.refreshSession().catch(() => null);
+        }
+        const target =
+          data.role === "admin"
+            ? safeRedirect || "/dashboard"
+            : safeRedirect && !safeRedirect.startsWith("/dashboard")
+              ? safeRedirect
+              : data.redirect || "/client-dashboard";
+        window.location.assign(target);
+        return;
+      }
+
+      window.location.assign(safeRedirect || "/client-dashboard");
     } catch (error: unknown) {
+      if (error instanceof Error && error.name === "AbortError") {
+        window.location.assign("/client-dashboard");
+        return;
+      }
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setIsLoading(false);
