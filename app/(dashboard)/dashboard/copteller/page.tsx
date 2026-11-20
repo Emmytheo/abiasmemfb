@@ -1,692 +1,662 @@
 "use client"
 
 import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import {
-    ShieldAlert, CheckCircle2, XCircle, RefreshCw, Users, Truck,
-    Building2, Award, Activity, BarChart3, TrendingUp, KeyRound,
-    AlertCircle, Clock, Download, Plus, Eye, Check, X, Zap,
-    Layers, CircleDollarSign, Globe, Lock, ArrowUpRight, Bell
+    ShieldAlert,
+    CheckCircle2,
+    XCircle,
+    RefreshCw,
+    Truck,
+    Building2,
+    Award,
+    AlertCircle,
+    Clock,
+    Download,
+    Check,
+    X,
+    Zap,
+    CircleDollarSign,
+    Lock,
+    ArrowUpRight,
+    Bell,
+    Loader2,
+    KeyRound,
+    Layers,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { useSearchParams } from "next/navigation"
+import { useBankProfile } from "@/context/bank-profile-context"
 
 function StatusBadge({ status }: { status: string }) {
-    const map: Record<string, string> = {
-        "Active": "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-        "Pending": "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
-        "Approved": "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-        "Rejected": "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400",
-        "Live": "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-        "Open": "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-    }
+    const s = String(status || "").toLowerCase()
+    const cls =
+        s === "active" || s === "approved" || s === "completed" || s === "live"
+            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+            : s === "pending"
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+                : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
     return (
-        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${map[status] ?? 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${cls}`}>
             {status}
         </span>
     )
 }
 
-function WorkflowLog({ steps, active }: { steps: string[], active: number }) {
-    return (
-        <div className="bg-[#030303] border border-emerald-900/20 rounded-2xl p-4 font-mono text-[11px] space-y-1.5">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-900">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-emerald-400 text-[9px] font-black uppercase tracking-widest">Audit Engine</span>
-                <div className="ml-auto flex gap-1">
-                    <div className="w-2 h-2 rounded-full bg-rose-500/50" />
-                    <div className="w-2 h-2 rounded-full bg-amber-500/50" />
-                    <div className="w-2 h-2 rounded-full bg-emerald-500/50" />
-                </div>
-            </div>
-            {steps.map((s, i) => (
-                <div key={i} className={`flex items-start gap-2 ${i <= active ? 'text-emerald-400' : 'text-slate-700'}`}>
-                    <span className="text-emerald-700">›</span> {s}
-                </div>
-            ))}
-        </div>
-    )
-}
-
-function CoptellerSuperadminPageContent() {
-    const [activeTab, setActiveTab] = React.useState<'overview' | 'unions' | 'grants' | 'assets' | 'vault' | 'compliance'>('overview')
-    const [coopsList, setCoopsList] = React.useState<any[]>([])
-    const [loansList, setLoansList] = React.useState<any[]>([])
-    const [totalCoops, setTotalCoops] = React.useState(47)
-    const [workflowRunning, setWorkflowRunning] = React.useState(false)
-    const [workflowStep, setWorkflowStep] = React.useState(-1)
-    const [loadingData, setLoadingData] = React.useState(true)
-
+function CoptellerSuperadminContent() {
+    const { activeProfile } = useBankProfile()
     const searchParams = useSearchParams()
-    const tab = searchParams?.get('tab')
+    const [activeTab, setActiveTab] = React.useState<
+        "overview" | "unions" | "schemes" | "grants" | "assets" | "vault" | "compliance"
+    >("overview")
+    const [snapshot, setSnapshot] = React.useState<any>(null)
+    const [loading, setLoading] = React.useState(true)
+    const [busyId, setBusyId] = React.useState<string | null>(null)
+    const [reconReport, setReconReport] = React.useState<any>(null)
+    const [runningAudit, setRunningAudit] = React.useState(false)
 
     React.useEffect(() => {
-        if (tab && ['overview', 'unions', 'grants', 'assets', 'vault', 'compliance'].includes(tab)) {
+        const tab = searchParams?.get("tab")
+        if (tab && ["overview", "unions", "schemes", "grants", "assets", "vault", "compliance"].includes(tab)) {
             setActiveTab(tab as any)
         }
-    }, [tab])
+    }, [searchParams])
 
-    React.useEffect(() => {
-        const fetchOversightData = async () => {
-            try {
-                const coopRes = await fetch('/api/cooperatives?limit=100')
-                const coopData = await coopRes.json()
-                const docs = coopData.cooperatives || coopData.docs || []
-                if (docs.length > 0) {
-                    setCoopsList(docs)
-                    const activeCount = docs.filter((c: any) => c.status === 'active').length
-                    if (activeCount > 0) setTotalCoops(activeCount)
-                }
-
-                const loanRes = await fetch('/api/loans?limit=100')
-                const loanData = await loanRes.json()
-                const lDocs = loanData.loans || loanData.docs || []
-                if (lDocs.length > 0) {
-                    setLoansList(lDocs)
-                }
-            } catch (err) {
-                console.warn('Failed to load oversight records', err)
-            } finally {
-                setLoadingData(false)
+    const loadSnapshot = React.useCallback(async () => {
+        setLoading(true)
+        try {
+            const res = await fetch("/api/admin/copteller")
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "Could not load Copteller Bridge data")
+                return
             }
+            setSnapshot(data)
+        } catch {
+            toast.error("Failed to reach Copteller Bridge API")
+        } finally {
+            setLoading(false)
         }
-        fetchOversightData()
     }, [])
 
-    // Map database lists to UI lists with demo fallbacks
-    const dbPendingCoops = coopsList.filter((c: any) => c.status !== 'active').map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        sponsor: c.description || 'Artisan Sponsor Union',
-        members: 42,
-        regNo: `COOP-AB-${c.id.slice(-3).toUpperCase()}`
-    }))
+    React.useEffect(() => {
+        loadSnapshot()
+    }, [loadSnapshot])
 
-    const pendingCoops = dbPendingCoops.length > 0 ? dbPendingCoops : [
-        { id: "coop_demo_1", name: "Aba North Keke Drivers Cooperative", sponsor: "Aba Transport Guild", members: 42, regNo: "COOP-AB-981" },
-        { id: "coop_demo_2", name: "Ariaria Leatherworkers Thrift Union", sponsor: "Aba Leather & Shoe Makers", members: 120, regNo: "COOP-AB-405" },
-    ]
-
-    const dbPendingGrants = loansList.filter((l: any) => l.status === 'pending').map((l: any) => ({
-        id: l.id,
-        name: typeof l.customer === 'object' && l.customer ? `${l.customer.firstName || ''} ${l.customer.lastName || ''}`.trim() : 'Coop Member',
-        coop: 'Artisan Alliance Guild',
-        type: l.purpose || 'Equipment Expansion Loan',
-        amt: (l.principal || 20000000) / 100
-    }))
-
-    const pendingGrants = dbPendingGrants.length > 0 ? dbPendingGrants : [
-        { id: "loan_demo_101", name: "Chinedu Okafor", coop: "Aba North Keke Drivers", type: "Transport Tooling Grant", amt: 200000 },
-        { id: "loan_demo_102", name: "Sarah Johnson", coop: "Daily Footwear Artisans", type: "SME Growth Grant", amt: 200000 },
-    ]
-
-    const handleTabChange = (tab: typeof activeTab) => {
-        setActiveTab(tab)
-        if (typeof window !== 'undefined') {
-            const url = new URL(window.location.href)
-            url.searchParams.set('tab', tab)
-            window.history.pushState({}, '', url.toString())
-        }
-    }
-
-    const runAuditWorkflow = () => {
-        setWorkflowRunning(true)
-        setWorkflowStep(-1)
-        const steps = [0, 1, 2, 3, 4]
-        steps.forEach((s, i) => setTimeout(() => {
-            setWorkflowStep(s)
-            if (s === 4) setTimeout(() => {
-                setWorkflowRunning(false)
-                toast.success("Full platform audit complete — all vaults reconciled.")
-            }, 800)
-        }, i * 1100))
-    }
-
-    const approveCoop = async (id: string | number, name: string) => {
-        const isDemo = String(id).startsWith('coop_demo')
-        if (isDemo) {
-            toast.success(`"${name}" approved and registered under the bank license (Simulation).`)
-            return
-        }
-
-        const tId = toast.loading(`Registering cooperative under license...`)
+    const runLiveVaultAudit = async () => {
+        setRunningAudit(true)
         try {
-            const res = await fetch('/api/copteller/admin/cooperatives', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cooperative_id: id, status: 'active' })
+            const res = await fetch("/api/admin/copteller/reconcile", { method: "POST" })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "Reconciliation failed")
+                return
+            }
+            setReconReport(data.report)
+            toast.success(
+                data.report.allPassed
+                    ? `Live Copteller audit passed (${data.report.durationMs}ms)`
+                    : "Audit complete with warnings — inspect details below"
+            )
+            await loadSnapshot()
+        } finally {
+            setRunningAudit(false)
+        }
+    }
+
+    const mutateCopteller = async (payload: Record<string, any>, successMsg: string, key: string) => {
+        setBusyId(key)
+        try {
+            const res = await fetch("/api/admin/copteller", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             })
             const data = await res.json()
-            if (data.success) {
-                toast.success(`"${name}" approved and registered under bank license!`, { id: tId })
-                setCoopsList(prev => prev.map(c => c.id === id ? { ...c, status: 'active' } : c))
-                setTotalCoops(t => t + 1)
-            } else {
-                toast.error(data.error || 'Failed to update status', { id: tId })
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "Operation failed")
+                return
             }
-        } catch (err) {
-            toast.error('Network request failed', { id: tId })
+            toast.success(successMsg)
+            await loadSnapshot()
+        } finally {
+            setBusyId(null)
         }
     }
 
-    const rejectCoop = async (id: string | number) => {
-        const isDemo = String(id).startsWith('coop_demo')
-        if (isDemo) {
-            toast.error("Cooperative registration rejected (Simulation).")
-            return
-        }
-
-        const tId = toast.loading(`Suspending cooperative registration...`)
-        try {
-            const res = await fetch('/api/copteller/admin/cooperatives', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cooperative_id: id, status: 'suspended' })
-            })
-            const data = await res.json()
-            if (data.success) {
-                toast.success(`Cooperative registration rejected.`, { id: tId })
-                setCoopsList(prev => prev.map(c => c.id === id ? { ...c, status: 'suspended' } : c))
-            } else {
-                toast.error(data.error || 'Failed to update status', { id: tId })
-            }
-        } catch (err) {
-            toast.error('Network request failed', { id: tId })
-        }
+    if (loading) {
+        return (
+            <div className="flex h-[60vh] items-center justify-center gap-3 text-muted-foreground">
+                <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                <span className="text-sm font-semibold">Connecting to live Copteller Cooperative Bridge...</span>
+            </div>
+        )
     }
 
-    const disburseGrant = async (id: string | number, name: string, amt: number) => {
-        const isDemo = String(id).startsWith('loan_demo')
-        if (isDemo) {
-            toast.success(`₦${amt.toLocaleString()} disbursed to ${name} via escrow (Simulation).`)
-            return
-        }
-
-        const tId = toast.loading(`Disbursing ₦${amt.toLocaleString()} via core clearing vault...`)
-        try {
-            const res = await fetch('/api/copteller/admin/loans', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ loan_id: id, status: 'active' })
-            })
-            const data = await res.json()
-            if (data.success) {
-                toast.success(`₦${amt.toLocaleString()} disbursed to ${name} successfully!`, { id: tId })
-                setLoansList(prev => prev.map(l => l.id === id ? { ...l, status: 'active' } : l))
-            } else {
-                toast.error(data.error || 'Failed to disburse funds', { id: tId })
-            }
-        } catch (err) {
-            toast.error('Network request failed', { id: tId })
-        }
-    }
-
-    const rejectGrant = async (id: string | number) => {
-        const isDemo = String(id).startsWith('loan_demo')
-        if (isDemo) {
-            toast.error("Grant application rejected (Simulation).")
-            return
-        }
-
-        const tId = toast.loading(`Rejecting grant application...`)
-        try {
-            const res = await fetch('/api/copteller/admin/loans', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ loan_id: id, status: 'defaulted' })
-            })
-            const data = await res.json()
-            if (data.success) {
-                toast.success(`Grant application rejected successfully.`, { id: tId })
-                setLoansList(prev => prev.map(l => l.id === id ? { ...l, status: 'defaulted' } : l))
-            } else {
-                toast.error(data.error || 'Failed to update status', { id: tId })
-            }
-        } catch (err) {
-            toast.error('Network request failed', { id: tId })
-        }
-    }
-
-    const tabs = [
-        { key: 'overview', label: 'Overview' },
-        { key: 'unions', label: `Unions (${pendingCoops.length} pending)`, badge: pendingCoops.length },
-        { key: 'grants', label: `Grants (${pendingGrants.length} pending)`, badge: pendingGrants.length },
-        { key: 'assets', label: 'HP Assets' },
-        { key: 'vault', label: 'Vault & APIs' },
-        { key: 'compliance', label: 'Compliance' },
-    ] as const
+    const health = snapshot?.health || { connected: false, appUrl: "http://localhost:3001" }
+    const kpis = snapshot?.kpis || {}
+    const cooperatives = snapshot?.cooperatives || []
+    const pendingCoops = cooperatives.filter((c: any) => c.status === "pending")
+    const schemes = snapshot?.schemes || []
+    const contracts = snapshot?.contracts || []
+    const loans = snapshot?.loans || []
+    const pendingLoans = loans.filter((l: any) => l.status === "pending")
+    const vaultSecrets = snapshot?.vaultSecrets || []
+    const auditLogs = snapshot?.auditLogs || []
 
     return (
-        <div className="min-h-screen bg-background font-sans selection:bg-rose-500/20">
-            <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-                <div className="absolute top-0 right-[20%] w-[400px] h-[400px] bg-rose-500/3 dark:bg-rose-500/4 rounded-full blur-[120px]" />
-                <div className="absolute bottom-0 left-[15%] w-[350px] h-[350px] bg-emerald-500/3 dark:bg-emerald-500/4 rounded-full blur-[120px]" />
-            </div>
-
-            <div className="relative z-10 max-w-6xl mx-auto px-6 py-8 space-y-6">
-
-                {/* ── HEADER ───────────────────────────────────────────────── */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="p-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg">
-                                <ShieldAlert className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                            </div>
-                            <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">Bank Superadmin Console</p>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6">
+            {/* Branded Executive Copteller Bridge Hero */}
+            <section
+                className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-white/10"
+                style={{
+                    background: `radial-gradient(circle at 88% 15%, rgba(16,185,129,0.28) 0%, transparent 45%), linear-gradient(135deg, ${activeProfile.themeStyle?.heroBgHex || "#070D59"} 0%, #071917 100%)`,
+                }}
+            >
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                    <div className="space-y-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 uppercase text-[10px] font-black tracking-widest">
+                                Modular Bridge · {activeProfile.shortName}
+                            </span>
+                            <span
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${
+                                    health.connected
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"
+                                        : "bg-rose-500/20 text-rose-300 border-rose-400/30"
+                                }`}
+                            >
+                                <span className={`size-1.5 rounded-full ${health.connected ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
+                                {health.connected ? `LIVE DB SYNC · ${health.latencyMs}ms` : "BRIDGE DISCONNECTED"}
+                            </span>
                         </div>
-                        <h1 className="text-2xl font-black">Copteller Platform Oversight</h1>
-                        <p className="text-xs text-muted-foreground font-semibold mt-0.5">Licensed MFB Operations · <span className="text-emerald-600 dark:text-emerald-400">{totalCoops} Active Cooperatives</span></p>
+                        <h1 className="text-2xl sm:text-4xl font-black tracking-tight">Copteller Cooperative Oversight</h1>
+                        <p className="text-xs sm:text-sm text-white/75 font-medium max-w-2xl">
+                            Real-time institutional supervision of Copteller unions, hire-purchase assets, escrow custody, and CBN cooperative returns.
+                        </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Button asChild variant="outline" size="sm" className="h-9 rounded-xl border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs gap-2">
-                            <a href={`${process.env.NEXT_PUBLIC_COPTELLER_URL || 'http://localhost:3001'}/copteller/superadmin`} target="_blank" rel="noopener noreferrer">
-                                <ArrowUpRight className="h-3.5 w-3.5" /> Open Copteller Standalone App
+
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                        <Button asChild variant="outline" size="sm" className="h-10 rounded-xl font-bold text-xs gap-1.5 bg-white/10 hover:bg-white/20 text-white border-white/20">
+                            <a href={`${health.appUrl}/copteller/superadmin`} target="_blank" rel="noopener noreferrer">
+                                <ArrowUpRight className="h-3.5 w-3.5" /> Standalone Copteller
                             </a>
                         </Button>
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-slate-200 dark:border-slate-800 font-bold text-xs gap-2">
-                            <Download className="h-3.5 w-3.5" /> CBN Report
+                        <Button asChild variant="outline" size="sm" className="h-10 rounded-xl font-bold text-xs gap-1.5 bg-white/10 hover:bg-white/20 text-white border-white/20">
+                            <a href="/api/admin/copteller/export?format=csv">
+                                <Download className="h-3.5 w-3.5" /> CBN CSV Return
+                            </a>
                         </Button>
                         <Button
-                            onClick={runAuditWorkflow}
-                            disabled={workflowRunning}
-                            className="h-9 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 text-white font-black text-xs border-0 gap-2 shadow-lg disabled:opacity-60"
+                            onClick={runLiveVaultAudit}
+                            disabled={runningAudit || !health.connected}
+                            size="sm"
+                            className="h-10 rounded-xl font-black text-xs gap-1.5 bg-white text-slate-950 hover:bg-white/90 px-4 shadow-lg"
                         >
-                            {workflowRunning ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                            {workflowRunning ? 'Running Audit...' : 'Run Platform Audit'}
+                            {runningAudit ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 text-emerald-600" />}
+                            {runningAudit ? "Auditing SQL..." : "Run Live Vault Audit"}
                         </Button>
                     </div>
                 </div>
+            </section>
 
-                {/* Audit workflow console */}
-                <AnimatePresence>
-                    {workflowRunning && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                            <WorkflowLog
-                                steps={[
-                                    "Scanning all cooperative escrow vaults...",
-                                    "Cross-referencing HP payback ledgers...",
-                                    "Validating member credit score deltas...",
-                                    "Generating CBN compliance report draft...",
-                                    "✓ Audit complete — 47 cooperatives reconciled"
-                                ]}
-                                active={workflowStep}
-                            />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* ── TABS ─────────────────────────────────────────────────── */}
-                <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-2xl w-fit flex-wrap">
-                    {tabs.map(t => (
-                        <button key={t.key} onClick={() => handleTabChange(t.key as any)} className={`relative px-4 py-2 rounded-xl text-xs font-black transition-all duration-200 ${activeTab === t.key ? 'bg-white dark:bg-slate-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                            {t.label.split(' (')[0]}
-                            {('badge' in t) && (t as any).badge > 0 && (
-                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center">{(t as any).badge}</span>
-                            )}
-                        </button>
-                    ))}
+            {!health.connected && (
+                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 flex items-start gap-3">
+                    <ShieldAlert className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+                    <div className="text-xs space-y-1">
+                        <p className="font-black text-rose-600">Copteller Bridge Offline</p>
+                        <p className="text-muted-foreground">
+                            {health.error || "Configure COPTELLER_DATABASE_URI in environment variables to stream live Copteller cooperative ledgers."}
+                        </p>
+                    </div>
                 </div>
+            )}
 
-                <AnimatePresence mode="wait">
-                    {/* ── OVERVIEW ─────────────────────────────────────────── */}
-                    {activeTab === 'overview' && (
-                        <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-6">
-
-                            {/* KPI grid */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                {[
-                                    { label: "Active Cooperatives", val: totalCoops.toString(), sub: `+${pendingCoops.length} pending approval`, icon: Building2, color: "emerald" },
-                                    { label: "Weekly HP Flow", val: "₦4.8M", sub: "Across all guilds", icon: CircleDollarSign, color: "amber" },
-                                    { label: "HP Assets Tracked", val: "1,240+", sub: "Vehicles, tools & equipment", icon: Truck, color: "emerald" },
-                                    { label: "Platform Escrow", val: "₦2.4B+", sub: "Total AUM under custody", icon: Lock, color: "rose" },
-                                ].map((s, i) => (
-                                    <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl p-5 space-y-3 hover:shadow-lg transition-all duration-300">
-                                        <div className={`p-2 rounded-xl w-fit ${s.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : s.color === 'amber' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
-                                            <s.icon className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{s.label}</p>
-                                            <p className="text-2xl font-black mt-0.5">{s.val}</p>
-                                            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{s.sub}</p>
-                                        </div>
-                                    </motion.div>
-                                ))}
+            {/* Live Reconciliation Output */}
+            {reconReport && (
+                <div className="rounded-2xl border bg-slate-950 text-slate-100 p-5 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${reconReport.allPassed ? "bg-emerald-400" : "bg-amber-400"}`} />
+                            <span className="text-xs font-mono font-bold uppercase tracking-wider">
+                                Live Copteller SQL Reconciliation ({reconReport.durationMs}ms)
+                            </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(reconReport.ranAt).toLocaleString()}
+                        </span>
+                    </div>
+                    <div className="space-y-2 text-xs font-mono">
+                        {reconReport.checks.map((c: any, idx: number) => (
+                            <div key={idx} className="flex items-start gap-2">
+                                <span className={c.passed ? "text-emerald-400" : "text-amber-400"}>
+                                    {c.passed ? "✓" : "!"}
+                                </span>
+                                <span>
+                                    <strong>{c.name}:</strong> {c.detail}
+                                </span>
                             </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
-                            {/* Main grid */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* Platform sector breakdown */}
-                                <div className="lg:col-span-2 bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl p-6 space-y-4">
-                                    <h3 className="text-sm font-black">Cooperative Sector Distribution</h3>
-                                    {[
-                                        { sector: "Transport / Keke", coops: 23, aum: "₦1.4B", color: "emerald", pct: 49 },
-                                        { sector: "Artisan / Leatherwork", coops: 12, aum: "₦620M", color: "amber", pct: 26 },
-                                        { sector: "Market Traders", coops: 8, aum: "₦280M", color: "emerald", pct: 17 },
-                                        { sector: "Agriculture", coops: 4, aum: "₦100M", color: "amber", pct: 8 },
-                                    ].map((s, i) => (
-                                        <div key={i} className="space-y-1.5">
-                                            <div className="flex justify-between text-xs font-bold">
-                                                <span>{s.sector}</span>
-                                                <span className="text-muted-foreground">{s.coops} coops · {s.aum}</span>
-                                            </div>
-                                            <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                                                <motion.div initial={{ width: 0 }} animate={{ width: `${s.pct}%` }} transition={{ duration: 1, delay: i * 0.15 }} className={`h-full rounded-full ${s.color === 'emerald' ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-amber-500 to-amber-400'}`} />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Alerts panel */}
-                                <div className="space-y-4">
-                                    <div className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl p-5 space-y-3">
-                                        <h3 className="text-xs font-black flex items-center gap-2"><Bell className="h-4 w-4 text-rose-500" /> Platform Alerts</h3>
-                                        {[
-                                            { label: `${pendingCoops.length} union approvals pending`, type: "warning" },
-                                            { label: `${pendingGrants.length} grant disbursals queued`, type: "warning" },
-                                            { label: "3 HP asset defaults flagged", type: "error" },
-                                            { label: "Weekly audit cycle due in 2 days", type: "info" },
-                                        ].map((a, i) => (
-                                            <div key={i} className={`flex items-start gap-2 p-2.5 rounded-xl text-[10px] font-bold ${a.type === 'error' ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400' : a.type === 'warning' ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400' : 'bg-slate-50 dark:bg-slate-900 text-muted-foreground'}`}>
-                                                {a.type === 'error' ? <XCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : a.type === 'warning' ? <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
-                                                {a.label}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Quick stats */}
-                                    <div className="bg-gradient-to-br from-slate-950 to-rose-950/20 border border-rose-900/20 rounded-2xl p-5 space-y-3">
-                                        <p className="text-[9px] font-black text-rose-400/70 uppercase tracking-widest">Platform Health</p>
-                                        {[
-                                            { label: "HP Collection Rate", val: "94.2%" },
-                                            { label: "Active Escrow Vaults", val: "47" },
-                                            { label: "Avg. Credit Score", val: "82.1" },
-                                        ].map((s, i) => (
-                                            <div key={i} className="flex justify-between text-[10px] font-bold text-slate-400">
-                                                <span>{s.label}</span>
-                                                <span className="text-emerald-400 font-black">{s.val}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* ── UNIONS ───────────────────────────────────────────── */}
-                    {activeTab === 'unions' && (
-                        <motion.div key="unions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-5">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-lg font-black">Union Approval Queue</h2>
-                                <span className="text-xs font-bold text-muted-foreground">{pendingCoops.length} pending</span>
-                            </div>
-
-                            {pendingCoops.length === 0 ? (
-                                <div className="text-center py-16 text-muted-foreground">
-                                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500 opacity-40" />
-                                    <p className="font-black">All unions cleared</p>
-                                    <p className="text-sm">No pending approvals</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {pendingCoops.map(coop => (
-                                        <motion.div key={coop.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 50 }} className="bg-white dark:bg-slate-950/60 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-6 space-y-4">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="space-y-1">
-                                                    <p className="text-sm font-black">{coop.name}</p>
-                                                    <p className="text-[10px] text-muted-foreground font-semibold">Sponsor: {coop.sponsor}</p>
-                                                    <p className="text-[10px] text-muted-foreground font-semibold">Reg No: {coop.regNo}</p>
-                                                </div>
-                                                <StatusBadge status="Pending" />
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-3 text-center text-[10px]">
-                                                <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-2">
-                                                    <p className="text-muted-foreground font-bold">Members</p>
-                                                    <p className="font-black text-sm">{coop.members}</p>
-                                                </div>
-                                                <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-2">
-                                                    <p className="text-muted-foreground font-bold">Reg Number</p>
-                                                    <p className="font-black text-sm">{coop.regNo.split('-')[2]}</p>
-                                                </div>
-                                                <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-2">
-                                                    <p className="text-muted-foreground font-bold">Documents</p>
-                                                    <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm">3 / 3 ✓</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-3">
-                                                <Button onClick={() => rejectCoop(coop.id)} variant="outline" className="flex-1 h-10 rounded-xl border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 font-black text-xs gap-2">
-                                                    <X className="h-3.5 w-3.5" /> Reject
-                                                </Button>
-                                                <Button onClick={() => approveCoop(coop.id, coop.name)} className="flex-1 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-amber-500 text-black font-black text-xs border-0 shadow-lg gap-2">
-                                                    <Check className="h-3.5 w-3.5" /> Approve & Register
-                                                </Button>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Registered list */}
-                            <div className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl p-6 space-y-3">
-                                <h3 className="text-sm font-black">Registered Cooperatives ({totalCoops})</h3>
-                                {[
-                                    { name: "Aba Motor Tricycle Union", sector: "Transport", members: 320, aum: "₦890M" },
-                                    { name: "Ariaria Traders Cooperative", sector: "Commerce", members: 180, aum: "₦240M" },
-                                    { name: "Aba Leatherwork & Artisan Guild", sector: "Artisan", members: 95, aum: "₦120M" },
-                                ].map((c, i) => (
-                                    <div key={i} className="flex items-center gap-4 py-2.5 border-b border-slate-50 dark:border-slate-900 last:border-0">
-                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/20 to-amber-500/20 border border-emerald-500/20 flex items-center justify-center">
-                                            <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-xs font-black">{c.name}</p>
-                                            <p className="text-[10px] text-muted-foreground font-semibold">{c.sector} · {c.members} members</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">{c.aum}</p>
-                                            <StatusBadge status="Active" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* ── GRANTS ───────────────────────────────────────────── */}
-                    {activeTab === 'grants' && (
-                        <motion.div key="grants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-5">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-lg font-black">Grant Disbursement Queue</h2>
-                                <Button variant="outline" size="sm" className="h-9 rounded-xl border-slate-200 dark:border-slate-800 font-bold text-xs gap-2">
-                                    <Download className="h-3.5 w-3.5" /> Export
-                                </Button>
-                            </div>
-
-                            {pendingGrants.length === 0 ? (
-                                <div className="text-center py-16 text-muted-foreground">
-                                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500 opacity-40" />
-                                    <p className="font-black">All grants disbursed</p>
-                                    <p className="text-sm">Queue is clear</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {pendingGrants.map(grant => (
-                                        <motion.div key={grant.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 50 }} className="bg-white dark:bg-slate-950/60 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-6 space-y-4">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="space-y-1">
-                                                    <p className="text-sm font-black">{grant.name}</p>
-                                                    <p className="text-[10px] text-muted-foreground font-semibold">{grant.coop}</p>
-                                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">{grant.type}</p>
-                                                </div>
-                                                <div className="text-right space-y-1">
-                                                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">₦{grant.amt.toLocaleString()}</p>
-                                                    <StatusBadge status="Pending" />
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-3">
-                                                <Button variant="outline" onClick={() => rejectGrant(grant.id)} className="flex-1 h-10 rounded-xl border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 font-black text-xs gap-2">
-                                                    <X className="h-3.5 w-3.5" /> Reject
-                                                </Button>
-                                                <Button onClick={() => disburseGrant(grant.id, grant.name, grant.amt)} className="flex-1 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-amber-500 text-black font-black text-xs border-0 shadow-lg gap-2">
-                                                    <Check className="h-3.5 w-3.5" /> Disburse via Vault
-                                                </Button>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            )}
-                        </motion.div>
-                    )}
-
-                    {/* ── ASSETS ───────────────────────────────────────────── */}
-                    {activeTab === 'assets' && (
-                        <motion.div key="assets" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-5">
-                            <h2 className="text-lg font-black">HP Asset Registry</h2>
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                {[
-                                    { label: "Total Assets", val: "1,240", icon: Truck, color: "emerald" },
-                                    { label: "Active Contracts", val: "1,180", icon: CheckCircle2, color: "emerald" },
-                                    { label: "Defaulting", val: "37", icon: AlertCircle, color: "rose" },
-                                    { label: "Ownership Completed", val: "23", icon: Award, color: "amber" },
-                                ].map((s, i) => (
-                                    <div key={i} className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl p-5 space-y-3">
-                                        <div className={`p-2 rounded-xl w-fit ${s.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : s.color === 'rose' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
-                                            <s.icon className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{s.label}</p>
-                                            <p className="text-2xl font-black">{s.val}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl overflow-hidden">
-                                <table className="w-full text-xs">
-                                    <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
-                                        <tr>
-                                            {["Asset", "Cooperative", "Operator", "Paid", "Total", "Status"].map(h => (
-                                                <th key={h} className="text-left px-5 py-3 text-[9px] font-black uppercase tracking-widest text-muted-foreground">{h}</th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {[
-                                            { asset: "TVS King ABA-404", coop: "Aba Motor Union", op: "Kalu Onyekachi", paid: "₦420K", total: "₦1.4M", status: "Active" },
-                                            { asset: "Haojin ABA-211", coop: "Aba Motor Union", op: "Emeka Obi", paid: "₦700K", total: "₦1.4M", status: "Active" },
-                                            { asset: "Bajaj ABA-088", coop: "Aba Motor Union", op: "Ngozi Eze", paid: "₦120K", total: "₦1.2M", status: "Pending" },
-                                            { asset: "TVS King ABA-519", coop: "Aba Motor Union", op: "Chukwu Nna", paid: "₦280K", total: "₦1.4M", status: "Rejected" },
-                                        ].map((row, i) => (
-                                            <tr key={i} className="border-b border-slate-50 dark:border-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                                                <td className="px-5 py-3 font-bold">{row.asset}</td>
-                                                <td className="px-5 py-3 font-semibold text-muted-foreground">{row.coop}</td>
-                                                <td className="px-5 py-3 font-semibold">{row.op}</td>
-                                                <td className="px-5 py-3 font-black text-emerald-600 dark:text-emerald-400">{row.paid}</td>
-                                                <td className="px-5 py-3 font-semibold text-muted-foreground">{row.total}</td>
-                                                <td className="px-5 py-3"><StatusBadge status={row.status} /></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* ── VAULT ────────────────────────────────────────────── */}
-                    {activeTab === 'vault' && (
-                        <motion.div key="vault" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-5">
-                            <h2 className="text-lg font-black">Service Vault & API Integrations</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {[
-                                    { name: "Core Banking API", provider: "Licensed MFB Partner", status: "Live", key: "cbk_live_••••••••", scopes: ["escrow.write", "ledger.read", "audit.log"] },
-                                    { name: "Payment Processor", provider: "Paystack / Flutterwave", status: "Live", key: "pk_live_••••••••", scopes: ["charge", "transfer", "verify"] },
-                                    { name: "KYC & BVN Verify", provider: "NIBSS / Smile Identity", status: "Live", key: "kyc_live_••••••••", scopes: ["bvn.verify", "id.validate"] },
-                                    { name: "Credit Bureau", provider: "CRC / First Central", status: "Live", key: "cr_live_••••••••", scopes: ["score.read", "report.request"] },
-                                ].map((api, i) => (
-                                    <div key={i} className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl p-6 space-y-4">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <p className="text-sm font-black">{api.name}</p>
-                                                <p className="text-[10px] text-muted-foreground font-semibold">{api.provider}</p>
-                                            </div>
-                                            <StatusBadge status={api.status} />
-                                        </div>
-                                        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 flex items-center gap-2">
-                                            <KeyRound className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <code className="text-[10px] font-bold text-muted-foreground flex-1">{api.key}</code>
-                                            <button className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 hover:underline">Reveal</button>
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {api.scopes.map(scope => (
-                                                <span key={scope} className="text-[9px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
-                                                    {scope}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* ── COMPLIANCE ───────────────────────────────────────── */}
-                    {activeTab === 'compliance' && (
-                        <motion.div key="compliance" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-5">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-lg font-black">Compliance & Audit Logs</h2>
-                                <Button variant="outline" size="sm" className="h-9 rounded-xl border-slate-200 dark:border-slate-800 font-bold text-xs gap-2">
-                                    <Download className="h-3.5 w-3.5" /> Export CBN Report
-                                </Button>
-                            </div>
-
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                {[
-                                    { label: "CBN Filings", val: "12", sub: "Current year", color: "emerald" },
-                                    { label: "NDIC Reports", val: "4/4", sub: "All submitted", color: "emerald" },
-                                    { label: "Open Violations", val: "0", sub: "Clean record", color: "emerald" },
-                                    { label: "Audit Score", val: "97/100", sub: "Excellent rating", color: "amber" },
-                                ].map((s, i) => (
-                                    <div key={i} className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl p-4 text-center space-y-1">
-                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{s.label}</p>
-                                        <p className={`text-2xl font-black ${s.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{s.val}</p>
-                                        <p className="text-[9px] text-muted-foreground font-semibold">{s.sub}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl overflow-hidden">
-                                <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800">
-                                    <p className="text-xs font-black">Recent Audit Events</p>
-                                </div>
-                                <div className="divide-y divide-slate-50 dark:divide-slate-900">
-                                    {[
-                                        { event: "Weekly HP collection workflow completed", actor: "System", time: "2h ago", type: "success" },
-                                        { event: "Cooperative COOP-AB-390 approved", actor: "Superadmin", time: "1d ago", type: "success" },
-                                        { event: "HP default flagged: TVS King ABA-519", actor: "System", time: "2d ago", type: "warning" },
-                                        { event: "Grant disbursed: ₦200,000 to Kalu O.", actor: "Superadmin", time: "3d ago", type: "success" },
-                                        { event: "Quarterly CBN report submitted", actor: "Superadmin", time: "Jul 15", type: "success" },
-                                    ].map((log, i) => (
-                                        <div key={i} className="flex items-center gap-4 px-5 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                                            <div className={`w-2 h-2 rounded-full shrink-0 ${log.type === 'success' ? 'bg-emerald-500' : log.type === 'warning' ? 'bg-amber-500' : 'bg-rose-500'}`} />
-                                            <p className="flex-1 text-xs font-semibold">{log.event}</p>
-                                            <span className="text-[10px] text-muted-foreground font-bold">{log.actor}</span>
-                                            <span className="text-[10px] text-muted-foreground font-semibold w-12 text-right">{log.time}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+            {/* Tabs */}
+            <div className="flex gap-1 bg-muted p-1 rounded-2xl w-fit flex-wrap">
+                {[
+                    { key: "overview", label: "Overview" },
+                    { key: "unions", label: `Unions (${cooperatives.length})`, badge: pendingCoops.length },
+                    { key: "schemes", label: `Schemes (${schemes.length})` },
+                    { key: "grants", label: `Loans & Grants (${loans.length})`, badge: pendingLoans.length },
+                    { key: "assets", label: `Contracts & HP (${contracts.length})` },
+                    { key: "vault", label: `Vault (${vaultSecrets.length})` },
+                    { key: "compliance", label: `Audit Logs (${auditLogs.length})` },
+                ].map((t) => (
+                    <button
+                        key={t.key}
+                        onClick={() => setActiveTab(t.key as any)}
+                        className={`relative px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            activeTab === t.key
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        {t.label}
+                        {t.badge ? (
+                            <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">
+                                {t.badge}
+                            </span>
+                        ) : null}
+                    </button>
+                ))}
             </div>
+
+            {/* OVERVIEW */}
+            {activeTab === "overview" && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[
+                            {
+                                label: "Active Cooperatives",
+                                val: String(kpis.activeCooperatives ?? 0),
+                                sub: `${kpis.pendingCooperatives ?? 0} pending · ${kpis.totalMembers ?? 0} active members`,
+                                icon: Building2,
+                            },
+                            {
+                                label: "Copteller Escrow Custody",
+                                val: `₦${((kpis.escrowBalanceKobo ?? 0) / 100).toLocaleString()}`,
+                                sub: "Sum of live Copteller ledger accounts",
+                                icon: Lock,
+                            },
+                            {
+                                label: "Active Contracts & HP",
+                                val: String(kpis.activeContracts ?? 0),
+                                sub: `${kpis.defaultingContracts ?? 0} defaulting · ${kpis.completedContracts ?? 0} completed`,
+                                icon: Truck,
+                            },
+                            {
+                                label: "Contract Collection Rate",
+                                val: `${kpis.collectionRatePct ?? 0}%`,
+                                sub: `₦${((kpis.totalContractCollectedKobo ?? 0) / 100).toLocaleString()} collected`,
+                                icon: CircleDollarSign,
+                            },
+                        ].map((s, i) => (
+                            <div key={i} className="bg-card border rounded-2xl p-5 space-y-2.5">
+                                <div className="p-2 rounded-xl bg-primary/10 text-primary w-fit">
+                                    <s.icon className="h-4 w-4" />
+                                </div>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                                <p className="text-2xl font-black">{s.val}</p>
+                                <p className="text-[11px] text-muted-foreground">{s.sub}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 bg-card border rounded-2xl p-6 space-y-4">
+                            <h3 className="text-sm font-black">Live Sector Distribution</h3>
+                            {snapshot?.sectorDistribution?.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">No cooperatives registered in Copteller yet.</p>
+                            ) : (
+                                snapshot?.sectorDistribution?.map((s: any) => (
+                                    <div key={s.sector} className="space-y-1.5">
+                                        <div className="flex justify-between text-xs font-bold">
+                                            <span className="capitalize">{s.sector.replace(/_/g, " ")}</span>
+                                            <span className="text-muted-foreground">{s.coops} coop(s) · {s.members} members ({s.pct}%)</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                            <div className="h-full bg-primary rounded-full" style={{ width: `${s.pct}%` }} />
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className="bg-card border rounded-2xl p-6 space-y-3">
+                            <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
+                                <Bell className="h-4 w-4 text-primary" /> Live Risk Signals
+                            </h3>
+                            <div className="space-y-2 text-xs">
+                                <div className="p-3 rounded-xl bg-muted/40 flex justify-between font-bold">
+                                    <span>Pending Union Approvals</span>
+                                    <span>{kpis.pendingCooperatives ?? 0}</span>
+                                </div>
+                                <div className="p-3 rounded-xl bg-muted/40 flex justify-between font-bold">
+                                    <span>Pending Loan Disbursals</span>
+                                    <span>{kpis.pendingLoansCount ?? 0}</span>
+                                </div>
+                                <div className="p-3 rounded-xl bg-muted/40 flex justify-between font-bold">
+                                    <span>Defaulting HP Contracts</span>
+                                    <span className={(kpis.defaultingContracts ?? 0) > 0 ? "text-rose-600" : "text-emerald-600"}>
+                                        {kpis.defaultingContracts ?? 0}
+                                    </span>
+                                </div>
+                                <div className="p-3 rounded-xl bg-muted/40 flex justify-between font-bold">
+                                    <span>Avg Member Credit Score</span>
+                                    <span className="text-emerald-600">{kpis.avgCreditScore ?? 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* UNIONS */}
+            {activeTab === "unions" && (
+                <div className="bg-card border rounded-2xl p-6 space-y-4">
+                    <h2 className="text-lg font-black">Registered Copteller Cooperatives ({cooperatives.length})</h2>
+                    {cooperatives.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-8 text-center">No cooperatives registered in Copteller yet.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {cooperatives.map((c: any) => (
+                                <div key={c.id} className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="text-sm font-black">{c.name}</p>
+                                            <StatusBadge status={c.status} />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {c.sector} · {c.cooperative_type} · Reg: {c.registration_number || "N/A"} · State: {c.state || "N/A"}
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Leader: {c.leader_name} · {c.current_member_count || 0} members · Escrow fee: {c.escrow_fee_percent ?? 1.5}%
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {c.status !== "active" ? (
+                                            <Button
+                                                size="sm"
+                                                disabled={busyId !== null}
+                                                onClick={() =>
+                                                    mutateCopteller(
+                                                        { action: "update_cooperative_status", cooperative_id: c.id, status: "active" },
+                                                        `Approved "${c.name}" under bank license.`,
+                                                        `coop-${c.id}`
+                                                    )
+                                                }
+                                                className="rounded-xl font-bold gap-1"
+                                            >
+                                                <Check className="h-3.5 w-3.5" /> Approve
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={busyId !== null}
+                                                onClick={() =>
+                                                    mutateCopteller(
+                                                        { action: "update_cooperative_status", cooperative_id: c.id, status: "suspended" },
+                                                        `Suspended "${c.name}".`,
+                                                        `coop-${c.id}`
+                                                    )
+                                                }
+                                                className="rounded-xl font-bold text-rose-600 border-rose-200 gap-1"
+                                            >
+                                                <X className="h-3.5 w-3.5" /> Suspend
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* SCHEMES */}
+            {activeTab === "schemes" && (
+                <div className="bg-card border rounded-2xl p-6 space-y-4">
+                    <h2 className="text-lg font-black">Cooperative Schemes & Bank Underwriting ({schemes.length})</h2>
+                    {schemes.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-8 text-center">No schemes found in Copteller.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {schemes.map((s: any) => (
+                                <div key={s.id} className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-black">{s.name}</p>
+                                            <StatusBadge status={s.status} />
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {s.bank_approved ? "Bank Approved" : "Awaiting Bank Sign-Off"}
+                                            </Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Type: {s.scheme_type} · Yield: {s.yield_rate ?? 0}% · Target: ₦{(Number(s.target_capital || 0) / 100).toLocaleString()} · Enrolled: {s.enrolled_count || 0}/{s.max_participants || "∞"}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant={s.bank_approved ? "outline" : "default"}
+                                        disabled={busyId !== null}
+                                        onClick={() =>
+                                            mutateCopteller(
+                                                { action: "toggle_scheme_approval", scheme_id: s.id, bank_approved: !s.bank_approved },
+                                                `${s.bank_approved ? "Revoked" : "Granted"} bank approval for "${s.name}".`,
+                                                `scheme-${s.id}`
+                                            )
+                                        }
+                                        className="rounded-xl font-bold"
+                                    >
+                                        {s.bank_approved ? "Revoke Sign-Off" : "Grant Bank Sign-Off"}
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* GRANTS & LOANS */}
+            {activeTab === "grants" && (
+                <div className="bg-card border rounded-2xl p-6 space-y-4">
+                    <h2 className="text-lg font-black">Cooperative Loans & Grant Disbursals ({loans.length})</h2>
+                    {loans.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-8 text-center">No loans or grant requests in Copteller.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {loans.map((l: any) => (
+                                <div key={l.id} className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-black">{l.borrower_name}</p>
+                                            <StatusBadge status={l.status} />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {l.purpose || "Cooperative Facility"} · {l.duration_months}m @ {l.interest_rate}% · Principal: ₦{(Number(l.principal || 0) / 100).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    {l.status === "pending" && (
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={busyId !== null}
+                                                onClick={() =>
+                                                    mutateCopteller(
+                                                        { action: "reject_loan", loan_id: l.id },
+                                                        `Loan #${l.id} rejected.`,
+                                                        `loan-${l.id}`
+                                                    )
+                                                }
+                                                className="text-rose-600"
+                                            >
+                                                Reject
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                disabled={busyId !== null}
+                                                onClick={() =>
+                                                    mutateCopteller(
+                                                        { action: "disburse_loan", loan_id: l.id },
+                                                        `Disbursed Loan #${l.id} atomically to borrower wallet!`,
+                                                        `loan-${l.id}`
+                                                    )
+                                                }
+                                            >
+                                                Disburse Atomically
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* CONTRACTS & HP ASSETS */}
+            {activeTab === "assets" && (
+                <div className="bg-card border rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b">
+                        <h2 className="text-lg font-black">Live HP Assets & Cooperative Contracts ({contracts.length})</h2>
+                    </div>
+                    {contracts.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-12 text-center">No active contracts in Copteller.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-muted/40 border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                                    <tr>
+                                        <th className="px-4 py-3">Asset / Contract</th>
+                                        <th className="px-4 py-3">Type</th>
+                                        <th className="px-4 py-3">Member Ref</th>
+                                        <th className="px-4 py-3">Paid</th>
+                                        <th className="px-4 py-3">Obligation</th>
+                                        <th className="px-4 py-3">Missed</th>
+                                        <th className="px-4 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {contracts.map((c: any) => (
+                                        <tr key={c.id} className="hover:bg-muted/20">
+                                            <td className="px-4 py-3 font-bold">
+                                                {c.asset_name || `Contract #${c.id}`}
+                                                {c.asset_identifier && <span className="block text-[10px] font-mono text-muted-foreground">{c.asset_identifier}</span>}
+                                            </td>
+                                            <td className="px-4 py-3 uppercase font-mono">{c.contract_type}</td>
+                                            <td className="px-4 py-3 font-mono text-muted-foreground">{c.member}</td>
+                                            <td className="px-4 py-3 font-black text-emerald-600">
+                                                ₦{(Number(c.total_paid || 0) / 100).toLocaleString()}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                ₦{(Number(c.total_obligation || c.asset_value || 0) / 100).toLocaleString()}
+                                            </td>
+                                            <td className="px-4 py-3 font-bold">{c.missed_payments || 0}</td>
+                                            <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* VAULT */}
+            {activeTab === "vault" && (
+                <div className="bg-card border rounded-2xl p-6 space-y-4">
+                    <h2 className="text-lg font-black flex items-center gap-2">
+                        <KeyRound className="h-5 w-5 text-primary" /> Copteller Secret Vault (Masked Oversight)
+                    </h2>
+                    {vaultSecrets.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-8 text-center">No vault entries stored in Copteller yet.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {vaultSecrets.map((s: any) => (
+                                <div key={s.id} className="border rounded-2xl p-4 space-y-2">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-sm font-black">{s.name}</p>
+                                            <p className="text-[11px] text-muted-foreground">{s.category} · {s.description || "Service credential"}</p>
+                                        </div>
+                                        <Badge variant="outline" className="text-[9px] uppercase">
+                                            {s.encrypted ? "AES-256-GCM" : "Masked"}
+                                        </Badge>
+                                    </div>
+                                    <p className="font-mono text-xs bg-muted/50 px-3 py-2 rounded-lg">{s.maskedPreview}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* AUDIT LOGS */}
+            {activeTab === "compliance" && (
+                <div className="bg-card border rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b flex items-center justify-between">
+                        <h2 className="text-lg font-black">Live Copteller Immutable Audit Stream</h2>
+                        <Button asChild variant="outline" size="sm" className="rounded-xl font-bold text-xs gap-1.5">
+                            <a href="/api/admin/copteller/export?format=json" target="_blank">
+                                <Download className="h-3.5 w-3.5" /> JSON Snapshot
+                            </a>
+                        </Button>
+                    </div>
+                    {auditLogs.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-12 text-center">No Copteller audit logs found.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-muted/40 border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                                    <tr>
+                                        <th className="px-4 py-3">Time</th>
+                                        <th className="px-4 py-3">Actor</th>
+                                        <th className="px-4 py-3">Action</th>
+                                        <th className="px-4 py-3">Entity</th>
+                                        <th className="px-4 py-3">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {auditLogs.map((a: any) => (
+                                        <tr key={a.id} className="hover:bg-muted/20">
+                                            <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                                                {new Date(a.created_at).toLocaleString()}
+                                            </td>
+                                            <td className="px-4 py-3 font-semibold">{a.actor_name || a.actor_id} ({a.actor_role})</td>
+                                            <td className="px-4 py-3 font-mono font-bold text-primary">{a.action}</td>
+                                            <td className="px-4 py-3">{a.entity_type} #{a.entity_id}</td>
+                                            <td className="px-4 py-3 font-mono font-bold">
+                                                {a.amount_kobo ? `₦${(Number(a.amount_kobo) / 100).toLocaleString()}` : "—"}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     )
 }
 
 export default function CoptellerSuperadminPage() {
     return (
-        <React.Suspense fallback={<div className="p-8 text-center text-xs font-black text-muted-foreground">Loading bank superadmin workspace...</div>}>
-            <CoptellerSuperadminPageContent />
+        <React.Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading Copteller Bridge...</div>}>
+            <CoptellerSuperadminContent />
         </React.Suspense>
     )
 }

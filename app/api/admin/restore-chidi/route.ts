@@ -1,3 +1,4 @@
+import { requireMaintenanceAccess } from '@/lib/auth/server-guard';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@/payload.config';
@@ -6,6 +7,8 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+    const __authGuard = await requireMaintenanceAccess(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     const authHeader = req.headers.get('x-admin-secret');
     if (authHeader !== process.env.ADMIN_SECRET && process.env.NODE_ENV === 'production') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

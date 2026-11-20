@@ -1,7 +1,10 @@
+import { requireMaintenanceAccess } from '@/lib/auth/server-guard';
 import { NextResponse } from 'next/server';
 import { getPayloadClient } from '@/lib/payload';
 
 export async function GET() {
+    const __authGuard = await requireMaintenanceAccess(new Request('http://internal'));
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const payload = await getPayloadClient();
 

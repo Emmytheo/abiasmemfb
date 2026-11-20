@@ -9,7 +9,10 @@ export const Endpoints: CollectionConfig = {
         description: 'Dynamic API endpoint specifications enabling the workflow engine to execute generic HTTP requests.',
     },
     access: {
-        read: () => true, // Access logic usually mirrors ServiceProviders in a real app, assuming authenticated users for now
+        read: ({ req }) => req.user?.role === 'admin',
+        create: ({ req }) => req.user?.role === 'admin',
+        update: ({ req }) => req.user?.role === 'admin',
+        delete: ({ req }) => req.user?.role === 'admin',
     },
     fields: [
         {

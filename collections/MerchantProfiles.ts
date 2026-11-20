@@ -9,7 +9,7 @@ export const MerchantProfiles: CollectionConfig = {
         description: 'Commercial business merchant accounts with dedicated settlement routes.',
     },
     access: {
-        read: () => true,
+        read: ({ req }) => req.user?.role === 'admin',
         create: ({ req }) => req.user?.role === 'admin',
         update: ({ req }) => req.user?.role === 'admin',
         delete: ({ req }) => req.user?.role === 'admin',

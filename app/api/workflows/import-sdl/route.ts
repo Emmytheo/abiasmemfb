@@ -1,3 +1,4 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -5,6 +6,8 @@ import { compileSDLToFlow } from '@/lib/workflow/sdl'
 import yaml from 'yaml'
 
 export async function POST(req: Request) {
+    const __authGuard = await requireAdminUser(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const contentType = req.headers.get('content-type') || ''
         const rawBody = await req.text()

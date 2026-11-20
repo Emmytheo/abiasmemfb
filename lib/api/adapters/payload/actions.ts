@@ -292,7 +292,7 @@ export const getCustomerAudit = async (id: string): Promise<CustomerAudit> => {
                 })) as any, 
                 loans: loans.docs.map((doc: any) => ({
                     id: String(doc.id),
-                    amount: (doc.amount ?? 0) / 100,
+                    amount: (doc.principal ?? doc.amount ?? 0) / 100,
                     duration_months: doc.duration_months,
                     status: doc.status,
                     created_at: doc.createdAt

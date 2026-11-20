@@ -1,37 +1,58 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getPayload } from 'payload';
-import config from '@payload-config';
+import { NextRequest, NextResponse } from "next/server"
+import { getPayload } from "payload"
+import config from "@payload-config"
+import { requireAdminUser } from "@/lib/auth/server-guard"
+import { writeBankAuditLog } from "@/lib/banking/ledger-engine"
 
 /**
  * PATCH /api/admin/applications/[id]
- * Allows admins to override the product_type_id on a stuck application.
- * Body: { productTypeId: string }
+ * Strictly restricted to authenticated bank administrators.
  */
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await params;
-        const body = await req.json();
-        const { productTypeId, status, workflow_stage } = body;
+        const auth = await requireAdminUser(req)
+        if (auth instanceof NextResponse) return auth
 
-        const payload = await getPayload({ config });
+        const { id } = await params
+        const body = await req.json().catch(() => ({}))
+        const { productTypeId, status, workflow_stage } = body
 
-        const updateData: Record<string, any> = {};
-        if (productTypeId !== undefined) updateData.product_type_id = productTypeId;
-        if (status !== undefined) updateData.status = status;
-        if (workflow_stage !== undefined) updateData.workflow_stage = workflow_stage;
+        const payload = await getPayload({ config })
+        const before = await payload.findByID({
+            collection: "product-applications" as any,
+            id,
+            overrideAccess: true,
+        })
+
+        const updateData: Record<string, any> = {}
+        if (productTypeId !== undefined) updateData.product_type_id = productTypeId
+        if (status !== undefined) updateData.status = status
+        if (workflow_stage !== undefined) updateData.workflow_stage = workflow_stage
 
         const updated = await payload.update({
-            collection: 'product-applications' as any,
+            collection: "product-applications" as any,
             id,
             data: updateData,
             overrideAccess: true,
-        });
+        })
 
-        return NextResponse.json({ success: true, doc: updated });
+        await writeBankAuditLog({
+            actorId: auth.userId,
+            actorEmail: auth.email,
+            actorRole: auth.role,
+            action: "application.updated",
+            entityType: "product_application",
+            entityId: id,
+            ipAddress: auth.ipAddress,
+            beforeState: { status: before?.status, workflow_stage: before?.workflow_stage },
+            afterState: updateData,
+        })
+
+        return NextResponse.json({ success: true, doc: updated })
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        return NextResponse.json({ error: e.message }, { status: 500 })
     }
 }

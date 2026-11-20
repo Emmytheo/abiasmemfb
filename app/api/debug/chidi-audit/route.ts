@@ -1,8 +1,11 @@
+import { requireMaintenanceAccess } from '@/lib/auth/server-guard';
 import { getPayload } from 'payload';
 import config from '@payload-config';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+    const __authGuard = await requireMaintenanceAccess(new Request('http://internal'));
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const payload = await getPayload({ config });
         const email = 'chidi.mgbara@gmail.com';

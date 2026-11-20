@@ -1,173 +1,264 @@
-import { NextResponse } from 'next/server'
-import { createClient as createServerSupabase } from '@/lib/supabase/server'
-import { getPayload } from 'payload'
-import configPromise from '@payload-config'
-import { intraBankTransfer } from '@/lib/api/adapters/qore/actions'
+import { NextRequest, NextResponse } from "next/server"
+import crypto from "crypto"
+import { requireAuthenticatedUser } from "@/lib/auth/server-guard"
+import { queryBankSuite, withBankSuiteTransaction } from "@/lib/banking/db-pool"
+import { writeBankAuditLog } from "@/lib/banking/ledger-engine"
+import { intraBankTransfer } from "@/lib/api/adapters/qore/actions"
 
-export async function POST(req: Request) {
+/**
+ * POST /api/agency/transactions/cash-out
+ * Production double-entry POS cash-out settlement:
+ * Requires an active assigned POS terminal AND a valid customer smart card / debit account.
+ * Atomically debits the cardholder's linked bank account (amount + fee) and credits the
+ * agent's settlement float (amount + 70% agent commission share), booking 30% to bank revenue.
+ */
+export async function POST(req: NextRequest) {
     try {
-        const supabase = await createServerSupabase()
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-        }
+        const auth = await requireAuthenticatedUser(req)
+        if (auth instanceof NextResponse) return auth
 
         const body = await req.json().catch(() => ({}))
-        const { terminal_id, amount, card_number_masked = '5061********9876' } = body
+        const { terminal_id, amount, card_number_masked, card_id, pin_block } = body
 
-        if (!terminal_id || !amount || Number(amount) <= 0) {
-            return NextResponse.json({ error: 'Valid terminal_id and amount are required' }, { status: 400 })
+        const amountKobo = Math.round(Number(amount || 0))
+        if (!terminal_id || !Number.isFinite(amountKobo) || amountKobo < 10000) {
+            return NextResponse.json(
+                { error: "Valid terminal_id and cash-out amount (minimum ₦100 / 10,000 kobo) are required." },
+                { status: 400 }
+            )
+        }
+        if (!pin_block || String(pin_block).length !== 4) {
+            return NextResponse.json({ error: "A valid 4-digit card PIN is required." }, { status: 400 })
         }
 
-        const payload = await getPayload({ config: configPromise })
-
-        // Find customer associated with user (the agent)
-        const agentCustomerResult = await payload.find({
-            collection: 'customers',
-            where: { supabase_id: { equals: user.id } },
-            limit: 1,
-            overrideAccess: true,
-        })
-
-        const agentCustomer = agentCustomerResult.docs[0]
-        if (!agentCustomer) {
-            return NextResponse.json({ error: 'Agent customer profile not found' }, { status: 404 })
-        }
-
-        // Verify POS terminal exists and belongs to the agent
-        const terminal = await payload.findByID({
-            collection: 'agency-terminals',
-            id: terminal_id,
-            overrideAccess: true,
-        })
-
+        // Verify agent profile & assigned terminal
+        const termRes = await queryBankSuite(
+            `SELECT t.*, c.id AS cust_id
+             FROM public.agency_terminals t
+             LEFT JOIN public.customers c ON c.id = t.agent_customer_id
+             WHERE t.id = $1 LIMIT 1`,
+            [Number(terminal_id)]
+        )
+        const terminal = termRes.rows[0]
         if (!terminal) {
-            return NextResponse.json({ error: 'POS terminal not found' }, { status: 404 })
+            return NextResponse.json({ error: "POS terminal not found." }, { status: 404 })
+        }
+        if (!auth.isAdmin && String(terminal.user_id) !== auth.userId) {
+            return NextResponse.json(
+                { error: "Forbidden: Terminal is not assigned to your agent profile." },
+                { status: 403 }
+            )
+        }
+        if (terminal.status !== "active" && terminal.status !== "assigned") {
+            return NextResponse.json(
+                { error: "POS terminal is currently inactive or suspended." },
+                { status: 400 }
+            )
         }
 
-        const termAgentId = typeof terminal.agent_customer === 'object' ? terminal.agent_customer.id : terminal.agent_customer
-        if (termAgentId !== agentCustomer.id) {
-            return NextResponse.json({ error: 'Unauthorized: Terminal is not assigned to this agent' }, { status: 403 })
+        // Resolve real debit smart card from ledger (never print money from thin air)
+        const cardRes = await queryBankSuite(
+            card_id
+                ? `SELECT * FROM public.smart_cards WHERE id = $1 LIMIT 1`
+                : `SELECT * FROM public.smart_cards WHERE card_number_masked = $1 LIMIT 1`,
+            [card_id ? Number(card_id) : String(card_number_masked || "").trim()]
+        )
+        const card = cardRes.rows[0]
+        if (!card) {
+            return NextResponse.json(
+                { error: "Card Switch Declined: Card not registered on BankSuite card ledger." },
+                { status: 400 }
+            )
         }
-
-        if (terminal.status !== 'active' && terminal.status !== 'assigned') {
-            return NextResponse.json({ error: 'Terminal is currently inactive or suspended' }, { status: 400 })
+        if (card.is_frozen || card.status !== "active") {
+            return NextResponse.json(
+                { error: "Card Switch Declined: Card is frozen or inactive." },
+                { status: 400 }
+            )
         }
-
-        // Find agent's float/settlement savings account
-        const agentAccounts = await payload.find({
-            collection: 'accounts',
-            where: {
-                and: [
-                    { user_id: { equals: user.id } },
-                    { status: { equals: 'active' } },
-                ]
-            },
-            overrideAccess: true,
-            limit: 5,
-        })
-
-        const agentFloatAccount = agentAccounts.docs.find((acc) => acc.is_primary) || agentAccounts.docs[0]
-        if (!agentFloatAccount) {
-            return NextResponse.json({ error: 'No active agent float bank account found to credit cash-out' }, { status: 400 })
-        }
-
-        const amountKobo = Math.round(Number(amount))
-
-        // Calculate commissions: 1.5% capped at 1000 NGN
-        const totalFeeKobo = Math.min(100000, Math.round((amountKobo * 1.5) / 100))
-        const agentShareKobo = Math.round(totalFeeKobo * 0.7) // Agent gets 70%
-        const bankShareKobo = totalFeeKobo - agentShareKobo // Bank gets 30%
-
-        const ref = `POS_WD_${Date.now()}`
-
-        // --- MOCK CARD SWITCH VALIDATION ---
-        // Simulating a real NIBSS/Interswitch card verification and debit.
-        if (body.pin === '0000' || card_number_masked.endsWith('0000')) {
-             return NextResponse.json({ error: 'Card Switch Error: Invalid PIN or Card Blocked' }, { status: 400 })
-        }
-
-        // Trigger a ledger transaction strictly to the core.
-        let qoreSuccess = false
-        if (agentFloatAccount.source === 'qore') {
-            try {
-                // In a real agency cash-out, BankOne/Qore handles the card settlement
-                // and credits the agent's core account. We simulate that credit call here.
-                await intraBankTransfer({
-                    FromAccountNumber: 'SYSTEM_SWITCH_VAULT',
-                    ToAccountNumber: agentFloatAccount.account_number,
-                    Amount: String(amountKobo + agentShareKobo),
-                    Narration: `POS Terminal Cash-out ref: ${ref}`,
-                    RetrievalReference: ref.slice(0, 12).padEnd(12, '0'),
-                })
-                qoreSuccess = true
-            } catch (err: any) {
-                console.error('[Qore POS Sync] Core ledger credit failed. Aborting transaction.', err)
-                return NextResponse.json({ error: `Core Settlement Error: ${err.message}` }, { status: 400 })
+        if (card.pin_hash) {
+            const pinHash = crypto.createHash("sha256").update(String(pin_block)).digest("hex")
+            if (pinHash !== card.pin_hash) {
+                return NextResponse.json(
+                    { error: "Card Switch Declined: Invalid Card PIN." },
+                    { status: 400 }
+                )
             }
         }
-
-        // Update Agent balance locally: cashout amount + commission share is added to their float
-        const updatedAgentBalance = agentFloatAccount.balance + amountKobo + agentShareKobo
-        await payload.update({
-            collection: 'accounts',
-            id: agentFloatAccount.id,
-            data: {
-                balance: updatedAgentBalance,
-            },
-            overrideAccess: true,
-        })
-
-        // Create immutable Transaction record for the POS Cash-out
-        const txn = await payload.create({
-            collection: 'transactions',
-            data: {
-                reference: ref,
-                type: 'credit',
-                amount: amountKobo,
-                to_account: agentFloatAccount.id,
-                status: 'successful',
-                narration: `POS Cash-out withdrawal: ${card_number_masked}`,
-                channel: 'api',
-                customer: agentCustomer.id,
-                user_id: user.id,
-                metadata: {
-                    terminal_id,
-                    serial_number: terminal.serial_number,
-                    card_number_masked,
-                    qore_processed: qoreSuccess,
+        if (Number(card.limit_pos || 0) > 0 && amountKobo > Number(card.limit_pos)) {
+            return NextResponse.json(
+                {
+                    error: `Card Switch Declined: Exceeds daily POS limit of ₦${(Number(card.limit_pos) / 100).toLocaleString()}.`,
                 },
-            },
-            overrideAccess: true,
+                { status: 400 }
+            )
+        }
+
+        // Resolve agent float account
+        const agentAccRes = await queryBankSuite(
+            `SELECT id FROM public.accounts WHERE user_id = $1 AND status = 'active' ORDER BY is_primary DESC, id ASC LIMIT 1`,
+            [terminal.user_id]
+        )
+        const agentFloatAccountId = agentAccRes.rows[0]?.id ? Number(agentAccRes.rows[0].id) : null
+        if (!agentFloatAccountId) {
+            return NextResponse.json(
+                { error: "No active agent float account found to settle cash-out." },
+                { status: 400 }
+            )
+        }
+
+        const cardholderAccountId = Number(card.account_id)
+        if (cardholderAccountId === agentFloatAccountId) {
+            return NextResponse.json(
+                { error: "Self-cashout on the agent's own settlement account is prohibited." },
+                { status: 400 }
+            )
+        }
+
+        // Commission: 1.5% capped at ₦1,000 (100,000 kobo); 70% agent, 30% bank
+        const totalFeeKobo = Math.min(100000, Math.round((amountKobo * 1.5) / 100))
+        const agentShareKobo = Math.round(totalFeeKobo * 0.7)
+        const bankShareKobo = totalFeeKobo - agentShareKobo
+        const totalCardholderDebitKobo = amountKobo + totalFeeKobo
+        const ref = `POS_WD_${Date.now()}_${crypto.randomBytes(2).toString("hex").toUpperCase()}`
+
+        const result = await withBankSuiteTransaction(async (client) => {
+            const lockIds = [cardholderAccountId, agentFloatAccountId].sort((a, b) => a - b)
+            const locked = await client.query(
+                `SELECT id, user_id, customer_id, account_number, balance, lien_amount, is_frozen, pnd_enabled, status, source
+                 FROM public.accounts WHERE id = ANY($1::int[]) ORDER BY id ASC FOR UPDATE`,
+                [lockIds]
+            )
+            const holderAcc = locked.rows.find((r) => Number(r.id) === cardholderAccountId)
+            const floatAcc = locked.rows.find((r) => Number(r.id) === agentFloatAccountId)
+
+            if (!holderAcc || holderAcc.status !== "active" || holderAcc.is_frozen || holderAcc.pnd_enabled) {
+                throw new Error("BAD_REQUEST:Cardholder funding account is inactive or restricted.")
+            }
+            const available = Number(holderAcc.balance) - Number(holderAcc.lien_amount || 0)
+            if (available < totalCardholderDebitKobo) {
+                throw new Error("BAD_REQUEST:Insufficient funds on cardholder account.")
+            }
+            if (!floatAcc) {
+                throw new Error("BAD_REQUEST:Agent settlement account unavailable.")
+            }
+
+            let qoreProcessed = false
+            if (holderAcc.source === "qore" && floatAcc.source === "qore" && process.env.QORE_SECRET_ID) {
+                try {
+                    await intraBankTransfer({
+                        FromAccountNumber: holderAcc.account_number,
+                        ToAccountNumber: floatAcc.account_number,
+                        Amount: String(amountKobo + agentShareKobo),
+                        Narration: `POS Cash-out ${terminal.serial_number}`,
+                        RetrievalReference: ref.replace(/[^A-Z0-9]/gi, "").slice(0, 12).padEnd(12, "0"),
+                    })
+                    qoreProcessed = true
+                } catch (err: any) {
+                    if (process.env.QORE_STRICT_SETTLEMENT === "true") {
+                        throw new Error(`BAD_REQUEST:Core Settlement Error: ${err.message}`)
+                    }
+                }
+            }
+
+            const newHolderBal = Number(holderAcc.balance) - totalCardholderDebitKobo
+            const newFloatBal = Number(floatAcc.balance) + amountKobo + agentShareKobo
+
+            await client.query(
+                `UPDATE public.accounts SET balance = $1, last_transaction_at = NOW(), updated_at = NOW() WHERE id = $2`,
+                [newHolderBal, holderAcc.id]
+            )
+            await client.query(
+                `UPDATE public.accounts SET balance = $1, last_transaction_at = NOW(), updated_at = NOW() WHERE id = $2`,
+                [newFloatBal, floatAcc.id]
+            )
+
+            const txRes = await client.query(
+                `INSERT INTO public.transactions (
+                    reference, type, amount, currency, from_account_id, to_account_id,
+                    status, narration, channel, balance_after, date, metadata, customer_id, user_id,
+                    created_at, updated_at
+                 ) VALUES ($1, 'credit', $2, 'NGN', $3, $4, 'successful', $5, 'api', $6, NOW(), $7::jsonb, $8, $9, NOW(), NOW())
+                 RETURNING id`,
+                [
+                    ref,
+                    amountKobo,
+                    holderAcc.id,
+                    floatAcc.id,
+                    `POS Cash-out (${card.card_number_masked}) via ${terminal.serial_number}`,
+                    newFloatBal,
+                    JSON.stringify({
+                        terminal_id: terminal.id,
+                        serial_number: terminal.serial_number,
+                        card_id: card.id,
+                        card_number_masked: card.card_number_masked,
+                        total_fee_kobo: totalFeeKobo,
+                        agent_share_kobo: agentShareKobo,
+                        bank_share_kobo: bankShareKobo,
+                        qore_processed: qoreProcessed,
+                    }),
+                    terminal.agent_customer_id,
+                    terminal.user_id,
+                ]
+            )
+            const txnId = Number(txRes.rows[0].id)
+
+            const commRes = await client.query(
+                `INSERT INTO public.agency_commissions (
+                    agent_customer_id, user_id, terminal_id, transaction_id,
+                    transaction_amount, total_commission, agent_share, bank_share,
+                    status, created_at, updated_at
+                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'settled', NOW(), NOW())
+                 RETURNING *`,
+                [
+                    terminal.agent_customer_id,
+                    terminal.user_id,
+                    terminal.id,
+                    txnId,
+                    amountKobo,
+                    totalFeeKobo,
+                    agentShareKobo,
+                    bankShareKobo,
+                ]
+            )
+
+            return {
+                commission: commRes.rows[0],
+                newFloatBal,
+                txnId,
+            }
         })
 
-        // Create Commission record
-        const commission = await payload.create({
-            collection: 'agency-commissions',
-            data: {
-                agent_customer: agentCustomer.id,
-                user_id: user.id,
-                terminal: terminal.id,
-                transaction: txn.id,
-                transaction_amount: amountKobo,
-                total_commission: totalFeeKobo,
-                agent_share: agentShareKobo,
-                bank_share: bankShareKobo,
-                status: 'settled', // instantly settled to float
+        await writeBankAuditLog({
+            actorId: auth.userId,
+            actorEmail: auth.email,
+            actorRole: auth.role,
+            action: "agency.pos.cash_out",
+            entityType: "agency_terminal",
+            entityId: terminal.id,
+            amountKobo,
+            ipAddress: auth.ipAddress,
+            afterState: {
+                reference: ref,
+                agent_share_kobo: agentShareKobo,
+                bank_share_kobo: bankShareKobo,
             },
-            overrideAccess: true,
         })
 
         return NextResponse.json({
             success: true,
-            commission,
+            reference: ref,
+            commission: result.commission,
             cashReceivedByClient: amountKobo / 100,
             creditedToAgentFloat: (amountKobo + agentShareKobo) / 100,
-            agentFloatBalanceAfter: updatedAgentBalance / 100,
+            agentFloatBalanceAfter: result.newFloatBal / 100,
         })
     } catch (error: any) {
-        console.error('POS Cashout processing error:', error)
-        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
+        const msg = String(error?.message || "POS cash-out failed")
+        if (msg.startsWith("BAD_REQUEST:")) {
+            return NextResponse.json({ error: msg.slice(12) }, { status: 400 })
+        }
+        console.error("POS Cashout processing error:", msg)
+        return NextResponse.json({ error: msg }, { status: 500 })
     }
 }

@@ -1,3 +1,4 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextRequest, NextResponse } from 'next/server';
 import { executeCustomerMerge } from '@/lib/api/adapters/payload/actions';
 
@@ -6,6 +7,8 @@ import { executeCustomerMerge } from '@/lib/api/adapters/payload/actions';
  * Refactored to use the decoupled executeCustomerMerge action.
  */
 export async function POST(req: NextRequest) {
+    const __authGuard = await requireAdminUser(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const body = await req.json();
         const { 

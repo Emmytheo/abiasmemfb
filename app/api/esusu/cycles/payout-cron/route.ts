@@ -1,232 +1,206 @@
-import { NextResponse } from 'next/server'
-import { getPayload } from 'payload'
-import configPromise from '@payload-config'
-import { intraBankTransfer } from '@/lib/api/adapters/qore/actions'
+import { NextRequest, NextResponse } from "next/server"
+import crypto from "crypto"
+import { requireCronOrAdmin } from "@/lib/auth/server-guard"
+import { queryBankSuite, withBankSuiteTransaction } from "@/lib/banking/db-pool"
+import { writeBankAuditLog } from "@/lib/banking/ledger-engine"
+import { intraBankTransfer } from "@/lib/api/adapters/qore/actions"
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
-        const authHeader = req.headers.get('authorization')
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-            return new NextResponse('Unauthorized', { status: 401 })
+        // Accepts EITHER valid non-empty CRON_SECRET Bearer token OR verified Bank Admin session
+        const auth = await requireCronOrAdmin(req)
+        if (auth instanceof NextResponse) return auth
+
+        const body = await req.json().catch(() => ({}))
+        const requestedCycleId = body?.cycle_id ? Number(body.cycle_id) : null
+
+        const cyclesRes = await queryBankSuite(
+            requestedCycleId
+                ? `SELECT * FROM public.esusu_cycles WHERE id = $1 AND status = 'active'`
+                : `SELECT * FROM public.esusu_cycles WHERE status = 'active' ORDER BY id ASC LIMIT 100`,
+            requestedCycleId ? [requestedCycleId] : []
+        )
+
+        if (requestedCycleId && cyclesRes.rows.length === 0) {
+            return NextResponse.json(
+                { error: "Active Esusu cycle not found for the specified cycle_id." },
+                { status: 404 }
+            )
         }
 
-        const payload = await getPayload({ config: configPromise })
-
-        // Find all active esusu cycles
-        const cyclesResult = await payload.find({
-            collection: 'esusu-cycles',
-            where: { status: { equals: 'active' } },
-            overrideAccess: true,
-            limit: 100,
-        })
-
         const logs: string[] = []
+        let payoutsProcessed = 0
 
-        for (const cycle of cyclesResult.docs) {
-            try {
-                const totalSlots = cycle.total_slots || 0
-                const currentIndex = cycle.current_payout_index || 0
+        for (const cycle of cyclesRes.rows) {
+            const totalSlots = Number(cycle.total_slots || 0)
+            const currentIndex = Number(cycle.current_payout_index || 0)
 
-                if (currentIndex >= totalSlots) {
-                    // Mark as completed
-                    await payload.update({
-                        collection: 'esusu-cycles',
-                        id: cycle.id,
-                        data: { status: 'completed' },
-                        overrideAccess: true,
-                    })
-                    logs.push(`Cycle "${cycle.name}" completed. Skipping.`)
-                    continue
+            if (totalSlots > 0 && currentIndex >= totalSlots) {
+                await queryBankSuite(
+                    `UPDATE public.esusu_cycles SET status = 'completed', updated_at = NOW() WHERE id = $1`,
+                    [cycle.id]
+                )
+                logs.push(`Cycle "${cycle.name}" completed.`)
+                continue
+            }
+
+            const membersRes = await queryBankSuite(
+                `SELECT m.*, c.first_name, c.last_name, c.supabase_id
+                 FROM public.esusu_members m
+                 LEFT JOIN public.customers c ON c.id = m.customer_id
+                 WHERE m.cycle_id = $1 AND m.status = 'active'
+                 ORDER BY m.payout_order_index ASC`,
+                [cycle.id]
+            )
+            const recipient = membersRes.rows.find(
+                (m) => Number(m.payout_order_index) === currentIndex
+            )
+            if (!recipient) {
+                logs.push(`No active member assigned to slot ${currentIndex + 1} in "${cycle.name}".`)
+                continue
+            }
+
+            const vaultAccountId = cycle.holding_vault_account_id
+                ? Number(cycle.holding_vault_account_id)
+                : null
+            if (!vaultAccountId) {
+                logs.push(`Holding vault not linked for "${cycle.name}".`)
+                continue
+            }
+
+            const payoutOutcome = await withBankSuiteTransaction(async (client) => {
+                const vaultRes = await client.query(
+                    `SELECT * FROM public.accounts WHERE id = $1 FOR UPDATE`,
+                    [vaultAccountId]
+                )
+                const vault = vaultRes.rows[0]
+                if (!vault || Number(vault.balance || 0) <= 0) {
+                    return { skipped: true, reason: `Holding vault balance is ₦0 for "${cycle.name}".` }
                 }
 
-                // Fetch cycle members
-                const membersResult = await payload.find({
-                    collection: 'esusu-members',
-                    where: {
-                        and: [
-                            { cycle: { equals: cycle.id } },
-                            { status: { equals: 'active' } },
-                        ]
-                    },
-                    overrideAccess: true,
-                    limit: 100,
-                })
-
-                const members = membersResult.docs
-                if (members.length === 0) {
-                    logs.push(`Cycle "${cycle.name}" has no members. Skipping.`)
-                    continue
+                const recipientUserId = recipient.user_id || recipient.supabase_id
+                const recAccRes = await client.query(
+                    `SELECT * FROM public.accounts WHERE user_id = $1 AND status = 'active' ORDER BY is_primary DESC, id ASC LIMIT 1 FOR UPDATE`,
+                    [recipientUserId]
+                )
+                const recAcc = recAccRes.rows[0]
+                if (!recAcc) {
+                    return { skipped: true, reason: `No active recipient account for slot ${currentIndex + 1} in "${cycle.name}".` }
                 }
 
-                // Identify payout recipient for this index
-                const recipientMember = members.find((m) => m.payout_order_index === currentIndex)
-                if (!recipientMember) {
-                    logs.push(`No member slot found for index ${currentIndex} in "${cycle.name}". Skipping.`)
-                    continue
-                }
+                const poolKobo = Number(vault.balance)
+                const feePct = Number(cycle.platform_fee_percent || 1)
+                const platformFeeKobo = Math.round((poolKobo * feePct) / 100)
+                const payoutKobo = poolKobo - platformFeeKobo
+                const ref = `ESU_PAY_${cycle.id}_${Date.now()}_${crypto.randomBytes(2).toString("hex").toUpperCase()}`
 
-                // Find recipient's customer profile and their primary account
-                const recipientCustId = typeof recipientMember.customer === 'object' ? recipientMember.customer.id : recipientMember.customer
-                const recipientCustomer = await payload.findByID({
-                    collection: 'customers',
-                    id: recipientCustId,
-                    overrideAccess: true,
-                })
-
-                if (!recipientCustomer) {
-                    logs.push(`Recipient customer profile not found for slot ${currentIndex} in "${cycle.name}". Skipping.`)
-                    continue
-                }
-
-                // Find recipient primary account
-                const recipientAccounts = await payload.find({
-                    collection: 'accounts',
-                    where: {
-                        and: [
-                            { user_id: { equals: recipientCustomer.supabase_id } },
-                            { status: { equals: 'active' } },
-                        ]
-                    },
-                    overrideAccess: true,
-                    limit: 5,
-                })
-
-                const primaryAccount = recipientAccounts.docs.find((acc) => acc.is_primary) || recipientAccounts.docs[0]
-                if (!primaryAccount) {
-                    logs.push(`No active primary account for recipient of slot ${currentIndex} in "${cycle.name}". Skipping.`)
-                    continue
-                }
-
-                // Get cycle holding vault account
-                const vaultAccountId = typeof cycle.holding_vault_account === 'object' ? cycle.holding_vault_account.id : cycle.holding_vault_account
-                if (!vaultAccountId) {
-                    logs.push(`Holding vault missing for "${cycle.name}". Skipping.`)
-                    continue
-                }
-
-                const vaultAccount = await payload.findByID({
-                    collection: 'accounts',
-                    id: vaultAccountId,
-                    overrideAccess: true,
-                })
-
-                if (!vaultAccount || vaultAccount.balance <= 0) {
-                    logs.push(`Vault account empty or not found for "${cycle.name}". Skipping payout.`)
-                    continue
-                }
-
-                // Perform rotational payout calculation
-                const poolBalance = vaultAccount.balance
-                const feePercentage = cycle.platform_fee_percent || 1
-                const platformFee = Math.round((poolBalance * feePercentage) / 100)
-                const payoutAmount = poolBalance - platformFee
-
-                const ref = `ESU_PAY_${Date.now()}`
-
-                // Transfer from vault to recipient primary account strictly on core
-                let qoreSuccess = false
-                let coreFailed = false
-                if (vaultAccount.source === 'qore' && primaryAccount.source === 'qore') {
+                let qoreProcessed = false
+                if (vault.source === "qore" && recAcc.source === "qore" && process.env.QORE_SECRET_ID) {
                     try {
                         await intraBankTransfer({
-                            FromAccountNumber: vaultAccount.account_number,
-                            ToAccountNumber: primaryAccount.account_number,
-                            Amount: String(payoutAmount),
-                            Narration: `Esusu Rotational Payout Cycle: ${cycle.name}`,
-                            RetrievalReference: ref.slice(0, 12).padEnd(12, '0'),
+                            FromAccountNumber: vault.account_number,
+                            ToAccountNumber: recAcc.account_number,
+                            Amount: String(payoutKobo),
+                            Narration: `Esusu Payout: ${cycle.name}`,
+                            RetrievalReference: ref.replace(/[^A-Z0-9]/gi, "").slice(0, 12).padEnd(12, "0"),
                         })
-                        qoreSuccess = true
+                        qoreProcessed = true
                     } catch (err: any) {
-                        console.error('[Qore Esusu Sync] Qore transfer failed. Aborting local settlement.', err)
-                        logs.push(`Failed to process cycle "${cycle.name}": Core Transfer Failed: ${err.message}`)
-                        coreFailed = true
+                        if (process.env.QORE_STRICT_SETTLEMENT === "true") {
+                            throw new Error(`Core transfer failed: ${err.message}`)
+                        }
                     }
                 }
 
-                if (coreFailed) {
-                    continue // Skip to next cycle, do not update anything
-                }
+                await client.query(
+                    `UPDATE public.accounts SET balance = 0, last_transaction_at = NOW(), updated_at = NOW() WHERE id = $1`,
+                    [vault.id]
+                )
+                const newRecBal = Number(recAcc.balance) + payoutKobo
+                await client.query(
+                    `UPDATE public.accounts SET balance = $1, last_transaction_at = NOW(), updated_at = NOW() WHERE id = $2`,
+                    [newRecBal, recAcc.id]
+                )
 
-                // Update vault account balance to 0
-                await payload.update({
-                    collection: 'accounts',
-                    id: vaultAccount.id,
-                    data: { balance: 0 },
-                    overrideAccess: true,
-                })
-
-                // Credit recipient account balance
-                await payload.update({
-                    collection: 'accounts',
-                    id: primaryAccount.id,
-                    data: { balance: primaryAccount.balance + payoutAmount },
-                    overrideAccess: true,
-                })
-
-                // If platform fee is greater than 0, we can credit bank commission wallet or note it.
-                // Write immutable Transaction record for Payout
-                const txn = await payload.create({
-                    collection: 'transactions',
-                    data: {
-                        reference: ref,
-                        type: 'transfer',
-                        amount: payoutAmount,
-                        from_account: vaultAccount.id,
-                        to_account: primaryAccount.id,
-                        status: 'successful',
-                        narration: `Esusu Payout Slot Turn ${currentIndex + 1}: ${cycle.name}`,
-                        channel: 'workflow',
-                        customer: recipientCustomer.id,
-                        user_id: recipientCustomer.supabase_id,
-                        metadata: {
+                const txRes = await client.query(
+                    `INSERT INTO public.transactions (
+                        reference, type, amount, currency, from_account_id, to_account_id,
+                        status, narration, channel, balance_after, date, metadata, customer_id, user_id,
+                        created_at, updated_at
+                     ) VALUES ($1, 'transfer', $2, 'NGN', $3, $4, 'successful', $5, 'workflow', $6, NOW(), $7::jsonb, $8, $9, NOW(), NOW())
+                     RETURNING id`,
+                    [
+                        ref,
+                        payoutKobo,
+                        vault.id,
+                        recAcc.id,
+                        `Esusu Payout Slot ${currentIndex + 1}: ${cycle.name}`,
+                        newRecBal,
+                        JSON.stringify({
                             cycle_id: cycle.id,
-                            recipient_member_id: recipientMember.id,
-                            platform_fee_kobo: platformFee,
-                            qore_processed: qoreSuccess,
-                        },
-                    },
-                    overrideAccess: true,
-                })
+                            recipient_member_id: recipient.id,
+                            platform_fee_kobo: platformFeeKobo,
+                            qore_processed: qoreProcessed,
+                        }),
+                        recipient.customer_id,
+                        recipientUserId,
+                    ]
+                )
 
-                // Record payout details
-                await payload.create({
-                    collection: 'esusu-payouts',
-                    data: {
-                        cycle: cycle.id,
-                        recipient_member: recipientMember.id,
-                        customer: recipientCustomer.id,
-                        user_id: recipientCustomer.supabase_id,
-                        amount: payoutAmount,
-                        status: 'completed',
-                        transaction: txn.id,
-                    },
-                    overrideAccess: true,
-                })
+                await client.query(
+                    `INSERT INTO public.esusu_payouts (cycle_id, recipient_member_id, customer_id, user_id, amount, status, transaction_id, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $5, 'completed', $6, NOW(), NOW())`,
+                    [cycle.id, recipient.id, recipient.customer_id, recipientUserId, payoutKobo, txRes.rows[0].id]
+                )
 
-                // Update cycle index
                 const nextIndex = currentIndex + 1
-                const status = nextIndex >= totalSlots ? 'completed' : 'active'
+                const nextStatus = totalSlots > 0 && nextIndex >= totalSlots ? "completed" : "active"
+                await client.query(
+                    `UPDATE public.esusu_cycles SET current_payout_index = $1, status = $2, updated_at = NOW() WHERE id = $3`,
+                    [nextIndex, nextStatus, cycle.id]
+                )
 
-                await payload.update({
-                    collection: 'esusu-cycles',
-                    id: cycle.id,
-                    data: {
-                        current_payout_index: nextIndex,
-                        status,
-                    },
-                    overrideAccess: true,
-                })
+                return {
+                    skipped: false,
+                    payoutKobo,
+                    platformFeeKobo,
+                    nextIndex,
+                    recipientName: `${recipient.first_name || ""} ${recipient.last_name || ""}`.trim() || recipientUserId,
+                }
+            })
 
-                logs.push(`Successfully paid out ${payoutAmount / 100} NGN to ${recipientCustomer.firstName} ${recipientCustomer.lastName} for slot index ${currentIndex} in "${cycle.name}".`)
-            } catch (err: any) {
-                console.error(`Error processing cycle payout for "${cycle.name}":`, err)
-                logs.push(`Failed to process cycle "${cycle.name}": ${err.message}`)
+            if (payoutOutcome.skipped) {
+                logs.push(payoutOutcome.reason!)
+                if (requestedCycleId) {
+                    return NextResponse.json({ success: false, error: payoutOutcome.reason }, { status: 400 })
+                }
+            } else {
+                payoutsProcessed++
+                logs.push(
+                    `Paid ₦${((payoutOutcome.payoutKobo || 0) / 100).toLocaleString()} to ${payoutOutcome.recipientName} for slot ${currentIndex + 1} in "${cycle.name}".`
+                )
             }
         }
 
-        return NextResponse.json({ success: true, processed: logs.length, logs })
+        await writeBankAuditLog({
+            actorId: auth.userId,
+            actorEmail: auth.email,
+            actorRole: auth.role,
+            action: "esusu.payout_cron.executed",
+            entityType: "esusu_cycle",
+            entityId: requestedCycleId || "all",
+            ipAddress: auth.ipAddress,
+            afterState: { payoutsProcessed, logs },
+        })
+
+        return NextResponse.json({
+            success: true,
+            processed: payoutsProcessed,
+            message: logs[0] || `Processed ${payoutsProcessed} payout(s).`,
+            logs,
+        })
     } catch (error: any) {
-        console.error('Esusu payout cron error:', error)
-        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
+        console.error("Esusu payout cron error:", error)
+        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
     }
 }

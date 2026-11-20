@@ -139,14 +139,16 @@ export default function StandingOrdersPage() {
         try {
             const res = await fetch(`/api/account-lookup?accountNumber=${encodeURIComponent(destAccountNumber)}&bankCode=${encodeURIComponent(destBankCode)}`);
             const data = await res.json();
-            if (data.accountName) {
+            if (res.ok && data.accountName) {
                 setDestAccountName(data.accountName);
                 toast.success("Account name verified successfully");
             } else {
-                setDestAccountName("CHIDI MGBARA");
+                setDestAccountName("");
+                toast.error(data.error || "Could not verify destination account number");
             }
         } catch {
-            setDestAccountName("CHIDI MGBARA");
+            setDestAccountName("");
+            toast.error("Account name lookup failed");
         } finally {
             setIsValidatingName(false);
         }

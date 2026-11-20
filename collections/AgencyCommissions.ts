@@ -9,7 +9,7 @@ export const AgencyCommissions: CollectionConfig = {
         description: 'Commission distributions generated from merchant banking operations.',
     },
     access: {
-        read: () => true,
+        read: ({ req }) => req.user?.role === 'admin',
         create: ({ req }) => req.user?.role === 'admin',
         update: ({ req }) => req.user?.role === 'admin',
         delete: ({ req }) => req.user?.role === 'admin',

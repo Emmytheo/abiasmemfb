@@ -1,534 +1,457 @@
 "use client"
 
 import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { 
+import {
     Landmark,
-    TrendingUp, 
-    Calendar, 
-    ArrowRight, 
-    PiggyBank, 
-    CheckCircle, 
-    Loader2, 
-    Play,
-    Building2,
+    Calendar,
     DollarSign,
-    PlusCircle,
-    UserCheck,
-    Info,
     Smartphone,
     Layers,
     FileText,
     Check,
     X,
-    ShieldAlert
+    Loader2,
+    PlusCircle,
+    RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 
-interface TerminalRequest {
-    id: string
-    agentName: string
+interface TerminalRow {
+    id: number
+    agent_name: string
+    agent_email?: string
     pos_model: string
-    requestDate: string
     serial_number: string
-    status: 'pending' | 'active' | 'assigned' | 'suspended'
+    status: "pending" | "active" | "assigned" | "suspended" | "damaged"
+    created_at: string
 }
 
-interface CommissionLedger {
-    id: string
-    agentName: string
-    terminalSerial: string
-    amount: number
-    totalCommission: number
-    agentShare: number
-    bankShare: number
-    status: 'settled' | 'pending'
-    timestamp: string
+interface CommissionRow {
+    id: number
+    agent_name: string
+    terminal_serial: string
+    transaction_amount: number
+    total_commission: number
+    agent_share: number
+    bank_share: number
+    status: string
+    created_at: string
 }
 
 export default function AgencyAdminPage() {
-    const [terminals, setTerminals] = React.useState<TerminalRequest[]>([])
-    const [commissions, setCommissions] = React.useState<CommissionLedger[]>([])
+    const [terminals, setTerminals] = React.useState<TerminalRow[]>([])
+    const [commissions, setCommissions] = React.useState<CommissionRow[]>([])
+    const [customers, setCustomers] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
-    const [submitting, setSubmitting] = React.useState<string | null>(null)
-    const [activeTab, setActiveTab] = React.useState<'fleet' | 'requests' | 'commissions'>('fleet')
+    const [busyId, setBusyId] = React.useState<string | null>(null)
+    const [activeTab, setActiveTab] = React.useState<"fleet" | "requests" | "commissions">("fleet")
 
-    // Allocate Serial Modal state
-    const [selectedTerminal, setSelectedTerminal] = React.useState<TerminalRequest | null>(null)
+    // Approve & Allocate modal
+    const [selectedTerminal, setSelectedTerminal] = React.useState<TerminalRow | null>(null)
     const [customSerial, setCustomSerial] = React.useState("")
 
-    React.useEffect(() => {
-        const loadAgencyData = async () => {
-            try {
-                // Fetch real terminals from DB, fallback to mock
-                let fetchedTerminals: TerminalRequest[] = []
-                let fetchedCommissions: CommissionLedger[] = []
+    // Provision New Terminal modal
+    const [showNewModal, setShowNewModal] = React.useState(false)
+    const [newCustomerId, setNewCustomerId] = React.useState("")
+    const [newSerial, setNewSerial] = React.useState("")
+    const [newModel, setNewModel] = React.useState("Pax S900")
 
-                try {
-                    const termRes = await fetch('/api/agency-terminals?limit=100&sort=-createdAt')
-                    const termData = await termRes.json()
-                    if (termData?.docs?.length > 0) {
-                        fetchedTerminals = termData.docs.map((d: any) => ({
-                            id: d.id,
-                            agentName: typeof d.agent_customer === 'object'
-                                ? (d.agent_customer?.full_name || d.agent_customer?.id || 'Agent')
-                                : (d.user_id || 'Agent'),
-                            pos_model: d.pos_model || 'Pax S900',
-                            requestDate: d.createdAt,
-                            serial_number: d.serial_number,
-                            status: d.status as TerminalRequest['status']
-                        }))
-                    }
-                } catch (e) {
-                    console.warn('[Admin Agency] Failed to load terminals', e)
-                }
-
-                try {
-                    const commRes = await fetch('/api/agency-commissions?limit=100&sort=-createdAt')
-                    const commData = await commRes.json()
-                    if (commData?.docs?.length > 0) {
-                        fetchedCommissions = commData.docs.map((d: any) => ({
-                            id: d.id,
-                            agentName: typeof d.agent_customer === 'object'
-                                ? (d.agent_customer?.full_name || d.agent_customer?.id || 'Agent')
-                                : (d.user_id || 'Agent'),
-                            terminalSerial: typeof d.terminal === 'object' ? d.terminal?.serial_number : d.terminal,
-                            amount: Number(d.transaction_amount || 0),
-                            totalCommission: Number(d.total_commission || 0),
-                            agentShare: Number(d.agent_share || 0),
-                            bankShare: Number(d.bank_share || 0),
-                            status: d.status as CommissionLedger['status'],
-                            timestamp: d.createdAt
-                        }))
-                    }
-                } catch (e) {
-                    console.warn('[Admin Agency] Failed to load commissions', e)
-                }
-
-                // Rich demo fallback if DB is empty
-                if (fetchedTerminals.length === 0) {
-                    fetchedTerminals = [
-                        { id: 'term_1', agentName: 'Aba Central Cashpoint (Kalu)', pos_model: 'Pax S900', requestDate: new Date(Date.now() - 86400000 * 5).toISOString(), serial_number: 'POS_8871928091', status: 'active' },
-                        { id: 'term_2', agentName: 'Ariaria Wholesale Agents', pos_model: 'Pax A920 Smart POS', requestDate: new Date(Date.now() - 86400000 * 3).toISOString(), serial_number: 'POS_4492019920', status: 'active' },
-                        { id: 'term_3', agentName: 'Umuahia Junction Hub', pos_model: 'Pax S900', requestDate: new Date(Date.now() - 86400000).toISOString(), serial_number: 'POS_PENDING_1', status: 'pending' },
-                        { id: 'term_4', agentName: 'Ohafia Thrift Outlet', pos_model: 'Pax S900', requestDate: new Date(Date.now()).toISOString(), serial_number: 'POS_PENDING_2', status: 'pending' }
-                    ]
-                }
-                if (fetchedCommissions.length === 0) {
-                    fetchedCommissions = [
-                        { id: 'comm_1', agentName: 'Aba Central Cashpoint (Kalu)', terminalSerial: 'POS_8871928091', amount: 2500000, totalCommission: 37500, agentShare: 26250, bankShare: 11250, status: 'settled', timestamp: new Date(Date.now() - 3600000 * 2).toISOString() },
-                        { id: 'comm_2', agentName: 'Ariaria Wholesale Agents', terminalSerial: 'POS_4492019920', amount: 5000000, totalCommission: 75000, agentShare: 52500, bankShare: 22500, status: 'settled', timestamp: new Date(Date.now() - 1800000).toISOString() },
-                        { id: 'comm_3', agentName: 'Aba Central Cashpoint (Kalu)', terminalSerial: 'POS_8871928091', amount: 1200000, totalCommission: 18000, agentShare: 12600, bankShare: 5400, status: 'settled', timestamp: new Date(Date.now() - 600000).toISOString() }
-                    ]
-                }
-
-                setTerminals(fetchedTerminals)
-                setCommissions(fetchedCommissions)
-            } catch (err) {
-                console.error(err)
-            } finally {
-                setLoading(false)
+    const loadData = React.useCallback(async () => {
+        setLoading(true)
+        try {
+            const res = await fetch("/api/admin/agency")
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "Failed to load agency registry")
+                return
             }
+            setTerminals(data.terminals || [])
+            setCommissions(data.commissions || [])
+            setCustomers(data.customers || [])
+            if (!newCustomerId && data.customers?.[0]?.id) {
+                setNewCustomerId(String(data.customers[0].id))
+            }
+        } catch {
+            toast.error("Network error loading agency data")
+        } finally {
+            setLoading(false)
         }
-        loadAgencyData()
+    }, [newCustomerId])
+
+    React.useEffect(() => {
+        loadData()
     }, [])
 
-    const triggerApproveModal = (term: TerminalRequest) => {
-        setSelectedTerminal(term)
-        setCustomSerial(`POS_${Math.floor(1000000000 + Math.random() * 9000000000)}`)
-    }
-
-    const confirmApproveTerminal = () => {
-        if (!selectedTerminal) return
-
-        setTerminals(prev => prev.map(t => {
-            if (t.id === selectedTerminal.id) {
-                toast.success(`POS terminal request for "${t.agentName}" has been successfully approved! Serial ${customSerial} is assigned.`)
-                return {
-                    ...t,
-                    status: 'active' as const,
-                    serial_number: customSerial
-                }
+    const updateTerminal = async (
+        id: number,
+        payload: { status: string; serial_number?: string },
+        successMsg: string
+    ) => {
+        setBusyId(`term-${id}`)
+        try {
+            const res = await fetch("/api/admin/agency", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, ...payload }),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "Failed to update terminal")
+                return false
             }
-            return t
-        }))
-        setSelectedTerminal(null)
+            toast.success(successMsg)
+            await loadData()
+            return true
+        } finally {
+            setBusyId(null)
+        }
     }
 
-    const handleSuspendTerminal = (id: string) => {
-        setTerminals(prev => prev.map(t => {
-            if (t.id === id) {
-                toast.warning(`POS terminal ${t.serial_number} has been suspended.`)
-                return { ...t, status: 'suspended' as const }
+    const handleProvisionNew = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newSerial.trim()) return
+        setBusyId("new-term")
+        try {
+            const res = await fetch("/api/admin/agency", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    agent_customer_id: newCustomerId ? Number(newCustomerId) : undefined,
+                    serial_number: newSerial.trim(),
+                    pos_model: newModel,
+                    status: "active",
+                }),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "Failed to provision terminal")
+                return
             }
-            return t
-        }))
+            toast.success(`Provisioned POS terminal ${newSerial.trim()}`)
+            setShowNewModal(false)
+            setNewSerial("")
+            await loadData()
+        } finally {
+            setBusyId(null)
+        }
     }
 
-    const handleActivateTerminal = (id: string) => {
-        setTerminals(prev => prev.map(t => {
-            if (t.id === id) {
-                toast.success(`POS terminal ${t.serial_number} successfully reactivated!`)
-                return { ...t, status: 'active' as const }
-            }
-            return t
-        }))
-    }
-
-    // Stats sums
-    const totalActive = terminals.filter(t => t.status === 'active').length
-    const totalPending = terminals.filter(t => t.status === 'pending').length
-    const bankCommissionsKobo = commissions.reduce((acc, curr) => acc + curr.bankShare, 0)
-    const agentCommissionsKobo = commissions.reduce((acc, curr) => acc + curr.agentShare, 0)
+    const totalActive = terminals.filter((t) => t.status === "active" || t.status === "assigned").length
+    const totalPending = terminals.filter((t) => t.status === "pending").length
+    const agentCommKobo = commissions.reduce((s, c) => s + Number(c.agent_share || 0), 0)
+    const bankCommKobo = commissions.reduce((s, c) => s + Number(c.bank_share || 0), 0)
 
     if (loading) {
         return (
-            <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="text-muted-foreground font-medium text-sm">Synchronizing hardware switching registers...</p>
+            <div className="flex h-[60vh] items-center justify-center gap-3 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" /> Loading live POS hardware fleet...
             </div>
         )
     }
 
     return (
-        <div className="space-y-8 pb-12 max-w-7xl mx-auto px-4 sm:px-6">
-            
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border/60 pb-6">
+        <div className="space-y-8 pb-12 max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-6">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <Badge className="bg-primary/20 text-primary border-primary/30 uppercase text-[9px] font-black tracking-widest px-2 py-0.5">Hardware Switch</Badge>
-                        <span className="text-xs text-muted-foreground font-bold">POS Agent Terminal Fleet Registry</span>
-                    </div>
-                    <h1 className="text-3xl font-black tracking-tight mt-2 bg-gradient-to-r from-primary via-blue-500 to-emerald-400 bg-clip-text text-transparent">Partner Agency Network</h1>
-                    <p className="text-sm text-muted-foreground mt-1">Deploy cashpoint terminals, allocate POS hardware serial numbers, and inspect split-commission ledger logs.</p>
+                    <Badge className="bg-primary/15 text-primary border-primary/30 uppercase text-[10px] font-black tracking-widest mb-2">
+                        Hardware Switch · Live Ledger
+                    </Badge>
+                    <h1 className="text-3xl font-black tracking-tight">Partner Agency Network</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Provision POS terminals, approve serial allocations, and audit real-time 70/30 commission splits.
+                    </p>
                 </div>
-                
-                {/* Custom Tab Toggles */}
-                <div className="flex gap-1 bg-muted p-1.5 rounded-2xl border border-border/50">
-                    <button
-                        onClick={() => setActiveTab('fleet')}
-                        className={`text-xs font-bold px-4 py-2 rounded-xl transition-all ${
-                            activeTab === 'fleet' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" onClick={loadData} className="rounded-xl font-bold gap-1.5">
+                        <RefreshCw className="h-4 w-4" /> Refresh
+                    </Button>
+                    <Button
+                        onClick={() => {
+                            setNewSerial(`POS_${Math.floor(1000000000 + Math.random() * 9000000000)}`)
+                            setShowNewModal(true)
+                        }}
+                        className="rounded-xl font-black gap-1.5"
                     >
-                        Active Fleet ({totalActive})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('requests')}
-                        className={`text-xs font-bold px-4 py-2 rounded-xl transition-all ${
-                            activeTab === 'requests' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        Pending Requests ({totalPending})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('commissions')}
-                        className={`text-xs font-bold px-4 py-2 rounded-xl transition-all ${
-                            activeTab === 'commissions' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        Commissions Split Log
-                    </button>
+                        <PlusCircle className="h-4 w-4" /> Provision Terminal
+                    </Button>
                 </div>
             </div>
 
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-card/50 p-6 rounded-2xl border border-border/85 shadow-sm backdrop-blur-md">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-primary/10 rounded-xl text-primary">
-                            <Smartphone className="h-5 w-5" />
-                        </div>
-                        <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider">Active</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Active Fleet POS Terminals</p>
-                    <p className="text-3xl font-extrabold mt-1">{totalActive} POS</p>
+            {/* KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="bg-card p-5 rounded-2xl border">
+                    <Smartphone className="h-5 w-5 text-primary mb-3" />
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">Active Fleet Terminals</p>
+                    <p className="text-3xl font-black mt-1">{totalActive}</p>
                 </div>
-
-                <div className="bg-card/50 p-6 rounded-2xl border border-border/85 shadow-sm backdrop-blur-md">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-amber-500/10 rounded-xl text-amber-500">
-                            <Calendar className="h-5 w-5" />
-                        </div>
-                        <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider animate-pulse">In queue</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Pending Requests</p>
-                    <p className="text-3xl font-extrabold mt-1">{totalPending} Devices</p>
+                <div className="bg-card p-5 rounded-2xl border">
+                    <Calendar className="h-5 w-5 text-amber-500 mb-3" />
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">Pending Requests</p>
+                    <p className="text-3xl font-black mt-1">{totalPending}</p>
                 </div>
-
-                <div className="bg-card/50 p-6 rounded-2xl border border-border/85 shadow-sm backdrop-blur-md">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
-                            <DollarSign className="h-5 w-5" />
-                        </div>
-                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200/20 text-[9px] uppercase font-black">70% Split</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Cumulative Agent Share</p>
-                    <p className="text-3xl font-extrabold mt-1">₦{(agentCommissionsKobo / 100).toLocaleString()}</p>
+                <div className="bg-card p-5 rounded-2xl border">
+                    <DollarSign className="h-5 w-5 text-emerald-500 mb-3" />
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">Agent Share (70%)</p>
+                    <p className="text-3xl font-black mt-1">₦{(agentCommKobo / 100).toLocaleString()}</p>
                 </div>
-
-                <div className="bg-card/50 p-6 rounded-2xl border border-border/85 shadow-sm backdrop-blur-md">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
-                            <Landmark className="h-5 w-5" />
-                        </div>
-                        <Badge className="bg-blue-500/10 text-blue-600 border-blue-200/20 text-[9px] uppercase font-black">30% Split</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Aggregate Bank Commissions</p>
-                    <p className="text-3xl font-extrabold mt-1">₦{(bankCommissionsKobo / 100).toLocaleString()}</p>
+                <div className="bg-card p-5 rounded-2xl border">
+                    <Landmark className="h-5 w-5 text-blue-500 mb-3" />
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">Bank Revenue (30%)</p>
+                    <p className="text-3xl font-black mt-1">₦{(bankCommKobo / 100).toLocaleString()}</p>
                 </div>
             </div>
 
-            {/* Sub-Views Panels */}
-            <div className="space-y-6">
-                
-                {/* 1. Fleet Listing View */}
-                {activeTab === 'fleet' && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-card border border-border/80 rounded-3xl p-6 shadow-md space-y-6"
+            {/* Tabs */}
+            <div className="flex gap-1 bg-muted p-1 rounded-2xl w-fit">
+                {[
+                    { id: "fleet", label: `Fleet (${terminals.filter((t) => t.status !== "pending").length})` },
+                    { id: "requests", label: `Pending Requests (${totalPending})` },
+                    { id: "commissions", label: `Commission Ledger (${commissions.length})` },
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            activeTab === tab.id ? "bg-background shadow-sm" : "text-muted-foreground"
+                        }`}
                     >
-                        <div>
-                            <h2 className="text-lg font-black flex items-center gap-2">
-                                <Layers className="h-5 w-5 text-primary" /> Active Hardware Swiper Fleet
-                            </h2>
-                            <p className="text-xs text-muted-foreground font-semibold mt-0.5">Monitor physical switched POS terminals, terminal models, status, and linked banking agent identities.</p>
-                        </div>
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {terminals.filter(t => t.status !== 'pending').map(term => (
-                                <div key={term.id} className="bg-muted/30 border border-border/50 rounded-2xl p-5 hover:border-primary/25 transition-all flex flex-col justify-between space-y-4">
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 mb-1.5">{term.pos_model}</Badge>
-                                                <h3 className="font-extrabold text-sm text-foreground leading-snug">{term.agentName}</h3>
+            {/* Fleet */}
+            {activeTab === "fleet" && (
+                <div className="bg-card border rounded-2xl p-6 space-y-4">
+                    <h2 className="text-lg font-black flex items-center gap-2">
+                        <Layers className="h-5 w-5 text-primary" /> Assigned POS Hardware Fleet
+                    </h2>
+                    {terminals.filter((t) => t.status !== "pending").length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-8 text-center">No active or suspended terminals in database.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {terminals
+                                .filter((t) => t.status !== "pending")
+                                .map((t) => (
+                                    <div key={t.id} className="border rounded-2xl p-5 flex flex-col justify-between gap-4 bg-muted/20">
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <div>
+                                                    <Badge variant="secondary" className="text-[9px] uppercase mb-1">{t.pos_model}</Badge>
+                                                    <h3 className="font-bold text-sm">{t.agent_name}</h3>
+                                                </div>
+                                                <Badge variant={t.status === "active" ? "default" : "destructive"} className="text-[9px] uppercase">
+                                                    {t.status}
+                                                </Badge>
                                             </div>
-                                            <Badge variant="outline" className={`text-[8px] font-bold uppercase ${
-                                                term.status === 'active' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-destructive/10 text-destructive border-destructive/20'
-                                            }`}>
-                                                {term.status}
-                                            </Badge>
+                                            <p className="text-xs font-mono font-bold">Serial: {t.serial_number}</p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Registered: {new Date(t.created_at).toLocaleDateString()}
+                                            </p>
                                         </div>
-                                        <div className="space-y-1 font-semibold text-[11px] text-muted-foreground">
-                                            <p>Serial Key: <span className="text-foreground font-black">{term.serial_number}</span></p>
-                                            <p>Switched Date: <span className="text-foreground">{new Date(term.requestDate).toLocaleDateString()}</span></p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex border-t border-border/50 pt-4 gap-2">
-                                        {term.status === 'active' ? (
-                                            <Button 
-                                                onClick={() => handleSuspendTerminal(term.id)}
-                                                variant="outline" 
-                                                className="w-full h-8 text-destructive border-destructive/20 bg-destructive/5 hover:bg-destructive/10 font-bold text-xs rounded-lg shadow-none"
+                                        {t.status === "active" || t.status === "assigned" ? (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={busyId !== null}
+                                                onClick={() => updateTerminal(t.id, { status: "suspended" }, `Suspended terminal ${t.serial_number}`)}
+                                                className="w-full text-destructive border-destructive/30 font-bold"
                                             >
-                                                Suspend POS Device
+                                                Suspend Device
                                             </Button>
                                         ) : (
-                                            <Button 
-                                                onClick={() => handleActivateTerminal(term.id)}
-                                                className="w-full h-8 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-lg"
+                                            <Button
+                                                size="sm"
+                                                disabled={busyId !== null}
+                                                onClick={() => updateTerminal(t.id, { status: "active" }, `Reactivated terminal ${t.serial_number}`)}
+                                                className="w-full font-bold"
                                             >
-                                                Activate Device
+                                                Reactivate Device
                                             </Button>
                                         )}
                                     </div>
-                                </div>
-                            ))}
+                                ))}
                         </div>
-                    </motion.div>
-                )}
+                    )}
+                </div>
+            )}
 
-                {/* 2. Requests Table View */}
-                {activeTab === 'requests' && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-card border border-border/80 rounded-3xl p-6 shadow-md space-y-6"
-                    >
-                        <div>
-                            <h2 className="text-lg font-black flex items-center gap-2">
-                                <Smartphone className="h-5 w-5 text-amber-500" /> Pending Hardware Applications
-                            </h2>
-                            <p className="text-xs text-muted-foreground font-semibold mt-0.5">Approve terminal hardware requests and issue secure hardware switching serial numbers.</p>
+            {/* Pending Requests */}
+            {activeTab === "requests" && (
+                <div className="bg-card border rounded-2xl p-6 space-y-4">
+                    <h2 className="text-lg font-black">Pending Hardware Applications</h2>
+                    {totalPending === 0 ? (
+                        <div className="py-10 text-center text-sm text-muted-foreground">
+                            <Check className="h-8 w-8 mx-auto text-emerald-500 mb-2" />
+                            No pending POS terminal requests in queue.
                         </div>
-
-                        {terminals.filter(t => t.status === 'pending').length === 0 ? (
-                            <div className="text-center py-12 bg-muted/20 border border-dashed rounded-2xl text-muted-foreground space-y-2">
-                                <Check className="h-8 w-8 text-emerald-500 mx-auto" />
-                                <p className="text-sm font-extrabold text-foreground">All POS Requests Processed</p>
-                                <p className="text-xs">No pending hardware deployment cycles currently queueing in bank switch registry.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {terminals.filter(t => t.status === 'pending').map(term => (
-                                    <div key={term.id} className="bg-muted/30 border border-border/50 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-primary/20 transition-all">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-sm font-extrabold text-foreground">{term.agentName}</p>
-                                                <Badge className="bg-amber-500/10 text-amber-600 border-amber-200/20 text-[8px] font-black uppercase">Pending Allocation</Badge>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground font-medium">Device Model Requested: <span className="text-foreground font-bold">{term.pos_model}</span></p>
-                                            <p className="text-[10px] text-muted-foreground font-semibold">Request Timestamp: <span className="text-foreground">{new Date(term.requestDate).toLocaleString()}</span></p>
+                    ) : (
+                        <div className="space-y-3">
+                            {terminals
+                                .filter((t) => t.status === "pending")
+                                .map((t) => (
+                                    <div key={t.id} className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div>
+                                            <p className="font-bold text-sm">{t.agent_name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Model: {t.pos_model} · Requested {new Date(t.created_at).toLocaleString()}
+                                            </p>
                                         </div>
-                                        
-                                        <Button 
-                                            onClick={() => triggerApproveModal(term)}
-                                            className="w-full sm:w-auto h-9 bg-primary text-primary-foreground font-black text-xs rounded-xl px-5 hover:bg-primary/95 shadow-md shadow-primary/10"
+                                        <Button
+                                            size="sm"
+                                            onClick={() => {
+                                                setSelectedTerminal(t)
+                                                setCustomSerial(
+                                                    t.serial_number && !t.serial_number.includes("PENDING")
+                                                        ? t.serial_number
+                                                        : `POS_${Math.floor(1000000000 + Math.random() * 9000000000)}`
+                                                )
+                                            }}
+                                            className="rounded-xl font-bold"
                                         >
-                                            Approve & Allocate POS
+                                            Approve & Allocate Serial
                                         </Button>
                                     </div>
                                 ))}
-                            </div>
-                        )}
-                    </motion.div>
-                )}
-
-                {/* 3. Split Commissions Ledgers */}
-                {activeTab === 'commissions' && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-card border border-border/80 rounded-3xl p-6 shadow-md space-y-6"
-                    >
-                        <div>
-                            <h2 className="text-lg font-black flex items-center gap-2">
-                                <FileText className="h-5 w-5 text-primary" /> Commissions Split Ledger
-                            </h2>
-                            <p className="text-xs text-muted-foreground font-semibold mt-0.5">Audited immutable statements representing POS card transaction commissions switching to bank and agent settlement vaults.</p>
                         </div>
+                    )}
+                </div>
+            )}
 
-                        <div className="overflow-x-auto rounded-2xl border border-border/60 shadow-sm">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="bg-muted/50 text-[10px] font-black uppercase text-muted-foreground tracking-widest border-b">
-                                        <th className="px-5 py-4">Transaction ID</th>
-                                        <th className="px-5 py-4">Agent Identity</th>
-                                        <th className="px-5 py-4">POS Serial</th>
-                                        <th className="px-5 py-4">Switched Cash</th>
-                                        <th className="px-5 py-4">Total Fee</th>
-                                        <th className="px-5 py-4">Agent (70%)</th>
-                                        <th className="px-5 py-4">Bank (30%)</th>
-                                        <th className="px-5 py-4">Status</th>
+            {/* Commissions */}
+            {activeTab === "commissions" && (
+                <div className="bg-card border rounded-2xl p-6 space-y-4">
+                    <h2 className="text-lg font-black flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-primary" /> Real Commission Split Ledger
+                    </h2>
+                    {commissions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-8 text-center">No settled POS cash-out commissions yet.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-muted/40 border-b text-[10px] uppercase text-muted-foreground">
+                                    <tr>
+                                        <th className="px-4 py-3">ID</th>
+                                        <th className="px-4 py-3">Agent</th>
+                                        <th className="px-4 py-3">POS Serial</th>
+                                        <th className="px-4 py-3">Volume</th>
+                                        <th className="px-4 py-3">Agent (70%)</th>
+                                        <th className="px-4 py-3">Bank (30%)</th>
+                                        <th className="px-4 py-3">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border/60">
-                                    {commissions.map(log => (
-                                        <tr key={log.id} className="text-xs hover:bg-muted/10 transition-colors font-medium">
-                                            <td className="px-5 py-4 font-bold text-foreground">#{log.id.toUpperCase()}</td>
-                                            <td className="px-5 py-4 text-muted-foreground">{log.agentName}</td>
-                                            <td className="px-5 py-4 font-mono font-bold text-foreground">{log.terminalSerial}</td>
-                                            <td className="px-5 py-4 font-bold text-foreground">₦{(log.amount / 100).toLocaleString()}</td>
-                                            <td className="px-5 py-4 text-primary font-bold">₦{(log.totalCommission / 100).toLocaleString()}</td>
-                                            <td className="px-5 py-4 text-emerald-500 font-extrabold">₦{(log.agentShare / 100).toLocaleString()}</td>
-                                            <td className="px-5 py-4 text-blue-500 font-extrabold">₦{(log.bankShare / 100).toLocaleString()}</td>
-                                            <td className="px-5 py-4">
-                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px] uppercase font-black">
-                                                    {log.status}
-                                                </Badge>
-                                            </td>
+                                <tbody className="divide-y">
+                                    {commissions.map((c) => (
+                                        <tr key={c.id}>
+                                            <td className="px-4 py-3 font-mono font-bold">#{c.id}</td>
+                                            <td className="px-4 py-3">{c.agent_name}</td>
+                                            <td className="px-4 py-3 font-mono">{c.terminal_serial || "—"}</td>
+                                            <td className="px-4 py-3 font-bold">₦{(Number(c.transaction_amount) / 100).toLocaleString()}</td>
+                                            <td className="px-4 py-3 font-bold text-emerald-600">₦{(Number(c.agent_share) / 100).toLocaleString()}</td>
+                                            <td className="px-4 py-3 font-bold text-blue-600">₦{(Number(c.bank_share) / 100).toLocaleString()}</td>
+                                            <td className="px-4 py-3"><Badge variant="outline" className="text-[9px] uppercase">{c.status}</Badge></td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-                    </motion.div>
-                )}
+                    )}
+                </div>
+            )}
 
-            </div>
-
-            {/* Modal: Allocate Serial Number & Approve */}
-            <AnimatePresence>
-                {selectedTerminal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setSelectedTerminal(null)}
-                            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            {/* Modal: Approve & Allocate */}
+            {selectedTerminal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                    <div className="bg-card border rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-black">Allocate Hardware Serial</h3>
+                            <Button size="icon" variant="ghost" onClick={() => setSelectedTerminal(null)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Agent: <strong>{selectedTerminal.agent_name}</strong> ({selectedTerminal.pos_model})
+                        </p>
+                        <input
+                            type="text"
+                            value={customSerial}
+                            onChange={(e) => setCustomSerial(e.target.value)}
+                            className="w-full h-11 px-4 rounded-xl border bg-background font-mono text-sm"
                         />
-
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-card border border-border w-full max-w-md rounded-3xl p-6 shadow-2xl z-10 relative space-y-6"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-xl font-black flex items-center gap-2">
-                                        <Smartphone className="h-6 w-6 text-primary" /> Allocate POS Serial Number
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">Assign a verified physical hardware serial code to activate the card switch reader.</p>
-                                </div>
-                                <Button size="icon" variant="ghost" className="size-8 rounded-lg" onClick={() => setSelectedTerminal(null)}>
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="p-4 bg-muted/40 rounded-2xl space-y-2 text-xs">
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground font-bold">Requesting Agent:</span>
-                                        <span className="font-extrabold text-foreground">{selectedTerminal.agentName}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground font-bold">Hardware Model:</span>
-                                        <span className="font-extrabold text-primary">{selectedTerminal.pos_model}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground font-bold">Subscribed Commission Split:</span>
-                                        <span className="font-black text-emerald-500">70% Agent / 30% Bank</span>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Hardware Serial Code (Generated)</label>
-                                    <input 
-                                        type="text" 
-                                        required
-                                        value={customSerial}
-                                        onChange={(e) => setCustomSerial(e.target.value)}
-                                        placeholder="POS_XXXXXXXXXX"
-                                        className="w-full h-11 px-4 rounded-xl border bg-muted/30 text-sm font-mono focus:outline-none focus:border-primary transition-colors"
-                                    />
-                                </div>
-
-                                <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3 flex gap-2.5 text-blue-600 leading-normal">
-                                    <Info className="h-5 w-5 shrink-0 text-blue-500" />
-                                    <p className="text-[10px] font-semibold leading-relaxed">
-                                        Approving allocates this terminal serial number in the banking network. Swiped card switches will be routed directly to the agent's cashout float ledger account instantly.
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-3 justify-end pt-4">
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        onClick={() => setSelectedTerminal(null)}
-                                        className="rounded-xl h-11 font-bold shadow-none"
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button 
-                                        onClick={confirmApproveTerminal}
-                                        className="bg-primary text-primary-foreground font-black rounded-xl h-11 px-6 shadow-md hover:bg-primary/95"
-                                    >
-                                        Deploy POS Terminal
-                                    </Button>
-                                </div>
-                            </div>
-                        </motion.div>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setSelectedTerminal(null)}>Cancel</Button>
+                            <Button
+                                disabled={busyId !== null}
+                                onClick={async () => {
+                                    const ok = await updateTerminal(
+                                        selectedTerminal.id,
+                                        { status: "active", serial_number: customSerial },
+                                        `Allocated ${customSerial} and activated terminal!`
+                                    )
+                                    if (ok) setSelectedTerminal(null)
+                                }}
+                            >
+                                Confirm & Deploy
+                            </Button>
+                        </div>
                     </div>
-                )}
-            </AnimatePresence>
+                </div>
+            )}
+
+            {/* Modal: Provision New */}
+            {showNewModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                    <form onSubmit={handleProvisionNew} className="bg-card border rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-black">Provision POS Terminal</h3>
+                            <Button type="button" size="icon" variant="ghost" onClick={() => setShowNewModal(false)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold">Assign to Agent Customer</label>
+                            <select
+                                value={newCustomerId}
+                                onChange={(e) => setNewCustomerId(e.target.value)}
+                                className="w-full h-10 rounded-xl border bg-background px-3 text-sm"
+                            >
+                                {customers.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.first_name} {c.last_name} ({c.email})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold">Hardware Model</label>
+                            <input
+                                type="text"
+                                required
+                                value={newModel}
+                                onChange={(e) => setNewModel(e.target.value)}
+                                className="w-full h-10 rounded-xl border bg-background px-3 text-sm"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold">Serial Number</label>
+                            <input
+                                type="text"
+                                required
+                                value={newSerial}
+                                onChange={(e) => setNewSerial(e.target.value)}
+                                className="w-full h-10 rounded-xl border bg-background px-3 font-mono text-sm"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={() => setShowNewModal(false)}>Cancel</Button>
+                            <Button type="submit" disabled={busyId === "new-term"}>Provision & Activate</Button>
+                        </div>
+                    </form>
+                </div>
+            )}
         </div>
     )
 }

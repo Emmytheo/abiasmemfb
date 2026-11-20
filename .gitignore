@@ -25,14 +25,47 @@
 *.pem
 
 # debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*.local
 .env
+.env.*
+.env*.local
+!.env.example
+
+# certificates, private keys & local secrets
+*.key
+*.p12
+*.pfx
+*.crt
+*.cert
+*.jks
+*.keystore
+*secret*.json
+*credentials*.json
+service-account*.json
+
+# local scratch, debug scripts, databases & backups
+/scratch/
+/tmp/
+/trash/
+patch-db.js
+patch-schemas.ts
+run-sync.ts
+test-import*.js
+test-import*.mjs
+test-query.ts
+verify-sync.ts
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+*.backup.*
+*.original.backup.*
 
 # vercel
 .vercel

@@ -70,9 +70,14 @@ const navGroups: AdminNavGroup[] = [
         title: "General",
         items: [
             {
-                title: "Dashboard",
+                title: "Command Center",
                 url: "/dashboard",
                 icon: LayoutDashboard,
+            },
+            {
+                title: "Teller, Ops & Audit",
+                url: "/dashboard/operations",
+                icon: Landmark,
             },
             {
                 title: "White-Label Profiles",
@@ -124,6 +129,12 @@ const navGroups: AdminNavGroup[] = [
     {
         title: "Digital Hub Admin",
         items: [
+            {
+                title: "Copteller Bridge",
+                url: "/dashboard/copteller",
+                icon: Globe,
+                moduleKey: "coptellerBridge",
+            },
             {
                 title: "Esusu Cooperatives",
                 url: "/dashboard/esusu",
@@ -299,21 +310,28 @@ export function DashboardSidebar({ userName, userEmail, ...props }: DashboardSid
                     <SidebarGroupContent>
                         <ScopeSelector role="admin" />
                         <SidebarMenu>
-                            <SidebarMenuItem className="flex flex-col gap-2 mt-4 group-data-[collapsible=icon]:items-center">
+                            <SidebarMenuItem className="flex flex-row gap-2 mt-4 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center">
                                 <SidebarMenuButton
-                                    tooltip="Quick Create"
+                                    asChild
+                                    tooltip="Teller & Operations Desk"
                                     className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground group-data-[collapsible=icon]:!justify-center"
                                 >
-                                    <PlusCircleIcon className="w-4 h-4 shrink-0" />
-                                    <span>Quick Create</span>
+                                    <a href="/dashboard/operations">
+                                        <PlusCircleIcon className="w-4 h-4 shrink-0" />
+                                        <span>Teller Posting</span>
+                                    </a>
                                 </SidebarMenuButton>
                                 <Button
+                                    asChild
                                     size="icon"
                                     className="h-9 w-9 shrink-0"
                                     variant="outline"
+                                    title="Maker-Checker Approvals"
                                 >
-                                    <MailIcon className="w-4 h-4" />
-                                    <span className="sr-only">Inbox</span>
+                                    <a href="/dashboard/operations?tab=approvals">
+                                        <MailIcon className="w-4 h-4" />
+                                        <span className="sr-only">Approvals Queue</span>
+                                    </a>
                                 </Button>
                             </SidebarMenuItem>
                         </SidebarMenu>

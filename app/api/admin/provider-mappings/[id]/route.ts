@@ -1,3 +1,4 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@payload-config';
@@ -6,6 +7,8 @@ export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const __authGuard = await requireAdminUser(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const { id } = await params;
         const body = await req.json();
@@ -39,6 +42,8 @@ export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const __authGuard = await requireAdminUser(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const { id } = await params;
         const payload = await getPayload({ config });

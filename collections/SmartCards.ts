@@ -9,7 +9,11 @@ export const SmartCards: CollectionConfig = {
         description: 'Physical & virtual debit card assets owned by customers.',
     },
     access: {
-        read: () => true,
+        read: ({ req }) => {
+            if (req.user?.role === 'admin') return true
+            if (req.user?.supabase_id) return { user_id: { equals: req.user.supabase_id } }
+            return false
+        },
         create: ({ req }) => req.user?.role === 'admin',
         update: ({ req }) => req.user?.role === 'admin',
         delete: ({ req }) => req.user?.role === 'admin',

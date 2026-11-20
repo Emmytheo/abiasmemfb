@@ -216,6 +216,7 @@ export default function BankProfilesStudioPage() {
         retailAndSalary: Landmark,
         schoolCollections: GraduationCap,
         cooperativeEsusu: Users,
+        coptellerBridge: Building2,
         agencyPos: Store,
         smartCards: CreditCard,
         merchantApiAndPayroll: Briefcase,

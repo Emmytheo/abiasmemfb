@@ -3,6 +3,8 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { Separator } from "@/components/ui/separator";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { DashboardBreadcrumb } from "@/components/dashboard-breadcrumb";
+import { CommandPalette } from "@/components/command-palette";
+import { ClientMobileDock } from "@/components/client-mobile-dock";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import type { AppRole } from "@/lib/auth/roles";
@@ -77,34 +79,37 @@ export default async function ClientLayout({ children }: { children: React.React
                         onboardingStatus={onboardingStatus as any}
                     />
                 )}
-                <SidebarInset>
+                <SidebarInset className="ambient-mesh">
                     {!isOnboardingPage && (
-                        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background/80 px-6 backdrop-blur-sm transition-all duration-300">
-                            <div className="flex items-center gap-4">
-                                <SidebarTrigger className="-ml-2 hover:bg-muted/50 transition-colors" />
-                                <Separator orientation="vertical" className="h-6 opacity-50" />
+                        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/80 px-4 sm:px-6 backdrop-blur-xl transition-all duration-300">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <SidebarTrigger className="-ml-1 hover:bg-muted/60 transition-colors" />
+                                <Separator orientation="vertical" className="h-5 opacity-50" />
                                 <DashboardBreadcrumb />
                             </div>
 
-                            <div className="flex items-center gap-2 sm:gap-4">
+                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <CommandPalette role="client" />
                                 <div className="hidden sm:block">
                                     <ThemeCustomizer />
                                 </div>
-                                <div className="flex items-center gap-2 border rounded-full px-2 sm:px-3 py-1.5 bg-muted/30 shadow-sm">
-                                    <div className="h-6 w-6 rounded-full bg-primary flex flex-col justify-center items-center text-[10px] text-primary-foreground font-bold shadow-sm shrink-0">
+                                <div className="flex items-center gap-2 border border-border/80 rounded-full pl-1.5 pr-2.5 py-1 bg-card/80 shadow-sm">
+                                    <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-[10px] text-primary-foreground font-black shadow-sm shrink-0">
                                         {initials}
                                     </div>
-                                    <span className="hidden sm:inline text-sm font-medium text-foreground">{userName}</span>
+                                    <span className="hidden sm:inline text-xs font-bold text-foreground max-w-[120px] truncate">{userName}</span>
                                 </div>
                             </div>
                         </header>
                     )}
 
-                    <main className="flex-1 overflow-auto px-2 p-4 md:p-8">
+                    <main className="flex-1 overflow-auto px-2 p-4 md:p-8 pb-24 md:pb-8">
                         <div className="mx-auto max-w-7xl w-full animate-in fade-in duration-500">
                             {children}
                         </div>
                     </main>
+
+                    {!isOnboardingPage && <ClientMobileDock />}
                 </SidebarInset>
             </ScopeProvider>
         </SidebarProvider>

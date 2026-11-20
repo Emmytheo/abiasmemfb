@@ -37,6 +37,21 @@ export function DashboardBreadcrumb() {
             .join(' ');
     };
 
+    // Route-aware home href (clients return to /client-dashboard, admins to /dashboard)
+    const isClientRoute =
+        segments[0] === "client-dashboard" ||
+        segments[0] === "my-cards" ||
+        segments[0] === "my-products" ||
+        segments[0] === "my-loans" ||
+        segments[0] === "esusu" ||
+        segments[0] === "merchant" ||
+        segments[0] === "agency" ||
+        segments[0] === "agent" ||
+        segments[0] === "pay" ||
+        segments[0] === "explore" ||
+        segments[0] === "applications";
+    const homeHref = isClientRoute ? "/client-dashboard" : "/dashboard";
+
     // Skip the word "dashboard" or "client-dashboard" if it's the first segment to prevent Home > Dashboard > Dashboard
     const isBaseSegment = segments[0] === "dashboard" || segments[0] === "client-dashboard";
     const displaySegments = isBaseSegment ? segments.slice(1) : segments;
@@ -50,8 +65,13 @@ export function DashboardBreadcrumb() {
             <BreadcrumbList className="flex-nowrap whitespace-nowrap overflow-hidden">
                 <BreadcrumbItem>
                     <BreadcrumbLink asChild>
-                        <Link href="/dashboard" className="flex items-center gap-1">
+                        <Link href={homeHref} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
                             <Home className="h-3.5 w-3.5" />
+                            {displaySegments.length === 0 && (
+                                <span className="text-xs font-bold text-foreground">
+                                    {isClientRoute ? "Overview" : "Command Center"}
+                                </span>
+                            )}
                             <span className="sr-only">Home</span>
                         </Link>
                     </BreadcrumbLink>

@@ -111,15 +111,15 @@ export function ScopeProvider({
               description: `${fullName} • Personal Ledger`,
             };
           }
-          // Try enriching business name from merchant-profiles if available
+          // Enrich business scope name from authenticated /api/client/merchant endpoint
           try {
-            const res = await fetch(`/api/merchant-profiles?where[user_id][equals]=${user.id}&limit=1`);
+            const res = await fetch(`/api/client/merchant`, { cache: "no-store" });
             if (res.ok) {
               const data = await res.json();
-              if (data.docs?.[0]?.business_name) {
+              if (data.profile?.business_name) {
                 baseScopes[1] = {
                   ...baseScopes[1],
-                  name: data.docs[0].business_name,
+                  name: data.profile.business_name,
                   description: "Business & Merchant Suite",
                 };
               }

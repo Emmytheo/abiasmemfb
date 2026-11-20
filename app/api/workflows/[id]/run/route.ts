@@ -1,3 +1,4 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextRequest, NextResponse } from 'next/server'
 import { executeWorkflow } from '@/lib/workflow/executeWorkflow'
 
@@ -5,6 +6,8 @@ export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const __authGuard = await requireAdminUser(request);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     const { id } = await params
 
     try {

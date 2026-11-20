@@ -61,8 +61,8 @@ export async function POST(req: Request) {
                     user_id: user.id,
                     business_name,
                     settlement_account: accounts.docs[0].id,
-                    webhook_url: 'https://example.com/payment-webhook',
-                    is_verified: true,
+                    webhook_url: body.webhook_url || '',
+                    is_verified: user.user_metadata?.role === 'admin',
                 },
                 overrideAccess: true,
             })

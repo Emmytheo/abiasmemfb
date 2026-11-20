@@ -1,3 +1,4 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -5,6 +6,8 @@ import { resolveSecret } from '@/lib/workflow/secrets/secretResolver'
 import { resolveQueryParams, applyAuthOverride } from '@/lib/workflow/utils/apiResolver'
 
 export async function POST(req: Request) {
+    const __authGuard = await requireAdminUser(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const payload = await getPayload({ config })
         const body = await req.json()

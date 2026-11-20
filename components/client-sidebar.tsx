@@ -504,6 +504,7 @@ export function ClientSidebar({
 }
 
 function SidebarActionCarousel({ isPendingOnboarding, sidebarPromotion }: { isPendingOnboarding: boolean; sidebarPromotion?: { title: string; description: string; link?: string; ctaText?: string } }) {
+    const { activeProfile } = useBankProfile();
     const [index, setIndex] = React.useState(0);
     const slides = React.useMemo(() => {
         const items = [];
@@ -541,17 +542,19 @@ function SidebarActionCarousel({ isPendingOnboarding, sidebarPromotion }: { isPe
             );
         }
         items.push(
-            <div key="advisor" className="bg-accent/50 p-3 rounded-lg border mx-2 text-center h-full flex flex-col justify-center">
-                <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Personal Advisor</p>
-                <p className="text-sm font-bold truncate">Julian Sterling</p>
-                <Button size="sm" className="w-full mt-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-lg transition-all border border-primary/20 flex items-center justify-center gap-2 shadow-none h-7">
-                    <PhoneCall className="h-3 w-3" />
-                    Contact
+            <div key="support" className="bg-accent/50 p-3 rounded-lg border mx-2 text-center h-full flex flex-col justify-center">
+                <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Client Support Desk</p>
+                <p className="text-xs font-bold truncate">{activeProfile.shortName} Concierge</p>
+                <Button size="sm" asChild className="w-full mt-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-lg transition-all border border-primary/20 flex items-center justify-center gap-2 shadow-none h-7">
+                    <a href={`mailto:${activeProfile.supportEmail}`}>
+                        <PhoneCall className="h-3 w-3" />
+                        Contact Support
+                    </a>
                 </Button>
             </div>
         );
         return items;
-    }, [isPendingOnboarding]);
+    }, [isPendingOnboarding, sidebarPromotion, activeProfile.shortName, activeProfile.supportEmail]);
 
     React.useEffect(() => {
         if (slides.length <= 1) return;

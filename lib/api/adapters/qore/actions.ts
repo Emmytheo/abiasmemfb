@@ -102,33 +102,44 @@ const qoreRequest = async (
 
     
 
-    console.log(`[QORE REQUEST] ${options.method || 'GET'} ${url}`);
+    const redactedUrl = url.replace(/authToken=[^&]+/gi, 'authToken=[REDACTED]');
+    console.log(`[QORE REQUEST] ${options.method || 'GET'} ${redactedUrl}`);
     
     const res = await fetch(url, fetchOptions);
 
     if (!res.ok) {
         const errbody = await res.text().catch(() => '');
-        console.error(`[QORE API ERROR] ${res.status} ${res.statusText} on ${url}`, errbody);
+        console.error(`[QORE API ERROR] ${res.status} ${res.statusText} on ${redactedUrl}`, errbody);
         throw new Error(`Qore API Error: ${res.status} ${res.statusText} - ${errbody || 'No error body'}`);
     }
 
     return await res.json();
 };
 
-// ── Core ApiAdapter Implementations (Internal ABIASMEMFB Logic) ────────
+// ── Core ApiAdapter Implementations (Internal BankSuite Logic) ────────
 
 export const createAccount = async (data: Omit<Account, 'id' | 'created_at' | 'updated_at'>): Promise<Account> => {
+    const customerObj = typeof data.customer === 'object' && data.customer ? data.customer : null;
+    const customerId = typeof data.customer === 'string' ? data.customer : customerObj?.id;
+    const resolvedCustomer = customerObj || (customerId ? await PayloadAdapter.getCustomerById(customerId) : null);
+
+    if (!resolvedCustomer) {
+        throw new Error('Verified customer profile is required before creating a core banking account.');
+    }
+
     const qoreRes = await createAccountQuick({
         TransactionTrackingRef: `ACC_${Date.now()}`,
         AccountOpeningTrackingRef: `WEB_${Date.now()}`,
-        ProductCode: '101', // Default product
-        LastName: 'New',
-        OtherNames: 'User',
-        PhoneNo: '08000000000',
-        Gender: 0,
+        ProductCode: '101',
+        LastName: resolvedCustomer.lastName || 'Customer',
+        OtherNames: resolvedCustomer.firstName || 'Account',
+        PhoneNo: resolvedCustomer.phone_number || '',
+        Gender: String(resolvedCustomer.gender) === '1' ? 1 : 0,
         PlaceOfBirth: 'Nigeria',
-        DateOfBirth: '1990-01-01',
-        Address: 'Nigeria',
+        DateOfBirth: resolvedCustomer.dob ? String(resolvedCustomer.dob).slice(0, 10) : '1990-01-01',
+        Address: resolvedCustomer.address || 'Nigeria',
+        Email: resolvedCustomer.email,
+        BVN: resolvedCustomer.bvn,
     });
 
     return await PayloadAdapter.createAccount({
@@ -222,12 +233,19 @@ export const getUserLoans = async (userId: string): Promise<Loan[]> => PayloadAd
 // ── Transactions & Funding (Sync with Payload) ─────────────────────
 
 export const processAccountFunding = async (targetAccountId: string, amountNaira: number, reference?: string) => {
+    // Production guard: direct server action funding requires verified bank admin session
+    const { requireAdminUser } = await import('@/lib/auth/server-guard');
+    const auth = await requireAdminUser();
+    if ('status' in auth) {
+        throw new Error('Forbidden: Direct ledger funding requires Bank Administrator authorization. Use verified Payment Gateway or Teller Deposit.');
+    }
+
     const localAcc = await PayloadAdapter.getAccountById(targetAccountId);
     if (!localAcc) throw new Error('Target account not found locally');
 
     const finalRef = reference || `FUND_${Date.now()}`;
 
-    if (localAcc.source === 'qore') {
+    if (localAcc.source === 'qore' && process.env.QORE_SECRET_ID) {
         try {
             const settings = await PayloadAdapter.getSiteSettings();
             const fromAccount = (settings?.sync as any)?.systemMasterFundingAccount || 'SYSTEM_FUND_ACC';
@@ -241,7 +259,10 @@ export const processAccountFunding = async (targetAccountId: string, amountNaira
                 RetrievalReference: finalRef.slice(0, 12).padEnd(12, '0'),
             });
         } catch (error: any) {
-            console.warn('[Qore processAccountFunding] Core switch transfer warning (proceeding with local ledger credit):', error.message);
+            if (process.env.QORE_STRICT_SETTLEMENT === 'true') {
+                throw new Error(`Core switch funding declined: ${error.message}`);
+            }
+            console.warn('[Qore processAccountFunding] Core switch transfer warning:', error.message);
         }
     }
 
@@ -613,6 +634,7 @@ export const interBankTransfer = async (data: {
     Narration: string;
     RetrievalReference: string; // 12 chars
     DestinationBankCode: string; // CBN code
+    PayerName?: string;
 }, overrides?: QoreOverrides) => {
     // Inter-bank Transfer Mapping (Section 5 InterBankTransfer)
     return qoreRequest('channels', 'Transfer/InterBankTransfer', {
@@ -620,7 +642,7 @@ export const interBankTransfer = async (data: {
         body: JSON.stringify({
             Amount: data.Amount,
             PayerAccountNumber: data.FromAccountNumber,
-            Payer: 'ABIASMEMFB CUSTOMER', // Required by documentation
+            Payer: data.PayerName || 'BANKSUITE CUSTOMER',
             ReceiverAccountNumber: data.ToAccountNumber,
             ReceiverBankCode: data.DestinationBankCode,
             Narration: data.Narration,

@@ -1,3 +1,4 @@
+import { requireMaintenanceAccess } from '@/lib/auth/server-guard';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import configPromise from '@/payload.config';
@@ -7,6 +8,8 @@ import configPromise from '@/payload.config';
  * Finds all customer records with multiple 'archived_' prefixes and fixes them.
  */
 export async function GET(req: NextRequest) {
+    const __authGuard = await requireMaintenanceAccess(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const payload = await getPayload({ config: configPromise });
 

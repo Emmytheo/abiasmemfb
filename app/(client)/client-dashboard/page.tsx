@@ -31,7 +31,9 @@ import {
     Info,
     Calendar,
     ChevronRight,
-    ArrowRight
+    ArrowRight,
+    Copy,
+    Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, Account, Loan, Transaction, User, ProductApplication, ServiceCategory, Customer } from "@/lib/api";
@@ -56,30 +58,36 @@ export default function ClientDashboard() {
     const [timeframe, setTimeframe] = useState<'6M' | '1Y' | 'ALL'>('6M');
     const [isMounted, setIsMounted] = useState(false);
     const [showBalance, setShowBalance] = useState(true);
+    const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
 
-    // Business Scope states
-    const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-    const [businessInvoices, setBusinessInvoices] = useState([
-        { id: "INV-001", client: "Chidi Agro Supply Ltd", amount: 150000, date: "2026-06-25", status: "unpaid" },
-        { id: "INV-002", client: "Owerri Retail Outlets", amount: 230000, date: "2026-06-26", status: "paid" },
-        { id: "INV-003", client: "Aba Leather Guild", amount: 95000, date: "2026-06-27", status: "unpaid" }
-    ]);
-    const [newClient, setNewClient] = useState("");
-    const [newAmount, setNewAmount] = useState("");
+    const copyAccountNumber = (accNum: string) => {
+        navigator.clipboard.writeText(accNum);
+        setCopiedAccount(accNum);
+        toast.success(`Copied account number ${accNum}`);
+        setTimeout(() => setCopiedAccount(null), 1800);
+    };
 
-    // Cooperative Scope states
+    // Live multi-scope operational overview from Postgres (/api/client/overview)
+    const [overview, setOverview] = useState<any>(null);
+
+    // Cooperative Member Lookup states
     const [memberAccountQuery, setMemberAccountQuery] = useState("");
-    const [validatedMemberName, setValidatedMemberName] = useState<string | null>(null);
+    const [validatedMember, setValidatedMember] = useState<{ accountName: string; accountNumber: string; kycStatus?: string } | null>(null);
+    const [memberLookupError, setMemberLookupError] = useState<string | null>(null);
     const [isValidatingMember, setIsValidatingMember] = useState(false);
     const [coopActiveCycleTab, setCoopActiveCycleTab] = useState(0);
-    const [coopCycles, setCoopCycles] = useState([
-        { id: "cycle_1", name: "Traders Daily Rotation (A)", contribution_amount: 500000, frequency: "daily", total_slots: 5, current_payout_index: 2, total_pool: 2500000 },
-        { id: "cycle_2", name: "Shoemakers Weekly High Yield", contribution_amount: 2500000, frequency: "weekly", total_slots: 6, current_payout_index: 0, total_pool: 15000000 }
-    ]);
-    const [coopMembers, setCoopMembers] = useState<Record<string, string[]>>({
-        "cycle_1": ["Kalu Uche", "Amara Okafor", "Ibrahim Musa", "Julian Sterling", "Emeka Obi"],
-        "cycle_2": ["Chinyere Alao", "Obinna Okeke", "Grace Edwin", "Kalu Uche", "Amara Okafor", "Ibrahim Musa"]
-    });
+
+    const loadOverview = async () => {
+        try {
+            const res = await fetch("/api/client/overview", { cache: "no-store" });
+            if (res.ok) {
+                const json = await res.json();
+                if (json.success) setOverview(json);
+            }
+        } catch (err) {
+            console.error("Failed to fetch multi-scope overview:", err);
+        }
+    };
 
     useEffect(() => {
         setIsMounted(true);
@@ -102,10 +110,11 @@ export default function ClientDashboard() {
                 const [accountsData, loansData, txsData, appsData, catsData, customerProfile] = await Promise.all([
                     api.getUserAccounts(currentUser.id).catch(() => []),
                     api.getUserLoans(currentUser.id).catch(() => []),
-                    api.getUserTransactions(currentUser.id).catch(() => []), // Fetch only user transactions
+                    api.getUserTransactions(currentUser.id).catch(() => []),
                     api.getUserApplications(currentUser.id).catch(() => []),
                     api.getServiceCategories().catch(() => []),
-                    api.getCustomerBySupabaseId(currentUser.id).catch(() => null)
+                    api.getCustomerBySupabaseId(currentUser.id).catch(() => null),
+                    loadOverview(),
                 ]);
                 setUser(currentUser);
                 setCustomer(customerProfile);
@@ -113,7 +122,7 @@ export default function ClientDashboard() {
                 setAccounts(accountsData);
                 setLoans(loansData);
                 setApplications(appsData);
-                setTransactions(txsData.slice(0, 4)); // Only top 4 recent
+                setTransactions(txsData.slice(0, 4));
             } catch (err) {
                 console.error("Dashboard data load error:", err);
             } finally {
@@ -239,60 +248,34 @@ export default function ClientDashboard() {
         return 'Good evening';
     }, []);
 
-    // Business Invoice Creation Simulator
-    const handleCreateInvoice = (e: React.FormEvent) => {
+    // Live Core Ledger Member Lookup Validation
+    const handleValidateMember = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newClient || !newAmount) return;
-        const invoice = {
-            id: `INV-00${businessInvoices.length + 1}`,
-            client: newClient,
-            amount: Number(newAmount),
-            date: new Date().toISOString().slice(0, 10),
-            status: "unpaid"
-        };
-        setBusinessInvoices([invoice, ...businessInvoices]);
-        setNewClient("");
-        setNewAmount("");
-        setShowInvoiceModal(false);
-        toast.success(`Invoice ${invoice.id} issued to ${invoice.client}!`);
-    };
-
-    // Cooperative Member Lookup Validation
-    const handleValidateMember = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!memberAccountQuery) return;
+        const query = memberAccountQuery.trim();
+        if (!query) return;
         setIsValidatingMember(true);
-        setValidatedMemberName(null);
-        setTimeout(() => {
-            setIsValidatingMember(false);
-            if (memberAccountQuery === "3086167603" || memberAccountQuery.includes("7603")) {
-                setValidatedMemberName("CHIDI MGBARA");
-                toast.success("Identity verified matching account records!");
-            } else if (memberAccountQuery === "3041889711" || memberAccountQuery.includes("9711")) {
-                setValidatedMemberName("JULIAN STERLING");
-                toast.success("Identity verified matching account records!");
+        setValidatedMember(null);
+        setMemberLookupError(null);
+        try {
+            const res = await fetch(`/api/account-lookup?accountNumber=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            if (!res.ok || !data.accountName) {
+                setMemberLookupError(data.error || "Account not found in core ledger.");
+                toast.error(data.error || "Account does not match any registered customer.");
             } else {
-                setValidatedMemberName("MEMBER NOT FOUND");
-                toast.error("Account does not match any registered customer ledger.");
+                setValidatedMember({
+                    accountName: data.accountName,
+                    accountNumber: data.accountNumber || query,
+                    kycStatus: data.kycStatus || "verified",
+                });
+                toast.success(`Verified: ${data.accountName}`);
             }
-        }, 800);
-    };
-
-    // Cooperative Payout Rotation Advanced
-    const handleTriggerCoopPayout = (cycleId: string) => {
-        const loadToast = toast.loading("Executing advanced rotational payout schedule...");
-        setTimeout(() => {
-            setCoopCycles(prev => prev.map(c => {
-                if (c.id === cycleId) {
-                    const nextIndex = (c.current_payout_index + 1) % c.total_slots;
-                    const members = coopMembers[cycleId] || [];
-                    const recipient = members[c.current_payout_index] || "Cooperative Member";
-                    toast.success(`Rotational pool of ₦${(c.total_pool / 100).toLocaleString()} advanced to ${recipient}!`, { id: loadToast });
-                    return { ...c, current_payout_index: nextIndex };
-                }
-                return c;
-            }));
-        }, 1000);
+        } catch {
+            setMemberLookupError("Unable to reach core banking directory.");
+            toast.error("Account lookup failed.");
+        } finally {
+            setIsValidatingMember(false);
+        }
     };
 
     if (loading) {
@@ -327,156 +310,157 @@ export default function ClientDashboard() {
         );
     }
 
-    // Render Business/Merchant Dashboard
+    // Render Business/Merchant Dashboard (100% live from /api/client/overview)
     if (activeScope.type === "business") {
-        const totalRevenue = 2450000;
-        const unpaidSum = businessInvoices.filter(i => i.status === "unpaid").reduce((s, i) => s + i.amount, 0);
+        const biz = overview?.business || {};
+        const bizInvoices: any[] = biz.invoices || [];
+        const bizTerminals: any[] = biz.terminals || [];
+        const recentOutbound: any[] = biz.recentOutbound || [];
+        const totalRevenueNaira = Number(biz.settledRevenueKobo || 0) / 100;
+        const unpaidInvoices = bizInvoices.filter((i: any) => i.status === "unpaid" || i.status === "overdue");
+        const unpaidSumNaira = unpaidInvoices.reduce((s: number, i: any) => s + Number(i.amount_kobo || 0), 0) / 100;
+        const payrollDisbursedNaira = Number(biz.payrollTotalDisbursedKobo || 0) / 100;
 
         return (
             <div className="max-w-7xl mx-auto p-1 md:p-10 space-y-10 animate-in fade-in duration-500">
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <h2 className="text-muted-foreground text-base md:text-lg font-medium">{greeting}, {activeScope.name}</h2>
+                        <h2 className="text-muted-foreground text-base md:text-lg font-medium">{greeting}, {biz.merchant?.business_name || activeScope.name}</h2>
                         <h3 className="text-4xl md:text-6xl font-black tracking-tight mt-1 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">Business Hub</h3>
                     </div>
                     <div className="text-left md:text-right">
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">Corporate Revenue Account</p>
-                        <p className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-foreground">₦{totalRevenue.toLocaleString()}</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">Settled Merchant Revenue</p>
+                        <p className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-foreground">
+                            ₦{totalRevenueNaira.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
                     </div>
                 </header>
 
                 {/* SME KPI Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-card p-6 rounded-2xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                    <div className="bg-card p-6 rounded-2xl border transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
                                 <DollarSign className="h-5 w-5" />
                             </div>
-                            <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
-                                <TrendingUp className="h-3 w-3" /> +14.2%
-                            </span>
+                            <Badge variant="outline" className="text-[10px] uppercase">{biz.checkoutCount || 0} Checkouts</Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">SME Revenue Volume</p>
-                        <p className="text-2xl font-black mt-1 tracking-tight">₦{totalRevenue.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">SME Settled Volume</p>
+                        <p className="text-2xl font-black mt-1 tracking-tight">₦{totalRevenueNaira.toLocaleString()}</p>
                     </div>
 
-                    <div className="bg-card p-6 rounded-2xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                    <div className="bg-card p-6 rounded-2xl border transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-rose-500/10 rounded-xl text-rose-500">
                                 <Receipt className="h-5 w-5" />
                             </div>
-                            <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 text-[10px] uppercase">{businessInvoices.filter(i => i.status === "unpaid").length} Overdue</Badge>
+                            <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 text-[10px] uppercase">{unpaidInvoices.length} Pending</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Unpaid Invoices</p>
-                        <p className="text-2xl font-black mt-1 tracking-tight text-rose-600">₦{unpaidSum.toLocaleString()}</p>
+                        <p className="text-2xl font-black mt-1 tracking-tight text-rose-600">₦{unpaidSumNaira.toLocaleString()}</p>
                     </div>
 
-                    <div className="bg-card p-6 rounded-2xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                    <div className="bg-card p-6 rounded-2xl border transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
                                 <Activity className="h-5 w-5" />
                             </div>
-                            <Badge className="bg-purple-50 text-purple-600 border-purple-250 text-[10px]">2 Terminals</Badge>
+                            <Badge variant="outline" className="text-[10px]">{bizTerminals.length} Assigned</Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Active POS Terminals</p>
-                        <p className="text-2xl font-black mt-1 tracking-tight">Main Outlet, Aba</p>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Active POS Fleet</p>
+                        <p className="text-2xl font-black mt-1 tracking-tight">
+                            {bizTerminals.filter((t: any) => t.status === "active").length} Online
+                        </p>
                     </div>
 
-                    <div className="bg-card p-6 rounded-2xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                    <div className="bg-card p-6 rounded-2xl border transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
                                 <Users className="h-5 w-5" />
                             </div>
-                            <span className="text-[10px] text-emerald-500 font-bold uppercase">Staff Paid</span>
+                            <span className="text-[10px] text-emerald-500 font-bold uppercase">{biz.payrollBatchCount || 0} Batches</span>
                         </div>
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Total Payroll Disbursed</p>
-                        <p className="text-xl font-bold mt-1 tracking-tight">₦450,000.00</p>
+                        <p className="text-xl font-bold mt-1 tracking-tight">₦{payrollDisbursedNaira.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Left Column: Business Invoices & Invoice Issuance */}
                     <div className="lg:col-span-8 space-y-6">
                         <div className="bg-card border rounded-2xl p-6 space-y-4 shadow-sm">
                             <div className="flex justify-between items-center border-b pb-4">
                                 <div>
                                     <h3 className="text-lg font-black flex items-center gap-2"><Receipt className="h-5 w-5 text-primary" /> Invoice Billing Ledger</h3>
-                                    <p className="text-xs text-muted-foreground font-semibold">Track SME collection progress.</p>
+                                    <p className="text-xs text-muted-foreground font-semibold">Persisted SME invoices tracked in PostgreSQL.</p>
                                 </div>
                                 <Button asChild size="sm" className="h-9 font-bold bg-primary text-primary-foreground flex items-center gap-1.5 shadow-none rounded-xl">
                                     <Link href="/client-dashboard/invoices">Manage Invoices <ArrowRight className="h-3 w-3 ml-1" /></Link>
                                 </Button>
                             </div>
 
-                            <div className="divide-y">
-                                {businessInvoices.map((inv) => (
-                                    <div key={inv.id} className="py-4 first:pt-0 last:pb-0 flex justify-between items-center text-sm font-semibold">
-                                        <div>
-                                            <p className="font-extrabold text-foreground">{inv.client}</p>
-                                            <p className="text-[11px] text-muted-foreground">ID: #{inv.id} • Issued {inv.date}</p>
+                            {bizInvoices.length === 0 ? (
+                                <div className="py-10 text-center text-xs text-muted-foreground">
+                                    No invoices issued yet. Create your first customer invoice from the Invoices page.
+                                </div>
+                            ) : (
+                                <div className="divide-y">
+                                    {bizInvoices.slice(0, 6).map((inv: any) => (
+                                        <div key={inv.id} className="py-4 first:pt-0 last:pb-0 flex justify-between items-center text-sm font-semibold">
+                                            <div>
+                                                <p className="font-extrabold text-foreground">{inv.client_name}</p>
+                                                <p className="text-[11px] text-muted-foreground font-mono">
+                                                    {inv.invoice_number} • Due {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "On Receipt"}
+                                                </p>
+                                            </div>
+                                            <div className="text-right space-y-1">
+                                                <p className="font-black text-foreground">₦{(Number(inv.amount_kobo || 0) / 100).toLocaleString()}</p>
+                                                <Badge variant="outline" className={`text-[9px] uppercase ${inv.status === "paid" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
+                                                    {inv.status}
+                                                </Badge>
+                                            </div>
                                         </div>
-                                        <div className="text-right space-y-1">
-                                            <p className="font-black text-foreground">₦{inv.amount.toLocaleString()}</p>
-                                            <Badge variant="outline" className={`text-[9px] uppercase ${inv.status === "paid" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
-                                                {inv.status}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Right Column: API Console Stream Sandbox & Payment preferences */}
                     <div className="lg:col-span-4 space-y-6">
                         <div className="bg-card border rounded-2xl p-6 space-y-4 shadow-sm">
                             <h3 className="text-lg font-black flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /> Corporate Remittances</h3>
-                            <div>
-                                <p className="font-bold">Recent Outbound Transfers</p>
-                                <p className="text-xs text-muted-foreground font-semibold">Monitor latest payments sent to vendors and staff.</p>
-                            </div>
-                            <div className="space-y-4 pt-2">
-                                {[
-                                    { dest: "Acme Logistics", amt: "120,000", date: "Today, 14:00" },
-                                    { dest: activeProfile.taxSampleAuthority, amt: "54,200", date: "Yesterday, 09:15" },
-                                    { dest: "Chidi N. (Salary)", amt: "150,000", date: "26 Jun, 16:30" }
-                                ].map((tx, i) => (
-                                    <div key={i} className="flex justify-between items-center text-sm font-semibold border-b pb-2 last:border-0">
-                                        <div>
-                                            <p className="font-bold text-foreground">{tx.dest}</p>
-                                            <p className="text-[10px] text-muted-foreground">{tx.date}</p>
+                            <p className="text-xs text-muted-foreground font-semibold">Latest verified outbound ledger transfers.</p>
+                            <div className="space-y-3 pt-1">
+                                {recentOutbound.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground py-4 text-center">No outbound transfers recorded yet.</p>
+                                ) : (
+                                    recentOutbound.map((tx: any) => (
+                                        <div key={tx.id} className="flex justify-between items-center text-xs font-semibold border-b pb-2 last:border-0">
+                                            <div className="min-w-0 pr-2">
+                                                <p className="font-bold text-foreground truncate">{tx.narration || tx.reference}</p>
+                                                <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
+                                            </div>
+                                            <p className="font-black text-rose-600 shrink-0">-₦{(Number(tx.amount || 0) / 100).toLocaleString()}</p>
                                         </div>
-                                        <p className="font-black text-rose-600">-₦{tx.amt}</p>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
                             <Button variant="outline" className="w-full font-bold h-10 shadow-none border-primary/20 text-primary hover:bg-primary/5 rounded-xl" asChild>
                                 <Link href="/client-dashboard/transfers">Initiate New Transfer</Link>
                             </Button>
                         </div>
 
-                        {/* Payment Split simulation */}
-                        <div className="bg-card border rounded-2xl p-6 space-y-4 shadow-sm">
-                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Checkout Payment Split</h3>
-                            <div className="space-y-3 font-sans">
-                                <div>
-                                    <div className="flex justify-between text-xs font-semibold mb-1">
-                                        <span>Direct Bank Transfer Settlements (64%)</span>
-                                        <span>₦1,568,000</span>
-                                    </div>
-                                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                                        <div className="bg-primary h-full rounded-full" style={{ width: "64%" }} />
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs font-semibold mb-1">
-                                        <span>Card Swipe/Online Gateway Settlements (36%)</span>
-                                        <span>₦882,000</span>
-                                    </div>
-                                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                                        <div className="bg-purple-500 h-full rounded-full" style={{ width: "36%" }} />
-                                    </div>
-                                </div>
+                        <div className="bg-card border rounded-2xl p-6 space-y-3 shadow-sm">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Quick Merchant Tools</h3>
+                            <div className="grid grid-cols-1 gap-2">
+                                <Button variant="outline" className="justify-between rounded-xl font-bold h-10" asChild>
+                                    <Link href="/merchant"><span>API Keys &amp; Webhooks</span><ChevronRight className="h-4 w-4" /></Link>
+                                </Button>
+                                <Button variant="outline" className="justify-between rounded-xl font-bold h-10" asChild>
+                                    <Link href="/merchant/payroll"><span>Run Bulk Payroll</span><ChevronRight className="h-4 w-4" /></Link>
+                                </Button>
+                                <Button variant="outline" className="justify-between rounded-xl font-bold h-10" asChild>
+                                    <Link href="/merchant/team"><span>Manage Team Roles</span><ChevronRight className="h-4 w-4" /></Link>
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -485,106 +469,120 @@ export default function ClientDashboard() {
         );
     }
 
-    // Render Esusu/Coop Dashboard
+    // Render Esusu/Coop Dashboard (100% live from /api/client/overview)
     if (activeScope.type === "coop") {
-        const totalUnionAssets = 8400000;
-        const currentActiveCycle = coopCycles[coopActiveCycleTab];
+        const coop = overview?.cooperative || {};
+        const liveCoops: any[] = coop.cooperatives || [];
+        const liveCycles: any[] = coop.cycles || [];
+        const membersByCycle: Record<string, string[]> = coop.membersByCycle || {};
+        const livePayouts: any[] = coop.payouts || [];
+        const totalUnionAssetsNaira = Number(coop.totalVaultPoolKobo || 0) / 100;
+        const currentActiveCycle = liveCycles[coopActiveCycleTab] || liveCycles[0];
 
         return (
             <div className="max-w-7xl mx-auto p-1 md:p-10 space-y-10 animate-in fade-in duration-500">
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <h2 className="text-muted-foreground text-base md:text-lg font-medium">{greeting}, Union Administrator</h2>
+                        <h2 className="text-muted-foreground text-base md:text-lg font-medium">{greeting}, {activeScope.name}</h2>
                         <h3 className="text-4xl md:text-6xl font-black tracking-tight mt-1 bg-gradient-to-r from-primary via-purple-500 to-emerald-400 bg-clip-text text-transparent">Cooperative Portal</h3>
                     </div>
                     <div className="text-left md:text-right">
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">Union Rotational Savings Pool</p>
-                        <p className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-emerald-600">₦{totalUnionAssets.toLocaleString()}</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">Active Holding Vault Pool</p>
+                        <p className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-emerald-600">
+                            ₦{totalUnionAssetsNaira.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
                     </div>
                 </header>
 
                 {/* Cooperative Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-card p-6 rounded-2xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                    <div className="bg-card p-6 rounded-2xl border transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
                                 <PiggyBank className="h-5 w-5" />
                             </div>
                             <span className="text-[10px] text-emerald-600 font-bold uppercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Live Pool</span>
                         </div>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Cooperative Union Assets</p>
-                        <p className="text-2xl font-black mt-1 tracking-tight">₦{totalUnionAssets.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Holding Vault Assets</p>
+                        <p className="text-2xl font-black mt-1 tracking-tight">₦{totalUnionAssetsNaira.toLocaleString()}</p>
                     </div>
 
-                    <div className="bg-card p-6 rounded-2xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                    <div className="bg-card p-6 rounded-2xl border transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
                                 <Users className="h-5 w-5" />
                             </div>
-                            <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200 text-[10px] font-bold">3 Groups</Badge>
+                            <Badge variant="outline" className="text-[10px] font-bold">{liveCoops.length} Unions</Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Registered Union Guilds</p>
-                        <p className="text-2xl font-black mt-1 tracking-tight">Leather Guild, Agro Union</p>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Registered Cooperatives</p>
+                        <p className="text-lg font-black mt-1 tracking-tight truncate">{liveCoops[0]?.name || "None registered"}</p>
                     </div>
 
-                    <div className="bg-card p-6 rounded-2xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                    <div className="bg-card p-6 rounded-2xl border transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-cyan-500/10 rounded-xl text-cyan-500">
                                 <Calendar className="h-5 w-5" />
                             </div>
-                            <Badge className="bg-cyan-50 text-cyan-600 border-cyan-200 text-[10px]">Cycle 2</Badge>
+                            <Badge variant="outline" className="text-[10px]">{liveCycles.length} Active</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Current Rotation Cycle</p>
-                        <p className="text-xl font-bold mt-1 tracking-tight truncate">{currentActiveCycle?.name || 'Traders Daily Rotation'}</p>
+                        <p className="text-lg font-bold mt-1 tracking-tight truncate">{currentActiveCycle?.name || "No active cycle"}</p>
                     </div>
 
-                    <div className="bg-card p-6 rounded-2xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                    <div className="bg-card p-6 rounded-2xl border transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-amber-500/10 rounded-xl text-amber-500">
                                 <DollarSign className="h-5 w-5" />
                             </div>
-                            <Badge className="bg-amber-50 text-amber-600 border-amber-200 text-[9px] font-bold">2.5% Cut</Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Accrued Platform Fees</p>
-                        <p className="text-2xl font-black mt-1 tracking-tight text-emerald-500">+₦62,500</p>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Settled Payouts</p>
+                        <p className="text-2xl font-black mt-1 tracking-tight text-emerald-500">{livePayouts.length}</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Left Column: Interactive Rotational Cycle Monitor */}
+                    {/* Left Column: Live Rotational Cycle Monitor */}
                     <div className="lg:col-span-8 space-y-6">
                         <div className="bg-card border rounded-2xl p-6 shadow-sm space-y-6">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 gap-4">
                                 <div>
                                     <h3 className="text-lg font-black flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Active Esusu Rotation Monitor</h3>
-                                    <p className="text-xs text-muted-foreground font-semibold">Track union savings slots and advance pool payouts dynamically.</p>
+                                    <p className="text-xs text-muted-foreground font-semibold">Live queue directly from core Esusu tables.</p>
                                 </div>
-                                <div className="flex gap-1 bg-muted p-1 rounded-xl w-full sm:w-auto">
-                                    {coopCycles.map((c, i) => (
+                                <div className="flex gap-1 bg-muted p-1 rounded-xl flex-wrap">
+                                    {liveCycles.map((c: any, i: number) => (
                                         <button
-                                            key={c.id} onClick={() => setCoopActiveCycleTab(i)}
-                                            className={`flex-1 sm:flex-none text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all ${coopActiveCycleTab === i ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                            key={c.id}
+                                            onClick={() => setCoopActiveCycleTab(i)}
+                                            className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all ${coopActiveCycleTab === i ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                                         >
-                                            {c.name.split(' ')[0]}
+                                            {String(c.name || "Cycle").split(' ')[0]}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {currentActiveCycle && (
+                            {!currentActiveCycle ? (
+                                <div className="py-10 text-center space-y-3">
+                                    <p className="text-sm text-muted-foreground">No active Esusu rotational cycles found in the database.</p>
+                                    <Button asChild size="sm" className="rounded-xl font-bold">
+                                        <Link href="/esusu">Open Digital Esusu Hub</Link>
+                                    </Button>
+                                </div>
+                            ) : (
                                 <div className="space-y-6">
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-muted/30 p-4 rounded-xl text-center sm:text-left">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-muted/30 p-4 rounded-xl">
                                         <div>
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase">Slot Contribution</p>
-                                            <p className="text-xs font-black text-primary">₦{(currentActiveCycle.contribution_amount / 100).toLocaleString()}</p>
+                                            <p className="text-xs font-black text-primary">₦{(Number(currentActiveCycle.contribution_amount || 0) / 100).toLocaleString()}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Timing Frequency</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Frequency</p>
                                             <p className="text-xs font-black capitalize">{currentActiveCycle.frequency}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Total Union Pool</p>
-                                            <p className="text-xs font-black text-emerald-500">₦{(currentActiveCycle.total_pool / 100).toLocaleString()}</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Vault Balance</p>
+                                            <p className="text-xs font-black text-emerald-500">₦{(Number(currentActiveCycle.vault_balance_kobo || 0) / 100).toLocaleString()}</p>
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase">Cycle Slots</p>
@@ -592,47 +590,54 @@ export default function ClientDashboard() {
                                         </div>
                                     </div>
 
-                                    {/* Rotational Slots Order Visualizer */}
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cooperative Rotational Order</p>
-                                        <div className="flex flex-wrap gap-4 items-center justify-between py-2 px-3 bg-muted/10 border rounded-xl">
-                                            {coopMembers[currentActiveCycle.id]?.map((m, slotIdx) => {
-                                                const isActive = currentActiveCycle.current_payout_index === slotIdx;
-                                                const isCompleted = slotIdx < currentActiveCycle.current_payout_index;
-                                                return (
-                                                    <div key={m} className="flex flex-col items-center gap-1 min-w-[70px]">
-                                                        <div className={`size-10 rounded-full flex items-center justify-center font-black text-xs border-2 ${isActive ? 'bg-primary text-primary-foreground border-primary animate-pulse' : isCompleted ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' : 'bg-card text-muted-foreground border-border'}`}>
-                                                            {slotIdx + 1}
+                                        <div className="flex flex-wrap gap-4 items-center py-3 px-4 bg-muted/10 border rounded-xl">
+                                            {(membersByCycle[String(currentActiveCycle.id)] || []).length === 0 ? (
+                                                <p className="text-xs text-muted-foreground">No members enrolled in this cycle yet.</p>
+                                            ) : (
+                                                (membersByCycle[String(currentActiveCycle.id)] || []).map((m, slotIdx) => {
+                                                    const isActive = Number(currentActiveCycle.current_payout_index) === slotIdx;
+                                                    const isCompleted = slotIdx < Number(currentActiveCycle.current_payout_index);
+                                                    return (
+                                                        <div key={`${m}-${slotIdx}`} className="flex flex-col items-center gap-1 min-w-[75px]">
+                                                            <div className={`size-10 rounded-full flex items-center justify-center font-black text-xs border-2 ${isActive ? 'bg-primary text-primary-foreground border-primary' : isCompleted ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' : 'bg-card text-muted-foreground border-border'}`}>
+                                                                {slotIdx + 1}
+                                                            </div>
+                                                            <p className="text-[9px] font-bold text-foreground text-center truncate max-w-[85px]">{m}</p>
+                                                            <Badge variant="outline" className={`text-[8px] scale-90 ${isActive ? 'bg-primary/10 text-primary border-primary/25' : isCompleted ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'text-muted-foreground border-border'}`}>
+                                                                {isActive ? 'NEXT' : isCompleted ? 'PAID' : 'QUEUED'}
+                                                            </Badge>
                                                         </div>
-                                                        <p className="text-[9px] font-bold text-foreground text-center truncate max-w-[80px]">{m}</p>
-                                                        <Badge variant="outline" className={`text-[8px] scale-90 ${isActive ? 'bg-primary/10 text-primary border-primary/25' : isCompleted ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'text-muted-foreground border-border'}`}>
-                                                            {isActive ? 'PAYOUT' : isCompleted ? 'PAID' : 'WAITING'}
-                                                        </Badge>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </div>
 
-                                    <Button onClick={() => handleTriggerCoopPayout(currentActiveCycle.id)} className="w-full bg-primary text-primary-foreground font-black h-12 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-primary/10">
-                                        <RefreshCw className="h-4 w-4" /> Trigger Rotational Payout Cron (Advance Cycle)
+                                    <Button asChild className="w-full bg-primary text-primary-foreground font-black h-12 rounded-xl flex items-center justify-center gap-1.5">
+                                        <Link href="/esusu">Open Full Esusu Contribution &amp; Cycle Hub <ArrowRight className="h-4 w-4" /></Link>
                                     </Button>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Right Column: Member Identity Registry Verification */}
+                    {/* Right Column: Live Member Account Lookup + Payout History */}
                     <div className="lg:col-span-4 space-y-6">
                         <div className="bg-card border rounded-2xl p-6 shadow-sm space-y-4">
                             <h3 className="text-lg font-black flex items-center gap-2"><UserCheck className="h-5 w-5 text-primary" /> Member Identity Validator</h3>
-                            <p className="text-xs text-muted-foreground font-semibold">Verify new cooperative member bank accounts before adding to rotational slots.</p>
+                            <p className="text-xs text-muted-foreground font-semibold">Query the live core banking directory to verify member bank accounts.</p>
                             <form onSubmit={handleValidateMember} className="space-y-4">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold">Client Bank Account Number</label>
-                                    <input 
-                                        type="text" required placeholder="e.g. 3086167603" value={memberAccountQuery} onChange={(e) => setMemberAccountQuery(e.target.value)}
-                                        className="w-full bg-muted border rounded-xl h-11 px-4 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Enter 10-digit account number"
+                                        value={memberAccountQuery}
+                                        onChange={(e) => setMemberAccountQuery(e.target.value)}
+                                        className="w-full bg-muted border rounded-xl h-11 px-4 text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
                                     />
                                 </div>
                                 <Button type="submit" disabled={isValidatingMember} className="w-full h-11 font-black bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 shadow-none rounded-xl flex items-center justify-center gap-2">
@@ -641,33 +646,36 @@ export default function ClientDashboard() {
                                 </Button>
                             </form>
 
-                            {validatedMemberName && (
-                                <div className="p-3 bg-muted/40 rounded-xl border border-border/80 flex flex-col justify-center items-center text-center gap-1 animate-in slide-in-from-top duration-300">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground">LEdger Resolve Success</p>
-                                    <p className="text-sm font-black text-foreground">{validatedMemberName}</p>
-                                    <Badge variant="outline" className={`text-[8px] uppercase mt-1 ${validatedMemberName === "MEMBER NOT FOUND" ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}>
-                                        {validatedMemberName === "MEMBER NOT FOUND" ? "Invalid Account" : "KYC Active ✅"}
-                                    </Badge>
+                            {validatedMember && (
+                                <div className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/20 flex flex-col items-center text-center gap-1">
+                                    <p className="text-[10px] font-black uppercase text-emerald-600">Ledger Resolve Success</p>
+                                    <p className="text-sm font-black text-foreground">{validatedMember.accountName}</p>
+                                    <p className="text-[11px] font-mono text-muted-foreground">{validatedMember.accountNumber}</p>
+                                </div>
+                            )}
+                            {memberLookupError && (
+                                <div className="p-3 bg-rose-500/5 rounded-xl border border-rose-500/20 text-center text-xs font-bold text-rose-600">
+                                    {memberLookupError}
                                 </div>
                             )}
                         </div>
 
-                        {/* Audit payout ledger summaries */}
                         <div className="bg-card border rounded-2xl p-6 shadow-sm space-y-4">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Rotational Payout Audit logs</h3>
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Rotational Payout Audit Log</h3>
                             <div className="divide-y text-xs font-semibold">
-                                <div className="py-2.5 flex justify-between">
-                                    <span>Traders Daily Rotation (Slot 2)</span>
-                                    <span className="text-emerald-500 font-extrabold">+₦24,375</span>
-                                </div>
-                                <div className="py-2.5 flex justify-between">
-                                    <span>Traders Daily Rotation (Slot 1)</span>
-                                    <span className="text-emerald-500 font-extrabold">+₦24,375</span>
-                                </div>
-                                <div className="py-2.5 flex justify-between">
-                                    <span>Shoemakers Weekly (Slot 1)</span>
-                                    <span className="text-emerald-500 font-extrabold">+₦147,000</span>
-                                </div>
+                                {livePayouts.length === 0 ? (
+                                    <p className="text-muted-foreground py-3 text-center">No Esusu payouts disbursed yet.</p>
+                                ) : (
+                                    livePayouts.slice(0, 5).map((p: any) => (
+                                        <div key={p.id} className="py-2.5 flex justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="truncate font-bold">{p.cycle_name || "Esusu Cycle"}</p>
+                                                <p className="text-[10px] text-muted-foreground truncate">{p.recipient}</p>
+                                            </div>
+                                            <span className="text-emerald-500 font-extrabold shrink-0">+₦{(Number(p.amount || 0) / 100).toLocaleString()}</span>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
@@ -677,33 +685,116 @@ export default function ClientDashboard() {
     }
 
     // Default Personal Banking Dashboard Layout
+    const primaryAccount = accounts[0];
+    const heroBg = activeProfile.themeStyle?.heroBgHex || "#070D59";
+    const accentHex = activeProfile.themeStyle?.accentHex || "#F4C414";
+
     return (
-        <div className="max-w-7xl mx-auto p-1 md:p-10 space-y-10 animate-in fade-in duration-500">
-            {/* Header */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                    <h2 className="text-muted-foreground text-base md:text-lg font-medium">{greeting}, {user?.full_name?.split(' ')[0] || 'User'}</h2>
-                    <h3 className="text-4xl md:text-6xl font-black tracking-tight mt-1">Dashboard</h3>
-                </div>
-                <div className="flex items-end gap-10">
-                    <div className="text-left md:text-right w-full md:w-auto">
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1">Total Portfolio Value</p>
-                        <div className="flex items-center md:justify-end gap-2 md:gap-3">
-                            <span className="text-2xl sm:text-3xl md:text-4xl font-light text-primary">₦</span>
-                            <span className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter">
-                                {showBalance ? portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "••••••••"}
+        <div className="max-w-7xl mx-auto p-1 md:p-6 space-y-8 animate-in fade-in duration-500">
+            {/* Branded Executive Portfolio Hero Vault */}
+            <section
+                className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-white/10"
+                style={{
+                    background: `radial-gradient(circle at 88% 12%, ${accentHex}33 0%, transparent 45%), linear-gradient(135deg, ${heroBg} 0%, #090E24 100%)`,
+                }}
+            >
+                <div className="absolute -right-20 -bottom-24 size-72 rounded-full blur-3xl opacity-25 pointer-events-none" style={{ backgroundColor: accentHex }} />
+
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                    <div className="space-y-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold">
+                                <span className={`size-1.5 rounded-full ${customer?.kyc_status === 'active' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                                {greeting}, {user?.full_name?.split(' ')[0] || 'Client'}
                             </span>
-                            <button onClick={() => setShowBalance(!showBalance)} className="focus:outline-none">
-                                {showBalance ? (
-                                    <EyeOff className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground cursor-pointer hover:text-primary transition-colors ml-1 md:ml-2" />
-                                ) : (
-                                    <Eye className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground cursor-pointer hover:text-primary transition-colors ml-1 md:ml-2" />
-                                )}
-                            </button>
+                            {primaryAccount && (
+                                <button
+                                    type="button"
+                                    onClick={() => copyAccountNumber(primaryAccount.account_number)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/25 hover:bg-black/40 border border-white/15 text-[11px] font-mono font-bold transition-colors"
+                                >
+                                    <span>NUBAN: {primaryAccount.account_number}</span>
+                                    {copiedAccount === primaryAccount.account_number ? (
+                                        <Check className="h-3 w-3 text-emerald-400" />
+                                    ) : (
+                                        <Copy className="h-3 w-3 opacity-75" />
+                                    )}
+                                </button>
+                            )}
+                        </div>
+
+                        <div>
+                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/65 font-bold mb-1">
+                                Total Portfolio Value · {activeProfile.shortName}
+                            </p>
+                            <div className="flex items-center gap-2.5">
+                                <span className="text-2xl sm:text-3xl font-light opacity-80">₦</span>
+                                <span className="text-4xl sm:text-5xl font-black tracking-tighter tabular-nums-fintech">
+                                    {showBalance ? portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "••••••••"}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowBalance(!showBalance)}
+                                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors focus:outline-none"
+                                    aria-label={showBalance ? "Hide balance" : "Show balance"}
+                                >
+                                    {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* One-Tap Glass Action Bar */}
+                        <div className="flex flex-wrap gap-2.5 pt-1">
+                            <Button asChild size="sm" className="rounded-xl font-black bg-white text-slate-950 hover:bg-white/90 h-10 px-4 shadow-lg">
+                                <Link href="/pay/fund">
+                                    <Plus className="h-4 w-4 mr-1.5" /> Fund Account
+                                </Link>
+                            </Button>
+                            <Button asChild size="sm" variant="outline" className="rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border-white/20 h-10 px-4">
+                                <Link href="/client-dashboard/transfers">
+                                    <Send className="h-3.5 w-3.5 mr-1.5" /> Transfer
+                                </Link>
+                            </Button>
+                            {activeProfile.enabledModules.smartCards && (
+                                <Button asChild size="sm" variant="outline" className="rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border-white/20 h-10 px-4">
+                                    <Link href="/my-cards">
+                                        <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Smart Cards
+                                    </Link>
+                                </Button>
+                            )}
+                            {activeProfile.enabledModules.cooperativeEsusu && (
+                                <Button asChild size="sm" variant="outline" className="rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border-white/20 h-10 px-4">
+                                    <Link href="/esusu">
+                                        <PiggyBank className="h-3.5 w-3.5 mr-1.5" /> Esusu Vault
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right Hero Summary Pillars */}
+                    <div className="grid grid-cols-3 gap-3 bg-black/25 backdrop-blur-md border border-white/15 rounded-2xl p-4 lg:min-w-[320px]">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-white/60">Liquid Cash</p>
+                            <p className="text-base sm:text-lg font-black tabular-nums-fintech mt-0.5">
+                                {showBalance ? `₦${totalLiquidity.toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 1 })}` : "•••"}
+                            </p>
+                        </div>
+                        <div className="border-l border-white/10 pl-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-white/60">Credit Line</p>
+                            <p className="text-base sm:text-lg font-black tabular-nums-fintech mt-0.5">
+                                {showBalance ? `₦${availableCredit.toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 1 })}` : "•••"}
+                            </p>
+                        </div>
+                        <div className="border-l border-white/10 pl-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-white/60">Accounts</p>
+                            <p className="text-base sm:text-lg font-black tabular-nums-fintech mt-0.5">
+                                {accounts.length} Active
+                            </p>
                         </div>
                     </div>
                 </div>
-            </header>
+            </section>
             
             {/* Onboarding / Welcome Banner */}
             {!loading && accounts.length === 1 && accounts[0].balance === 0 && (
@@ -719,7 +810,7 @@ export default function ClientDashboard() {
                         </div>
                         <div className="flex gap-3 shrink-0">
                             <Button variant="secondary" className="px-8 font-bold shadow-lg h-12" asChild>
-                                <Link href="/client-dashboard/fund">Fund Now</Link>
+                                <Link href="/pay/fund">Fund Now</Link>
                             </Button>
                             <Button variant="ghost" className="text-primary-foreground hover:bg-white/10 font-bold h-12">
                                 Skip for now
@@ -732,42 +823,53 @@ export default function ClientDashboard() {
             )}
 
             {/* Top Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-card p-6 rounded-xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="fintech-card p-6 relative overflow-hidden">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary to-primary/40" />
                     <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-primary/10 rounded-lg">
+                        <div className="p-2 bg-primary/10 rounded-xl">
                             <Wallet className="h-5 w-5 text-primary" />
                         </div>
-                        <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
-                            <TrendingUp className="h-3 w-3" /> 2.4%
-                        </span>
+                        <Badge variant="outline" className="text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                            {accounts.length} {accounts.length === 1 ? 'Account' : 'Accounts'}
+                        </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground font-medium">Liquidity Ratio</p>
-                    <p className="text-2xl font-bold mt-1 tracking-tight">₦{totalLiquidity.toLocaleString(undefined, { minimumFractionDigits: 0 })}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Total Liquidity</p>
+                    <p className="text-2xl font-black mt-1 tracking-tight tabular-nums-fintech">
+                        {showBalance ? `₦${totalLiquidity.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "••••••••"}
+                    </p>
                 </div>
 
-                <div className="bg-card p-6 rounded-xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                <div className="fintech-card p-6 relative overflow-hidden">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400" />
                     <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            <BarChart3 className="h-5 w-5 text-primary" />
+                        <div className="p-2 bg-emerald-500/10 rounded-xl">
+                            <BarChart3 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
-                        <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
-                            <TrendingUp className="h-3 w-3" /> 12.8%
-                        </span>
+                        <Badge variant="outline" className="text-[10px] font-bold uppercase">
+                            {applications.length} Applications
+                        </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground font-medium">Investment Yield</p>
-                    <p className="text-2xl font-bold mt-1 tracking-tight text-emerald-500">+₦{investmentYield.toLocaleString()}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Recent Activity</p>
+                    <p className="text-2xl font-black mt-1 tracking-tight tabular-nums-fintech">
+                        {transactions.length} <span className="text-sm font-semibold text-muted-foreground">recent entries</span>
+                    </p>
                 </div>
 
-                <div className="bg-card p-6 rounded-xl border hover:shadow-[0_0_15px_rgba(var(--primary),0.15)] transition-all">
+                <div className="fintech-card p-6 relative overflow-hidden">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 to-indigo-400" />
                     <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            <CreditCard className="h-5 w-5 text-primary" />
+                        <div className="p-2 bg-violet-500/10 rounded-xl">
+                            <CreditCard className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                         </div>
-                        <span className="text-xs font-bold text-muted-foreground">Current</span>
+                        <Badge variant="outline" className="text-[10px] font-bold uppercase">
+                            {loans.length} Facilities
+                        </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground font-medium">Available Credit</p>
-                    <p className="text-2xl font-bold mt-1 tracking-tight">₦{availableCredit.toLocaleString()}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Credit Exposure</p>
+                    <p className="text-2xl font-black mt-1 tracking-tight tabular-nums-fintech">
+                        {showBalance ? `₦${availableCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "••••••••"}
+                    </p>
                 </div>
             </div>
 
@@ -840,23 +942,36 @@ export default function ClientDashboard() {
                     </div>
                 </div>
 
-                <div className="lg:col-span-3 bg-card p-1 rounded-2xl border shadow-sm flex overflow-x-auto gap-4 p-4 scrollbar-hide">
+                <div className="lg:col-span-3 fintech-card flex overflow-x-auto gap-4 p-4 no-scrollbar">
                     {accounts.map(acc => (
-                        <div key={acc.id} className="min-w-[280px] bg-gradient-to-tr from-muted/50 to-background p-5 rounded-xl border border-border/50 relative overflow-hidden group">
-                           <div className="absolute top-0 right-0 p-2">
+                        <div key={acc.id} className="min-w-[285px] bg-gradient-to-br from-muted/50 via-card to-background p-5 rounded-2xl border border-border/80 hover:border-primary/40 transition-all relative overflow-hidden group">
+                           <div className="flex items-center justify-between gap-2 mb-2">
+                                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">{acc.account_type} Account</p>
                                 {acc.is_frozen || acc.pnd_enabled ? (
-                                    <Badge variant="destructive" className="text-[10px] uppercase tracking-tighter">Restricted</Badge>
+                                    <Badge variant="destructive" className="text-[10px] uppercase tracking-tighter rounded-full">Restricted</Badge>
                                 ) : (
-                                    <Badge variant="outline" className="text-[10px] uppercase tracking-tighter bg-emerald-50 text-emerald-600 border-emerald-200">Active</Badge>
+                                    <Badge variant="outline" className="text-[10px] uppercase tracking-tighter rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25">Active</Badge>
                                 )}
                            </div>
-                           <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{acc.account_type} Account</p>
-                           <p className="text-lg font-black mb-4">₦{acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                           <div className="flex items-center justify-between text-xs">
-                                <span className="font-mono text-muted-foreground">{acc.account_number}</span>
+                           <p className="text-2xl font-black mb-5 tabular-nums-fintech tracking-tight">
+                               {showBalance ? `₦${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "••••••••"}
+                           </p>
+                           <div className="flex items-center justify-between text-xs pt-3 border-t border-border/50">
+                                <button
+                                    type="button"
+                                    onClick={() => copyAccountNumber(acc.account_number)}
+                                    className="inline-flex items-center gap-1.5 font-mono font-bold text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                    <span>{acc.account_number}</span>
+                                    {copiedAccount === acc.account_number ? (
+                                        <Check className="h-3 w-3 text-emerald-500" />
+                                    ) : (
+                                        <Copy className="h-3 w-3 opacity-60" />
+                                    )}
+                                </button>
                                 {acc.is_frozen && (
                                     <span title="Account Frozen">
-                                        <Lock className="h-3 w-3 text-destructive" />
+                                        <Lock className="h-3.5 w-3.5 text-destructive" />
                                     </span>
                                 )}
                            </div>

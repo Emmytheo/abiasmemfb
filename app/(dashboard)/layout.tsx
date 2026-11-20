@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { ThemeCustomizer } from "@/components/theme-customizer";
 import { BankProfileSwitcher } from "@/components/dashboard/BankProfileSwitcher";
 import { DashboardBreadcrumb } from "@/components/dashboard-breadcrumb";
+import { CommandPalette } from "@/components/command-palette";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ScopeProvider } from "@/context/scope-context";
@@ -35,24 +36,29 @@ export default async function DashboardLayout({ children }: { children: React.Re
                     userEmail={userEmail}
                 />
 
-                <SidebarInset>
-                    <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background/80 px-6 backdrop-blur-sm transition-all duration-300">
-                        <div className="flex items-center gap-4">
-                            <SidebarTrigger className="-ml-2 hover:bg-muted/50 transition-colors" />
-                            <Separator orientation="vertical" className="h-6 opacity-50" />
+                <SidebarInset className="ambient-mesh">
+                    <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/80 px-4 sm:px-6 backdrop-blur-xl transition-all duration-300">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <SidebarTrigger className="-ml-1 hover:bg-muted/60 transition-colors" />
+                            <Separator orientation="vertical" className="h-5 opacity-50" />
                             <DashboardBreadcrumb />
                         </div>
 
-                        <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                            <CommandPalette role="admin" />
+                            <div className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Core Live
+                            </div>
                             <BankProfileSwitcher compact />
                             <div className="hidden sm:block">
                                 <ThemeCustomizer />
                             </div>
-                            <div className="flex items-center gap-2 border rounded-full px-2 sm:px-3 py-1.5 bg-muted/30 shadow-sm">
-                                <div className="h-6 w-6 rounded-full bg-primary flex flex-col justify-center items-center text-[10px] text-primary-foreground font-bold shrink-0">
+                            <div className="flex items-center gap-2 border border-border/80 rounded-full pl-1.5 pr-2.5 py-1 bg-card/80 shadow-sm">
+                                <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-[10px] text-primary-foreground font-black shrink-0">
                                     {initials}
                                 </div>
-                                <span className="hidden sm:inline text-sm font-medium text-foreground">{userName}</span>
+                                <span className="hidden sm:inline text-xs font-bold text-foreground max-w-[120px] truncate">{userName}</span>
                             </div>
                         </div>
                     </header>

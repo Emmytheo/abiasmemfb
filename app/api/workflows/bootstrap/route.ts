@@ -1,3 +1,4 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
@@ -7,6 +8,8 @@ import fs from 'fs'
 import path from 'path'
 
 export async function GET() {
+    const __authGuard = await requireAdminUser();
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const payload = await getPayload({ config })
         const templatesDir = path.join(process.cwd(), 'lib/workflow/templates')

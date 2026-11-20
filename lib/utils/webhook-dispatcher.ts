@@ -1,50 +1,108 @@
-import crypto from 'crypto'
+import crypto from "crypto"
+import { ensureBankSuiteOperationalTables, queryBankSuite } from "@/lib/banking/db-pool"
 
 export interface WebhookPayload {
-    event: string;
-    data: any;
+    event: string
+    data: any
 }
 
-export async function dispatchWebhook(url: string, secretKey: string, payload: WebhookPayload, retries = 3): Promise<boolean> {
-    if (!url || !url.startsWith('http')) return false;
+export interface WebhookDispatchOptions {
+    merchantId?: number | null
+    userId?: string | null
+    brandHeader?: string
+    retries?: number
+}
 
-    const bodyStr = JSON.stringify(payload);
-    const signature = crypto.createHmac('sha256', secretKey).update(bodyStr).digest('hex');
+export async function dispatchWebhook(
+    url: string,
+    secretKey: string,
+    payload: WebhookPayload,
+    retriesOrOpts: number | WebhookDispatchOptions = 3
+): Promise<boolean> {
+    if (!url || !url.startsWith("http")) return false
+
+    const opts: WebhookDispatchOptions =
+        typeof retriesOrOpts === "number" ? { retries: retriesOrOpts } : retriesOrOpts
+    const retries = opts.retries ?? 3
+
+    const bodyStr = JSON.stringify(payload)
+    const signature = crypto
+        .createHmac("sha256", secretKey)
+        .update(bodyStr)
+        .digest("hex")
+
+    let lastStatus: number | null = null
+    let lastExcerpt = ""
+    let attemptsMade = 0
+    let succeeded = false
 
     for (let attempt = 1; attempt <= retries; attempt++) {
+        attemptsMade = attempt
         try {
             const controller = new AbortController()
             const timeoutId = setTimeout(() => controller.abort(), 10000)
 
             const response = await fetch(url, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-abia-signature': signature,
-                    'User-Agent': 'AbiaSMEMFB-Webhook-Dispatcher/1.0',
+                    "Content-Type": "application/json",
+                    "x-banksuite-signature": signature,
+                    "x-abia-signature": signature,
+                    "User-Agent": `${opts.brandHeader || "BankSuite"}-Webhook-Dispatcher/2.0`,
                 },
                 body: bodyStr,
-                signal: controller.signal
+                signal: controller.signal,
             })
-            
+
             clearTimeout(timeoutId)
+            lastStatus = response.status
+            lastExcerpt = (await response.text().catch(() => "")).slice(0, 300)
 
             if (response.ok) {
-                console.log(`[Webhook Dispatcher] Successfully dispatched event ${payload.event} to ${url}`)
-                return true;
+                succeeded = true
+                break
             } else {
-                console.warn(`[Webhook Dispatcher] Endpoint returned ${response.status} on attempt ${attempt}`)
+                console.warn(
+                    `[Webhook Dispatcher] Endpoint returned ${response.status} on attempt ${attempt}`
+                )
             }
         } catch (error: any) {
-            console.warn(`[Webhook Dispatcher] Failed to connect to ${url} on attempt ${attempt}: ${error.message}`)
+            lastExcerpt = error?.message || "Connection error"
+            console.warn(
+                `[Webhook Dispatcher] Failed to connect to ${url} on attempt ${attempt}: ${lastExcerpt}`
+            )
         }
 
-        // Exponential backoff
         if (attempt < retries) {
-            await new Promise((res) => setTimeout(res, Math.pow(2, attempt) * 1000));
+            await new Promise((res) => setTimeout(res, Math.pow(2, attempt) * 1000))
         }
     }
 
-    console.error(`[Webhook Dispatcher] Exhausted ${retries} retries for event ${payload.event} to ${url}`)
-    return false;
+    // Persist delivery telemetry
+    try {
+        await ensureBankSuiteOperationalTables()
+        await queryBankSuite(
+            `
+            INSERT INTO public.banksuite_webhook_deliveries (
+                merchant_id, user_id, event, target_url, payload,
+                http_status, success, attempts, response_excerpt
+            ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9)
+            `,
+            [
+                opts.merchantId ?? null,
+                opts.userId ?? null,
+                payload.event,
+                url,
+                bodyStr,
+                lastStatus,
+                succeeded,
+                attemptsMade,
+                lastExcerpt,
+            ]
+        )
+    } catch (logErr: any) {
+        console.warn("[Webhook Dispatcher] Delivery log write skipped:", logErr.message)
+    }
+
+    return succeeded
 }

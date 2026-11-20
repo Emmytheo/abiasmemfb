@@ -1,8 +1,11 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+    const __authGuard = await requireAdminUser(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const { id } = await params
         const payload = await getPayload({ config })
@@ -21,6 +24,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+    const __authGuard = await requireAdminUser(_req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const { id } = await params
         const payload = await getPayload({ config })

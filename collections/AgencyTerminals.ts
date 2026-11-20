@@ -9,7 +9,7 @@ export const AgencyTerminals: CollectionConfig = {
         description: 'Physical POS terminal hardware tracking and placement logs.',
     },
     access: {
-        read: () => true,
+        read: ({ req }) => req.user?.role === 'admin',
         create: ({ req }) => req.user?.role === 'admin',
         update: ({ req }) => req.user?.role === 'admin',
         delete: ({ req }) => req.user?.role === 'admin',

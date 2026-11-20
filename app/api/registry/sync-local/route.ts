@@ -1,9 +1,12 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { importRegistryBundle } from '@/lib/registry/sdl';
 
 export async function GET() {
+    const __authGuard = await requireAdminUser();
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const templatesDir = path.join(process.cwd(), 'lib/workflow/templates');
         if (!fs.existsSync(templatesDir)) {

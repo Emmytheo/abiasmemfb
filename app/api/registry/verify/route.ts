@@ -1,8 +1,11 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import configPromise from '@payload-config';
 
 export async function GET() {
+    const __authGuard = await requireAdminUser();
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const payload = await getPayload({ config: configPromise });
         const { docs: services } = await payload.find({

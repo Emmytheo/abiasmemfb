@@ -9,7 +9,14 @@ export const Customers: CollectionConfig = {
         description: 'Profiles for bank customers, linking Supabase identities with Qore/BankOne core banking records.',
     },
     access: {
-        read: () => true,
+        read: ({ req }) => {
+            if (req.user?.role === 'admin') return true
+            if (req.user?.supabase_id) return { supabase_id: { equals: req.user.supabase_id } }
+            return false
+        },
+        create: ({ req }) => req.user?.role === 'admin',
+        update: ({ req }) => req.user?.role === 'admin',
+        delete: ({ req }) => req.user?.role === 'admin',
     },
     fields: [
         {

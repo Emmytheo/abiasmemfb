@@ -6,6 +6,7 @@ export type ModuleKey =
     | "retailAndSalary"
     | "schoolCollections"
     | "cooperativeEsusu"
+    | "coptellerBridge"
     | "agencyPos"
     | "smartCards"
     | "merchantApiAndPayroll"
@@ -36,6 +37,12 @@ export const BANK_MODULE_DEFINITIONS: BankModuleDefinition[] = [
         label: "Cooperative & Esusu Engine",
         description: "Rotational thrift circles, group dividends, and cooperative admin ledgers.",
         scopeHint: "Admin & Client Sidebars",
+    },
+    {
+        key: "coptellerBridge",
+        label: "Copteller Cooperative Bridge",
+        description: "Live modular integration with Copteller for union licensing, HP fleet assets, escrow vaults, and CBN reporting.",
+        scopeHint: "Bank Superadmin Oversight",
     },
     {
         key: "agencyPos",
@@ -162,6 +169,7 @@ export interface BankProfile {
         retailAndSalary: boolean
         schoolCollections: boolean
         cooperativeEsusu: boolean
+        coptellerBridge: boolean
         agencyPos: boolean
         smartCards: boolean
         merchantApiAndPayroll: boolean
@@ -265,6 +273,7 @@ export const PRESET_BANK_PROFILES: BankProfile[] = [
             retailAndSalary: true,
             schoolCollections: true,
             cooperativeEsusu: true,
+            coptellerBridge: true,
             agencyPos: true,
             smartCards: true,
             merchantApiAndPayroll: true,
@@ -527,6 +536,7 @@ export const PRESET_BANK_PROFILES: BankProfile[] = [
             retailAndSalary: true,
             schoolCollections: true,
             cooperativeEsusu: true,
+            coptellerBridge: true,
             agencyPos: true,
             smartCards: true,
             merchantApiAndPayroll: true,
@@ -705,6 +715,7 @@ export const PRESET_BANK_PROFILES: BankProfile[] = [
             retailAndSalary: true,
             schoolCollections: true,
             cooperativeEsusu: true,
+            coptellerBridge: true,
             agencyPos: true,
             smartCards: true,
             merchantApiAndPayroll: true,
@@ -853,6 +864,7 @@ export const PRESET_BANK_PROFILES: BankProfile[] = [
             retailAndSalary: true,
             schoolCollections: true,
             cooperativeEsusu: true,
+            coptellerBridge: true,
             agencyPos: true,
             smartCards: true,
             merchantApiAndPayroll: true,
@@ -1053,6 +1065,10 @@ export function mergeBankProfile(
         enabledModules: {
             ...base.enabledModules,
             ...(override.enabledModules || {}),
+            coptellerBridge:
+                override.enabledModules?.coptellerBridge ??
+                base.enabledModules?.coptellerBridge ??
+                true,
         },
         themeStyle: {
             ...base.themeStyle,

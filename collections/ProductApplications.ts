@@ -8,10 +8,14 @@ export const ProductApplications: CollectionConfig = {
         group: 'Product Management',
     },
     access: {
-        read: () => true,
-        create: () => true,
-        update: () => true,
-        delete: () => true,
+        read: ({ req }) => {
+            if (req.user?.role === 'admin') return true
+            if (req.user?.supabase_id) return { user_id: { equals: req.user.supabase_id } }
+            return false
+        },
+        create: ({ req }) => Boolean(req.user),
+        update: ({ req }) => req.user?.role === 'admin',
+        delete: ({ req }) => req.user?.role === 'admin',
     },
     hooks: {
         afterChange: [

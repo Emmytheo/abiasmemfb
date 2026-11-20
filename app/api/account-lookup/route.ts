@@ -1,90 +1,108 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
-import config from '@payload-config'
-import { decryptSecret } from '@/lib/workflow/secrets/encryption'
+import { NextRequest, NextResponse } from "next/server"
+import { getPayload } from "payload"
+import config from "@payload-config"
+import { decryptSecret } from "@/lib/workflow/secrets/encryption"
+import { requireAuthenticatedUser } from "@/lib/auth/server-guard"
+import { queryBankSuite } from "@/lib/banking/db-pool"
+import { getServerBankProfile } from "@/lib/banking/bank-profile-server"
 
 /**
- * GET /api/account-lookup?accountNumber=XXXXXXXXXX&bankCode=access&providerSlug=mock-nip-gateway
- *
- * Resolves a NUBAN account number to the registered holder's name.
- *
- * Resolution order:
- * 1. Internal ABIASMEMFB DB (no external call required)
- * 2. External NIP provider configured in CMS ServiceProviders (uses Vault secret)
- * 3. Deterministic mock fallback (for demo/testing when no external provider is ready)
+ * GET /api/account-lookup?accountNumber=XXXXXXXXXX&bankCode=...
+ * Requires authenticated session. Resolves internal BankSuite accounts via Postgres join
+ * with customers, then queries configured external NIP provider if applicable.
  */
 export async function GET(req: NextRequest) {
+    const auth = await requireAuthenticatedUser(req)
+    if (auth instanceof NextResponse) return auth
+
     const { searchParams } = req.nextUrl
-    const accountNumber = searchParams.get('accountNumber')?.trim()
-    const bankCode = searchParams.get('bankCode')?.trim() || ''
-    const providerSlug = searchParams.get('providerSlug')?.trim() || ''
+    const accountNumber = searchParams.get("accountNumber")?.replace(/\s/g, "").trim()
+    const bankCode = searchParams.get("bankCode")?.trim() || ""
+    const providerSlug = searchParams.get("providerSlug")?.trim() || ""
 
-    if (!accountNumber || accountNumber.replace(/\s/g, '').length < 10) {
-        return NextResponse.json({ error: 'A valid 10-digit account number is required.' }, { status: 400 })
+    if (!accountNumber || accountNumber.length < 10) {
+        return NextResponse.json(
+            { error: "A valid 10-digit account number is required." },
+            { status: 400 }
+        )
     }
 
-    const payload = await getPayload({ config })
+    const { profile: activeBank } = await getServerBankProfile()
 
-    // 1. Check internal ABIASMEMFB accounts first
+    // 1. Authoritative internal BankSuite ledger lookup (joins accounts -> customers)
     try {
-        const { docs } = await payload.find({
-            collection: 'accounts',
-            where: { account_number: { equals: accountNumber } },
-            depth: 1,
-            limit: 1,
-        })
-        if (docs.length > 0) {
-            const account = docs[0] as any
-            let holderName = ''
-            if (typeof account.user === 'object' && account.user) {
-                holderName = `${account.user.first_name ?? ''} ${account.user.last_name ?? ''}`.trim()
-                    || account.user.email
-            }
-            if (holderName) {
-                return NextResponse.json({ accountName: holderName.toUpperCase(), bank: 'ABIASMEMFB', isInternal: true })
-            }
+        const res = await queryBankSuite(
+            `
+            SELECT a.id, a.account_number, a.account_type, a.status,
+                   c.first_name, c.last_name, c.email, c.kyc_status
+            FROM public.accounts a
+            LEFT JOIN public.customers c ON c.id = a.customer_id
+            WHERE a.account_number = $1
+            LIMIT 1
+            `,
+            [accountNumber]
+        )
+        if (res.rows.length > 0) {
+            const row = res.rows[0]
+            const holderName =
+                `${row.first_name || ""} ${row.last_name || ""}`.trim() ||
+                row.email ||
+                `${activeBank.shortName} Account Holder`
+            return NextResponse.json({
+                accountName: holderName.toUpperCase(),
+                bank: activeBank.shortName,
+                bankCode: activeBank.internalBankCode,
+                accountType: row.account_type,
+                kycStatus: row.kyc_status || "active",
+                isInternal: true,
+            })
         }
-    } catch (err) {
-        console.warn('[account-lookup] Internal DB lookup failed:', err)
+    } catch (err: any) {
+        console.warn("[account-lookup] Internal SQL lookup failed:", err.message)
     }
 
-    // 2. Try the registered CMS Provider (by slug or first active NIP provider)
+    // 2. External NIP provider configured in CMS ServiceProviders
     try {
-        const slug = providerSlug || bankCode || 'mock-nip-gateway'
+        const payload = await getPayload({ config })
+        const slug = providerSlug || bankCode || "nip-gateway"
         const { docs: providers } = await payload.find({
-            collection: 'service-providers' as any,
+            collection: "service-providers" as any,
             where: {
                 and: [
                     { slug: { equals: slug } },
                     { isActive: { equals: true } },
-                ]
+                ],
             },
-            depth: 2, // populate the 'secret' relation so we can decrypt
+            depth: 2,
             limit: 1,
+            overrideAccess: true,
         })
 
         if (providers.length > 0) {
             const provider = providers[0] as any
-            const baseUrl: string = provider.baseUrl || ''
-            let authHeader = ''
+            const baseUrl: string = provider.baseUrl || ""
+            let authHeader = ""
 
-            // Decrypt the vault secret if linked
-            if (provider.secret && typeof provider.secret === 'object') {
+            if (provider.secret && typeof provider.secret === "object") {
                 const secretDoc = provider.secret
                 if (secretDoc.encrypted_value && secretDoc.iv && secretDoc.tag) {
                     try {
-                        const raw = await decryptSecret(secretDoc.encrypted_value, secretDoc.iv, secretDoc.tag)
-                        authHeader = raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`
-                    } catch { /* secret unreadable, skip */ }
+                        const raw = await decryptSecret(
+                            secretDoc.encrypted_value,
+                            secretDoc.iv,
+                            secretDoc.tag
+                        )
+                        authHeader = raw.startsWith("Bearer ") ? raw : `Bearer ${raw}`
+                    } catch {}
                 }
             }
 
             if (baseUrl) {
-                const endpoint = `${baseUrl.replace(/\/$/, '')}/name-enquiry`
+                const endpoint = `${baseUrl.replace(/\/$/, "")}/name-enquiry`
                 const externalRes = await fetch(endpoint, {
-                    method: 'POST',
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json',
+                        "Content-Type": "application/json",
                         ...(authHeader ? { Authorization: authHeader } : {}),
                     },
                     body: JSON.stringify({ accountNumber, bankCode }),
@@ -94,30 +112,21 @@ export async function GET(req: NextRequest) {
                     const data = await externalRes.json()
                     const accountName = data.accountName || data.account_name || data.name
                     if (accountName) {
-                        return NextResponse.json({ accountName, bank: bankCode, isInternal: false })
+                        return NextResponse.json({
+                            accountName: String(accountName).toUpperCase(),
+                            bank: bankCode,
+                            isInternal: false,
+                        })
                     }
                 }
             }
         }
-    } catch (err) {
-        console.warn('[account-lookup] External provider lookup failed, falling back to mock:', err)
+    } catch (err: any) {
+        console.warn("[account-lookup] External provider lookup failed:", err.message)
     }
 
-    // 3. Deterministic mock fallback for demo environments
-    const mockNames: Record<string, string> = {
-        '0000000001': 'JOHN EMEKA OKAFOR',
-        '0000000002': 'AMAKA CHINWE EZE',
-        '0000000003': 'IBRAHIM MUSA BELLO',
-        '0000000004': 'GRACE NKECHI ADEYEMI',
-        '0000000005': 'CHUKWUEMEKA OBI',
-    }
-    let resolvedName = mockNames[accountNumber]
-    if (!resolvedName) {
-        const seed = parseInt(accountNumber.slice(-4), 10) % 10
-        const firstNames = ['ADAEZE', 'EMEKA', 'TUNDE', 'NGOZI', 'KELECHI', 'FATIMA', 'JAMES', 'BLESSING', 'CHIDI', 'AMARA']
-        const lastNames = ['OKONKWO', 'IBRAHIM', 'ADEWALE', 'NWOSU', 'SULEIMAN', 'OKAFOR', 'UCHENNA', 'ABDULLAHI', 'EJIKE', 'NNAMDI']
-        resolvedName = `${firstNames[seed]} ${lastNames[(seed + 3) % 10]}`
-    }
-
-    return NextResponse.json({ accountName: resolvedName, bank: bankCode || 'external', isInternal: false, mock: true })
+    return NextResponse.json(
+        { error: "Account not found in internal ledger or active NIP directory." },
+        { status: 404 }
+    )
 }

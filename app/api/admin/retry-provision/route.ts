@@ -1,3 +1,4 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@payload-config';
@@ -11,6 +12,8 @@ import config from '@payload-config';
  * or "Submitted" (meaning provisioning never ran or silently failed).
  */
 export async function POST(req: NextRequest) {
+    const __authGuard = await requireAdminUser(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     try {
         const { applicationId } = await req.json();
         if (!applicationId) {

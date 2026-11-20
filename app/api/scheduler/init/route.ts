@@ -1,8 +1,11 @@
+import { requireAdminUser } from '@/lib/auth/server-guard';
 import { NextResponse } from 'next/server'
 import { rescheduleAll } from '@/lib/workflow/scheduler/cronRunner'
 
 // Secure this endpoint in production using a secret token header or internal networking
 export async function POST(req: Request) {
+    const __authGuard = await requireAdminUser(req);
+    if (__authGuard instanceof NextResponse) return __authGuard;
     const authHeader = req.headers.get('workflow-admin')
     if (process.env.NODE_ENV === 'production' && authHeader !== process.env.PAYLOAD_SECRET) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
