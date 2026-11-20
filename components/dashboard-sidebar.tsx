@@ -75,7 +75,7 @@ const navGroups: AdminNavGroup[] = [
                 icon: LayoutDashboard,
             },
             {
-                title: "Teller, Ops & Audit",
+                title: "Teller, GL & Audit",
                 url: "/dashboard/operations",
                 icon: Landmark,
             },
@@ -105,7 +105,7 @@ const navGroups: AdminNavGroup[] = [
                 icon: FileText,
             },
             {
-                title: "Loans",
+                title: "Credit & Loans",
                 url: "/products/loans",
                 icon: CreditCard,
             },
@@ -115,7 +115,7 @@ const navGroups: AdminNavGroup[] = [
                 icon: Receipt,
             },
             {
-                title: "Customers",
+                title: "Customer 360 & KYC",
                 url: "/customers",
                 icon: Users,
             },
@@ -130,13 +130,13 @@ const navGroups: AdminNavGroup[] = [
         title: "Digital Hub Admin",
         items: [
             {
-                title: "Copteller Bridge",
+                title: "Copteller Custody",
                 url: "/dashboard/copteller",
                 icon: Globe,
                 moduleKey: "coptellerBridge",
             },
             {
-                title: "Esusu Cooperatives",
+                title: "Target Vaults",
                 url: "/dashboard/esusu",
                 icon: Users,
                 moduleKey: "cooperativeEsusu",

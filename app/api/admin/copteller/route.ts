@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdminUser } from "@/lib/auth/server-guard"
 import {
+    executeEscrowSettlementSweep,
     getCoptellerOversightSnapshot,
     processCoptellerLoanDecision,
+    provisionCooperativeEscrowPool,
     toggleCoptellerSchemeApproval,
     updateCoptellerCooperativeStatus,
 } from "@/lib/banking/copteller-bridge"
@@ -67,6 +69,32 @@ export async function PATCH(req: NextRequest) {
             const result = await processCoptellerLoanDecision({
                 loanId,
                 decision: action === "disburse_loan" ? "disburse" : "reject",
+                actorId: auth.userId,
+                actorEmail: auth.email,
+                ipAddress: auth.ipAddress,
+            })
+            return NextResponse.json({ success: true, ...result })
+        }
+
+        if (action === "provision_escrow_pool") {
+            const coopId = Number(body.cooperative_id)
+            if (!coopId) return NextResponse.json({ error: "cooperative_id is required" }, { status: 400 })
+            const result = await provisionCooperativeEscrowPool({
+                cooperativeId: coopId,
+                creditFacilityLimitNaira: body.credit_facility_limit_naira ? Number(body.credit_facility_limit_naira) : undefined,
+                actorId: auth.userId,
+                actorEmail: auth.email,
+                ipAddress: auth.ipAddress,
+            })
+            return NextResponse.json({ success: true, ...result })
+        }
+
+        if (action === "execute_settlement_sweep") {
+            const coopId = Number(body.cooperative_id)
+            if (!coopId) return NextResponse.json({ error: "cooperative_id is required" }, { status: 400 })
+            const result = await executeEscrowSettlementSweep({
+                cooperativeId: coopId,
+                amountNaira: body.amount_naira ? Number(body.amount_naira) : undefined,
                 actorId: auth.userId,
                 actorEmail: auth.email,
                 ipAddress: auth.ipAddress,

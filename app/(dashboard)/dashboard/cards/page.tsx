@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { BankPageHeader } from "@/components/banking/page-header"
 
 interface CardRow {
     id: number
@@ -127,21 +128,19 @@ export default function CardsAdminPage() {
     }
 
     return (
-        <div className="space-y-8 pb-12 max-w-7xl mx-auto px-4 sm:px-6 pt-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6">
-                <div>
-                    <Badge className="bg-primary/15 text-primary border-primary/30 uppercase text-[10px] font-black tracking-widest mb-2">
-                        Card Command · Live Persistence
-                    </Badge>
-                    <h1 className="text-3xl font-black tracking-tight">Smart Card Registry</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Enforce real-time card freezes and manage POS, Web, and ATM daily spending limits with immutable audit logging.
-                    </p>
-                </div>
-                <Button variant="outline" onClick={loadCards} className="rounded-xl font-bold gap-1.5">
-                    <RefreshCw className="h-4 w-4" /> Refresh Registry
-                </Button>
-            </div>
+        <div className="space-y-6 pb-12 max-w-[1440px] mx-auto px-4 md:px-8 pt-6">
+            <BankPageHeader
+                badge="Card Issuing Switch · Live Controls"
+                livePill={`${totalActive} Active · ${totalFrozen} Frozen`}
+                liveTone={totalFrozen > 0 ? "amber" : "emerald"}
+                title="Smart Card Registry"
+                subtitle="Enforce real-time card freezes and manage POS, Web, and ATM daily spending limits with immutable audit logging."
+                actions={
+                    <Button variant="outline" size="sm" onClick={loadCards} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                        <RefreshCw className="h-3.5 w-3.5" /> Refresh Registry
+                    </Button>
+                }
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <div className="bg-card p-5 rounded-2xl border">

@@ -137,7 +137,7 @@ const navGroups: NavGroup[] = [
                 icon: CreditCard,
             },
             {
-                title: "Digital Esusu",
+                title: "Target Vaults",
                 url: "/esusu",
                 icon: Users,
             },
@@ -349,8 +349,8 @@ export function ClientSidebar({
 
         const digitalHubItems = [
             ...(mods.smartCards ? [{ title: "Smart Cards", url: "/my-cards", icon: CreditCard }] : []),
-            ...(mods.cooperativeEsusu ? [{ title: "Digital Esusu", url: "/esusu", icon: Users }] : []),
-            ...(mods.agencyPos ? [{ title: "Agency Network", url: "/expansion/agent", icon: Landmark }] : []),
+            ...(mods.cooperativeEsusu ? [{ title: "Target Vaults", url: "/esusu", icon: Users }] : []),
+            ...(mods.agencyPos ? [{ title: "Agent & Cash-In", url: "/agent/dashboard", icon: Landmark }] : []),
             ...(mods.merchantApiAndPayroll ? [{ title: "Merchant Portal", url: "/merchant", icon: Briefcase }] : []),
         ];
 

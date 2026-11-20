@@ -200,27 +200,27 @@ export default function EsusuAdminPage() {
         <div className="space-y-8 pb-12 max-w-7xl mx-auto px-4 sm:px-6 pt-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
                 <div>
-                    <Badge className="bg-primary/15 text-primary border-primary/30 uppercase text-[10px] font-black tracking-widest mb-2">
-                        Native Thrift Engine · Atomic Settlement
+                    <Badge className="bg-primary/10 text-primary border-primary/25 uppercase text-[10px] font-black tracking-widest mb-2">
+                        Target Vaults &amp; Retail Thrift (GL 2200)
                     </Badge>
-                    <h1 className="text-3xl font-black tracking-tight">Digital Esusu & Cooperative Controller</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Approve cooperative unions, launch vault-backed rotational cycles, and execute atomic member collections.
+                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Target Savings Vaults &amp; Legacy Cycles</h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-2xl">
+                        Manage BankSuite personal target vaults and legacy internal pools. Registered multi-member cooperatives, union execs, and HP fleets operate via <strong>Copteller Custody</strong>.
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {activeProfile.enabledModules.coptellerBridge && (
-                        <Button asChild variant="outline" className="rounded-xl font-bold gap-1.5 border-emerald-500/30 text-emerald-600">
+                        <Button asChild size="sm" className="h-9 rounded-xl font-black text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
                             <Link href="/dashboard/copteller">
-                                <Globe className="h-4 w-4" /> Open Copteller Bridge
+                                <Globe className="h-3.5 w-3.5" /> Open Copteller Custody Rail
                             </Link>
                         </Button>
                     )}
-                    <Button variant="outline" onClick={() => setShowCoopModal(true)} className="rounded-xl font-bold gap-1.5">
-                        <PlusCircle className="h-4 w-4" /> New Cooperative
+                    <Button variant="outline" size="sm" onClick={() => setShowCoopModal(true)} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                        <PlusCircle className="h-3.5 w-3.5" /> New Legacy Group
                     </Button>
-                    <Button onClick={() => setShowCycleModal(true)} className="rounded-xl font-black gap-1.5">
-                        <PlusCircle className="h-4 w-4" /> Launch Cycle
+                    <Button variant="outline" size="sm" onClick={() => setShowCycleModal(true)} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                        <PlusCircle className="h-3.5 w-3.5" /> Launch Cycle
                     </Button>
                 </div>
             </div>

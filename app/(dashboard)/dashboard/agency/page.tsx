@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { BankPageHeader } from "@/components/banking/page-header"
 
 interface TerminalRow {
     id: number
@@ -152,33 +153,31 @@ export default function AgencyAdminPage() {
     }
 
     return (
-        <div className="space-y-8 pb-12 max-w-7xl mx-auto px-4 sm:px-6 pt-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-6">
-                <div>
-                    <Badge className="bg-primary/15 text-primary border-primary/30 uppercase text-[10px] font-black tracking-widest mb-2">
-                        Hardware Switch · Live Ledger
-                    </Badge>
-                    <h1 className="text-3xl font-black tracking-tight">Partner Agency Network</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Provision POS terminals, approve serial allocations, and audit real-time 70/30 commission splits.
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="outline" onClick={loadData} className="rounded-xl font-bold gap-1.5">
-                        <RefreshCw className="h-4 w-4" /> Refresh
-                    </Button>
-                    <Button
-                        onClick={() => {
-                            setNewSerial(`POS_${Math.floor(1000000000 + Math.random() * 9000000000)}`)
-                            setShowNewModal(true)
-                        }}
-                        className="rounded-xl font-black gap-1.5"
-                    >
-                        <PlusCircle className="h-4 w-4" /> Provision Terminal
-                    </Button>
-                </div>
-            </div>
+        <div className="space-y-6 pb-12 max-w-[1440px] mx-auto px-4 md:px-8 pt-6">
+            <BankPageHeader
+                badge="POS Agency Network & Copteller Cash-In Rail"
+                livePill={`${totalActive} Active Terminals · ${totalPending} Pending`}
+                liveTone={totalPending > 0 ? "amber" : "emerald"}
+                title="Partner Agency Network"
+                subtitle="Provision POS terminals, approve hardware serial allocations, monitor cooperative cash-in agents, and audit live 70/30 commission splits."
+                actions={
+                    <>
+                        <Button variant="outline" size="sm" onClick={loadData} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={() => {
+                                setNewSerial(`POS_${Math.floor(1000000000 + Math.random() * 9000000000)}`)
+                                setShowNewModal(true)
+                            }}
+                            className="h-9 rounded-xl font-black text-xs gap-1.5"
+                        >
+                            <PlusCircle className="h-3.5 w-3.5" /> Provision Terminal
+                        </Button>
+                    </>
+                }
+            />
 
             {/* KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

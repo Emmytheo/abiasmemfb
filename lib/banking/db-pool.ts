@@ -255,6 +255,100 @@ export async function ensureBankSuiteOperationalTables(): Promise<void> {
             );
             CREATE INDEX IF NOT EXISTS idx_bs_funding_user ON public.banksuite_funding_requests (user_id, created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_bs_funding_status ON public.banksuite_funding_requests (status, created_at DESC);
+
+            -- 1. Double-Entry General Ledger (GL) Chart of Accounts & Journal Entries
+            CREATE TABLE IF NOT EXISTS public.banksuite_gl_accounts (
+                code TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                category TEXT NOT NULL, -- asset | liability | equity | income | expense
+                normal_side TEXT NOT NULL, -- debit | credit
+                balance_kobo BIGINT NOT NULL DEFAULT 0,
+                description TEXT,
+                is_system BOOLEAN NOT NULL DEFAULT TRUE,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS public.banksuite_gl_entries (
+                id BIGSERIAL PRIMARY KEY,
+                journal_ref TEXT NOT NULL,
+                gl_code TEXT NOT NULL REFERENCES public.banksuite_gl_accounts(code),
+                side TEXT NOT NULL, -- debit | credit
+                amount_kobo BIGINT NOT NULL,
+                narration TEXT NOT NULL,
+                source_module TEXT NOT NULL DEFAULT 'core',
+                source_ref TEXT,
+                actor_email TEXT,
+                metadata JSONB DEFAULT '{}'::jsonb,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_bs_gl_entries_ref ON public.banksuite_gl_entries (journal_ref);
+            CREATE INDEX IF NOT EXISTS idx_bs_gl_entries_code ON public.banksuite_gl_entries (gl_code, created_at DESC);
+
+            INSERT INTO public.banksuite_gl_accounts (code, name, category, normal_side, balance_kobo, description)
+            VALUES
+                ('1000', 'Cash & NIBSS Settlement Nostro', 'asset', 'debit', 25000000000, 'Primary liquid vault cash and NIBSS/NIP settlement nostro balance'),
+                ('1100', 'CBN Statutory Liquidity Reserve', 'asset', 'debit', 8000000000, 'Regulatory liquid reserve buffer held for CBN 20% liquidity ratio'),
+                ('1200', 'Retail & SME Loan Portfolio Receivable', 'asset', 'debit', 0, 'Principal outstanding on direct MFB loans'),
+                ('1300', 'Copteller Wholesale & Fleet Credit Book', 'asset', 'debit', 0, 'Credit facilities and hire-purchase tranches disbursed via Copteller telemetry'),
+                ('2000', 'Customer Retail & Corporate Deposits (CASA)', 'liability', 'credit', 0, 'Customer savings, current, and corporate deposit liabilities'),
+                ('2100', 'Copteller Cooperative Escrow Trust Custody', 'liability', 'credit', 0, 'Ring-fenced cooperative Ajo, thrift, and HP escrow float custodied under MFB license'),
+                ('2200', 'Target Savings & Fixed Deposit Vaults', 'liability', 'credit', 0, 'Locked personal target vaults and fixed-tenor deposits'),
+                ('3000', 'Paid-Up Share Capital & Statutory Reserves', 'equity', 'credit', 33000000000, 'Institutional Tier-1 MFB shareholder equity and retained reserves'),
+                ('4000', 'Interest, Commission & Escrow Fee Income', 'income', 'credit', 0, 'Recognized loan interest, NIP transfer fees, POS 30% share, and cooperative escrow fees'),
+                ('5000', 'Agency Commission & Interest Expense', 'expense', 'debit', 0, '70% POS agent commissions and savings vault interest expense')
+            ON CONFLICT (code) DO NOTHING;
+
+            -- 2. Copteller Regulated Escrow Pool Custody Registry (Rail 1)
+            CREATE TABLE IF NOT EXISTS public.banksuite_copteller_escrow_pools (
+                id BIGSERIAL PRIMARY KEY,
+                copteller_coop_id INTEGER NOT NULL UNIQUE,
+                coop_name TEXT NOT NULL,
+                coop_reg_number TEXT,
+                banksuite_account_id INTEGER,
+                escrow_nuban TEXT NOT NULL UNIQUE,
+                custody_balance_kobo BIGINT NOT NULL DEFAULT 0,
+                copteller_reported_kobo BIGINT NOT NULL DEFAULT 0,
+                escrow_fee_bps INTEGER NOT NULL DEFAULT 150,
+                credit_facility_limit_kobo BIGINT NOT NULL DEFAULT 500000000,
+                status TEXT NOT NULL DEFAULT 'active',
+                last_swept_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+
+            -- 3. Bi-Directional BankSuite <-> Copteller Settlement Ledger (Rails 1, 2, 3)
+            CREATE TABLE IF NOT EXISTS public.banksuite_copteller_settlements (
+                id BIGSERIAL PRIMARY KEY,
+                reference TEXT NOT NULL UNIQUE,
+                rail_type TEXT NOT NULL, -- INBOUND_ESCROW_SWEEP | OUTBOUND_PAYOUT_CLEARING | LOAN_WHOLESALE_DISBURSEMENT | AGENT_COPTELLER_CASH_IN
+                copteller_coop_id INTEGER,
+                coop_name TEXT,
+                escrow_nuban TEXT,
+                amount_kobo BIGINT NOT NULL,
+                fee_kobo BIGINT NOT NULL DEFAULT 0,
+                gl_journal_ref TEXT,
+                counterparty_label TEXT,
+                status TEXT NOT NULL DEFAULT 'settled',
+                actor_email TEXT,
+                metadata JSONB DEFAULT '{}'::jsonb,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_bs_cop_settle_created ON public.banksuite_copteller_settlements (created_at DESC);
+
+            -- 4. Authoritative CBN KYC Tier Profiles (Rail 4)
+            CREATE TABLE IF NOT EXISTS public.banksuite_kyc_profiles (
+                customer_id INTEGER PRIMARY KEY,
+                kyc_tier INTEGER NOT NULL DEFAULT 1, -- 1 (₦50k/day), 2 (₦200k/day), 3 (₦5M/day)
+                bvn_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                nin TEXT,
+                nin_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                address_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                daily_limit_kobo BIGINT NOT NULL DEFAULT 5000000,
+                max_balance_kobo BIGINT NOT NULL DEFAULT 30000000,
+                verified_by_email TEXT,
+                notes TEXT,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
         `)
         g.__banksuiteOpsTablesReady = true
     })().finally(() => {

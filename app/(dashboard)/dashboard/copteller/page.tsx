@@ -3,14 +3,9 @@
 import * as React from "react"
 import {
     ShieldAlert,
-    CheckCircle2,
-    XCircle,
     RefreshCw,
     Truck,
     Building2,
-    Award,
-    AlertCircle,
-    Clock,
     Download,
     Check,
     X,
@@ -18,71 +13,91 @@ import {
     CircleDollarSign,
     Lock,
     ArrowUpRight,
-    Bell,
     Loader2,
+    Landmark,
+    ArrowRightLeft,
     KeyRound,
-    Layers,
+    FileSpreadsheet,
+    CheckCircle2,
+    Users2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { useSearchParams } from "next/navigation"
-import { useBankProfile } from "@/context/bank-profile-context"
+import { BankPageHeader } from "@/components/banking/page-header"
+import { BankSideDrawer } from "@/components/banking/side-drawer"
+import { EcosystemRailCard } from "@/components/banking/ecosystem-rail-card"
+import { CbnHealthGauge } from "@/components/banking/charts/bank-charts"
 
-function StatusBadge({ status }: { status: string }) {
+type BridgeTab = "escrow" | "settlements" | "underwriting" | "schemes" | "contracts" | "vault" | "audit"
+
+const fmtNaira = (kobo: number) => `₦${(Number(kobo || 0) / 100).toLocaleString()}`
+
+function StatusPill({ status }: { status: string }) {
     const s = String(status || "").toLowerCase()
     const cls =
-        s === "active" || s === "approved" || s === "completed" || s === "live"
-            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+        s === "active" || s === "approved" || s === "completed" || s === "settled"
+            ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-400"
             : s === "pending"
-                ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
-                : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
+              ? "bg-amber-500/10 border-amber-500/25 text-amber-700 dark:text-amber-400"
+              : "bg-rose-500/10 border-rose-500/25 text-rose-700 dark:text-rose-400"
     return (
-        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${cls}`}>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase ${cls}`}>
             {status}
         </span>
     )
 }
 
-function CoptellerSuperadminContent() {
-    const { activeProfile } = useBankProfile()
+function CoptellerCustodyContent() {
     const searchParams = useSearchParams()
-    const [activeTab, setActiveTab] = React.useState<
-        "overview" | "unions" | "schemes" | "grants" | "assets" | "vault" | "compliance"
-    >("overview")
+    const [activeTab, setActiveTab] = React.useState<BridgeTab>("escrow")
     const [snapshot, setSnapshot] = React.useState<any>(null)
     const [loading, setLoading] = React.useState(true)
     const [busyId, setBusyId] = React.useState<string | null>(null)
     const [reconReport, setReconReport] = React.useState<any>(null)
     const [runningAudit, setRunningAudit] = React.useState(false)
 
+    // Interactive Cooperative Custody Drawer
+    const [selectedCoop, setSelectedCoop] = React.useState<any | null>(null)
+    const [sweepAmountNaira, setSweepAmountNaira] = React.useState("")
+
     React.useEffect(() => {
         const tab = searchParams?.get("tab")
-        if (tab && ["overview", "unions", "schemes", "grants", "assets", "vault", "compliance"].includes(tab)) {
-            setActiveTab(tab as any)
+        if (tab === "unions") setActiveTab("escrow")
+        else if (tab === "grants") setActiveTab("underwriting")
+        else if (tab === "assets") setActiveTab("contracts")
+        else if (tab === "compliance") setActiveTab("audit")
+        else if (tab && ["escrow", "settlements", "underwriting", "schemes", "contracts", "vault", "audit"].includes(tab)) {
+            setActiveTab(tab as BridgeTab)
         }
     }, [searchParams])
 
     const loadSnapshot = React.useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetch("/api/admin/copteller")
+            const res = await fetch("/api/admin/copteller", { cache: "no-store" })
             const data = await res.json()
             if (!res.ok || !data.success) {
-                toast.error(data.error || "Could not load Copteller Bridge data")
+                toast.error(data.error || "Could not load Copteller Custody Bridge")
                 return
             }
             setSnapshot(data)
+            if (selectedCoop) {
+                const updated = (data.cooperatives || []).find((c: any) => c.id === selectedCoop.id)
+                if (updated) setSelectedCoop(updated)
+            }
         } catch {
             toast.error("Failed to reach Copteller Bridge API")
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [selectedCoop?.id])
 
     React.useEffect(() => {
         loadSnapshot()
-    }, [loadSnapshot])
+    }, [])
 
     const runLiveVaultAudit = async () => {
         setRunningAudit(true)
@@ -96,8 +111,8 @@ function CoptellerSuperadminContent() {
             setReconReport(data.report)
             toast.success(
                 data.report.allPassed
-                    ? `Live Copteller audit passed (${data.report.durationMs}ms)`
-                    : "Audit complete with warnings — inspect details below"
+                    ? `Live Copteller vault audit PASSED (${data.report.durationMs}ms)`
+                    : "Audit completed with items to review"
             )
             await loadSnapshot()
         } finally {
@@ -116,20 +131,21 @@ function CoptellerSuperadminContent() {
             const data = await res.json()
             if (!res.ok || !data.success) {
                 toast.error(data.error || "Operation failed")
-                return
+                return null
             }
             toast.success(successMsg)
             await loadSnapshot()
+            return data
         } finally {
             setBusyId(null)
         }
     }
 
-    if (loading) {
+    if (loading && !snapshot) {
         return (
             <div className="flex h-[60vh] items-center justify-center gap-3 text-muted-foreground">
-                <Loader2 className="h-7 w-7 animate-spin text-primary" />
-                <span className="text-sm font-semibold">Connecting to live Copteller Cooperative Bridge...</span>
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="text-sm font-semibold">Synchronizing BankSuite ⇄ Copteller Custody Rails...</span>
             </div>
         )
     }
@@ -137,53 +153,33 @@ function CoptellerSuperadminContent() {
     const health = snapshot?.health || { connected: false, appUrl: "http://localhost:3001" }
     const kpis = snapshot?.kpis || {}
     const cooperatives = snapshot?.cooperatives || []
-    const pendingCoops = cooperatives.filter((c: any) => c.status === "pending")
+    const settlements = snapshot?.settlements || []
+    const memberTelemetry = snapshot?.memberTelemetry || []
     const schemes = snapshot?.schemes || []
     const contracts = snapshot?.contracts || []
     const loans = snapshot?.loans || []
-    const pendingLoans = loans.filter((l: any) => l.status === "pending")
     const vaultSecrets = snapshot?.vaultSecrets || []
     const auditLogs = snapshot?.auditLogs || []
 
-    return (
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6">
-            {/* Branded Executive Copteller Bridge Hero */}
-            <section
-                className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-white/10"
-                style={{
-                    background: `radial-gradient(circle at 88% 15%, rgba(16,185,129,0.28) 0%, transparent 45%), linear-gradient(135deg, ${activeProfile.themeStyle?.heroBgHex || "#070D59"} 0%, #071917 100%)`,
-                }}
-            >
-                <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-                    <div className="space-y-2.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 uppercase text-[10px] font-black tracking-widest">
-                                Modular Bridge · {activeProfile.shortName}
-                            </span>
-                            <span
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${
-                                    health.connected
-                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"
-                                        : "bg-rose-500/20 text-rose-300 border-rose-400/30"
-                                }`}
-                            >
-                                <span className={`size-1.5 rounded-full ${health.connected ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
-                                {health.connected ? `LIVE DB SYNC · ${health.latencyMs}ms` : "BRIDGE DISCONNECTED"}
-                            </span>
-                        </div>
-                        <h1 className="text-2xl sm:text-4xl font-black tracking-tight">Copteller Cooperative Oversight</h1>
-                        <p className="text-xs sm:text-sm text-white/75 font-medium max-w-2xl">
-                            Real-time institutional supervision of Copteller unions, hire-purchase assets, escrow custody, and CBN cooperative returns.
-                        </p>
-                    </div>
+    const pendingCoops = cooperatives.filter((c: any) => c.status === "pending").length
+    const pendingLoans = loans.filter((l: any) => l.status === "pending").length
 
-                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                        <Button asChild variant="outline" size="sm" className="h-10 rounded-xl font-bold text-xs gap-1.5 bg-white/10 hover:bg-white/20 text-white border-white/20">
-                            <a href={`${health.appUrl}/copteller/superadmin`} target="_blank" rel="noopener noreferrer">
-                                <ArrowUpRight className="h-3.5 w-3.5" /> Standalone Copteller
+    return (
+        <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6">
+            <BankPageHeader
+                badge="Institutional BaaS & Escrow Custody"
+                livePill={health.connected ? `Live Rail · ${health.latencyMs}ms` : "Bridge Offline"}
+                liveTone={health.connected ? "emerald" : "rose"}
+                title="Copteller Custody & Settlement Rail"
+                subtitle="Provision CBN-regulated 3000XXXXXX Escrow Pool NUBANs for registered cooperatives, execute GL 2100 treasury sweeps, and underwrite telemetry-backed cooperative credit."
+                actions={
+                    <>
+                        <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <a href={`${health.appUrl}/copteller/partner`} target="_blank" rel="noopener noreferrer">
+                                Copteller Partner Portal <ArrowUpRight className="h-3.5 w-3.5" />
                             </a>
                         </Button>
-                        <Button asChild variant="outline" size="sm" className="h-10 rounded-xl font-bold text-xs gap-1.5 bg-white/10 hover:bg-white/20 text-white border-white/20">
+                        <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
                             <a href="/api/admin/copteller/export?format=csv">
                                 <Download className="h-3.5 w-3.5" /> CBN CSV Return
                             </a>
@@ -192,79 +188,142 @@ function CoptellerSuperadminContent() {
                             onClick={runLiveVaultAudit}
                             disabled={runningAudit || !health.connected}
                             size="sm"
-                            className="h-10 rounded-xl font-black text-xs gap-1.5 bg-white text-slate-950 hover:bg-white/90 px-4 shadow-lg"
+                            className="h-9 rounded-xl font-black text-xs gap-1.5 shadow-sm"
                         >
-                            {runningAudit ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 text-emerald-600" />}
+                            {runningAudit ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
                             {runningAudit ? "Auditing SQL..." : "Run Live Vault Audit"}
                         </Button>
-                    </div>
-                </div>
-            </section>
+                    </>
+                }
+            />
 
             {!health.connected && (
                 <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 flex items-start gap-3">
-                    <ShieldAlert className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+                    <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
                     <div className="text-xs space-y-1">
-                        <p className="font-black text-rose-600">Copteller Bridge Offline</p>
+                        <p className="font-black text-rose-700">Copteller Bridge Disconnected</p>
                         <p className="text-muted-foreground">
-                            {health.error || "Configure COPTELLER_DATABASE_URI in environment variables to stream live Copteller cooperative ledgers."}
+                            {health.error || "Configure COPTELLER_DATABASE_URI in BankSuite environment variables."}
                         </p>
                     </div>
                 </div>
             )}
 
-            {/* Live Reconciliation Output */}
             {reconReport && (
-                <div className="rounded-2xl border bg-slate-950 text-slate-100 p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-5 space-y-3">
+                    <div className="flex items-center justify-between border-b border-border/70 pb-2.5">
                         <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${reconReport.allPassed ? "bg-emerald-400" : "bg-amber-400"}`} />
-                            <span className="text-xs font-mono font-bold uppercase tracking-wider">
-                                Live Copteller SQL Reconciliation ({reconReport.durationMs}ms)
+                            <CheckCircle2 className={`h-4 w-4 ${reconReport.allPassed ? "text-emerald-600" : "text-amber-600"}`} />
+                            <span className="text-xs font-black uppercase tracking-wider text-foreground">
+                                Live Cross-Database Vault Audit ({reconReport.durationMs}ms)
                             </span>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                            {new Date(reconReport.ranAt).toLocaleString()}
-                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setReconReport(null)}
+                            className="text-xs font-bold text-muted-foreground hover:text-foreground"
+                        >
+                            Dismiss
+                        </button>
                     </div>
-                    <div className="space-y-2 text-xs font-mono">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
                         {reconReport.checks.map((c: any, idx: number) => (
-                            <div key={idx} className="flex items-start gap-2">
-                                <span className={c.passed ? "text-emerald-400" : "text-amber-400"}>
+                            <div key={idx} className="p-2.5 rounded-xl bg-card border border-border/70 flex items-start gap-2">
+                                <span className={`font-black ${c.passed ? "text-emerald-600" : "text-amber-600"}`}>
                                     {c.passed ? "✓" : "!"}
                                 </span>
-                                <span>
-                                    <strong>{c.name}:</strong> {c.detail}
-                                </span>
+                                <div>
+                                    <p className="font-bold text-foreground">{c.name}</p>
+                                    <p className="text-[11px] text-muted-foreground">{c.detail}</p>
+                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
             )}
 
-            {/* Tabs */}
-            <div className="flex gap-1 bg-muted p-1 rounded-2xl w-fit flex-wrap">
+            {/* KPI Row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { key: "overview", label: "Overview" },
-                    { key: "unions", label: `Unions (${cooperatives.length})`, badge: pendingCoops.length },
+                    {
+                        label: "Registered Cooperatives",
+                        val: `${kpis.activeCooperatives ?? 0} Active`,
+                        sub: `${pendingCoops} pending · ${kpis.totalMembers ?? 0} members`,
+                        icon: Building2,
+                        tone: "bg-emerald-500/10 text-emerald-600",
+                    },
+                    {
+                        label: "Copteller Live Vault Float",
+                        val: fmtNaira(kpis.escrowBalanceKobo ?? 0),
+                        sub: "Real-time sum of member & union accounts",
+                        icon: Lock,
+                        tone: "bg-blue-500/10 text-blue-600",
+                    },
+                    {
+                        label: "BankSuite Custody (GL 2100)",
+                        val: fmtNaira(kpis.custodySettledKobo ?? 0),
+                        sub: `${kpis.provisionedPoolsCount ?? 0} NUBAN pools · ${settlements.length} sweeps`,
+                        icon: Landmark,
+                        tone: "bg-violet-500/10 text-violet-600",
+                    },
+                    {
+                        label: "HP & Thrift Collection SLA",
+                        val: `${kpis.collectionRatePct ?? 100}%`,
+                        sub: `${kpis.activeContracts ?? 0} active contracts · ${fmtNaira(kpis.totalContractCollectedKobo ?? 0)}`,
+                        icon: CircleDollarSign,
+                        tone: "bg-amber-500/10 text-amber-600",
+                    },
+                ].map((k, idx) => (
+                    <div key={idx} className="bg-card border border-border/80 rounded-3xl p-5 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{k.label}</span>
+                            <div className={`p-2 rounded-xl ${k.tone}`}>
+                                <k.icon className="h-4 w-4" />
+                            </div>
+                        </div>
+                        <p className="text-xl sm:text-2xl font-black tabular-nums-fintech text-foreground">{k.val}</p>
+                        <p className="text-[11px] text-muted-foreground font-medium">{k.sub}</p>
+                    </div>
+                ))}
+            </div>
+
+            <EcosystemRailCard
+                compact
+                coptellerConnected={Boolean(health.connected)}
+                coptellerUrl={health.appUrl}
+                activeCooperatives={kpis.activeCooperatives || 0}
+                activeMembers={kpis.totalMembers || 0}
+                coptellerEscrowNaira={(kpis.escrowBalanceKobo || 0) / 100}
+                banksuiteCustodyNaira={(kpis.custodySettledKobo || 0) / 100}
+                pendingCreditCount={pendingLoans}
+                avgTrustScore={kpis.avgCreditScore || 75}
+                activeTerminals={2}
+            />
+
+            {/* Tab Bar */}
+            <div className="flex flex-wrap gap-1.5 bg-muted/60 p-1.5 rounded-2xl border border-border/70 w-fit">
+                {[
+                    { key: "escrow", label: `Escrow Pools & Unions (${cooperatives.length})`, badge: pendingCoops },
+                    { key: "settlements", label: `Settlement Rail (${settlements.length})` },
+                    { key: "underwriting", label: `Credit Telemetry (${loans.length})`, badge: pendingLoans },
                     { key: "schemes", label: `Schemes (${schemes.length})` },
-                    { key: "grants", label: `Loans & Grants (${loans.length})`, badge: pendingLoans.length },
-                    { key: "assets", label: `Contracts & HP (${contracts.length})` },
+                    { key: "contracts", label: `HP Contracts (${contracts.length})` },
                     { key: "vault", label: `Vault (${vaultSecrets.length})` },
-                    { key: "compliance", label: `Audit Logs (${auditLogs.length})` },
+                    { key: "audit", label: `Audit (${auditLogs.length})` },
                 ].map((t) => (
                     <button
                         key={t.key}
-                        onClick={() => setActiveTab(t.key as any)}
-                        className={`relative px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                        type="button"
+                        onClick={() => setActiveTab(t.key as BridgeTab)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                             activeTab === t.key
-                                ? "bg-background text-foreground shadow-sm"
+                                ? "bg-card text-foreground shadow-sm border border-border/80"
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
-                        {t.label}
+                        <span>{t.label}</span>
                         {t.badge ? (
-                            <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">
+                            <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">
                                 {t.badge}
                             </span>
                         ) : null}
@@ -272,300 +331,194 @@ function CoptellerSuperadminContent() {
                 ))}
             </div>
 
-            {/* OVERVIEW */}
-            {activeTab === "overview" && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        {[
-                            {
-                                label: "Active Cooperatives",
-                                val: String(kpis.activeCooperatives ?? 0),
-                                sub: `${kpis.pendingCooperatives ?? 0} pending · ${kpis.totalMembers ?? 0} active members`,
-                                icon: Building2,
-                            },
-                            {
-                                label: "Copteller Escrow Custody",
-                                val: `₦${((kpis.escrowBalanceKobo ?? 0) / 100).toLocaleString()}`,
-                                sub: "Sum of live Copteller ledger accounts",
-                                icon: Lock,
-                            },
-                            {
-                                label: "Active Contracts & HP",
-                                val: String(kpis.activeContracts ?? 0),
-                                sub: `${kpis.defaultingContracts ?? 0} defaulting · ${kpis.completedContracts ?? 0} completed`,
-                                icon: Truck,
-                            },
-                            {
-                                label: "Contract Collection Rate",
-                                val: `${kpis.collectionRatePct ?? 0}%`,
-                                sub: `₦${((kpis.totalContractCollectedKobo ?? 0) / 100).toLocaleString()} collected`,
-                                icon: CircleDollarSign,
-                            },
-                        ].map((s, i) => (
-                            <div key={i} className="bg-card border rounded-2xl p-5 space-y-2.5">
-                                <div className="p-2 rounded-xl bg-primary/10 text-primary w-fit">
-                                    <s.icon className="h-4 w-4" />
-                                </div>
-                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                                <p className="text-2xl font-black">{s.val}</p>
-                                <p className="text-[11px] text-muted-foreground">{s.sub}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 bg-card border rounded-2xl p-6 space-y-4">
-                            <h3 className="text-sm font-black">Live Sector Distribution</h3>
-                            {snapshot?.sectorDistribution?.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">No cooperatives registered in Copteller yet.</p>
-                            ) : (
-                                snapshot?.sectorDistribution?.map((s: any) => (
-                                    <div key={s.sector} className="space-y-1.5">
-                                        <div className="flex justify-between text-xs font-bold">
-                                            <span className="capitalize">{s.sector.replace(/_/g, " ")}</span>
-                                            <span className="text-muted-foreground">{s.coops} coop(s) · {s.members} members ({s.pct}%)</span>
-                                        </div>
-                                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                                            <div className="h-full bg-primary rounded-full" style={{ width: `${s.pct}%` }} />
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-
-                        <div className="bg-card border rounded-2xl p-6 space-y-3">
-                            <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
-                                <Bell className="h-4 w-4 text-primary" /> Live Risk Signals
-                            </h3>
-                            <div className="space-y-2 text-xs">
-                                <div className="p-3 rounded-xl bg-muted/40 flex justify-between font-bold">
-                                    <span>Pending Union Approvals</span>
-                                    <span>{kpis.pendingCooperatives ?? 0}</span>
-                                </div>
-                                <div className="p-3 rounded-xl bg-muted/40 flex justify-between font-bold">
-                                    <span>Pending Loan Disbursals</span>
-                                    <span>{kpis.pendingLoansCount ?? 0}</span>
-                                </div>
-                                <div className="p-3 rounded-xl bg-muted/40 flex justify-between font-bold">
-                                    <span>Defaulting HP Contracts</span>
-                                    <span className={(kpis.defaultingContracts ?? 0) > 0 ? "text-rose-600" : "text-emerald-600"}>
-                                        {kpis.defaultingContracts ?? 0}
-                                    </span>
-                                </div>
-                                <div className="p-3 rounded-xl bg-muted/40 flex justify-between font-bold">
-                                    <span>Avg Member Credit Score</span>
-                                    <span className="text-emerald-600">{kpis.avgCreditScore ?? 0}</span>
-                                </div>
-                            </div>
+            {/* TAB 1: ESCROW POOLS & UNIONS (RAIL 1) */}
+            {activeTab === "escrow" && (
+                <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/70">
+                        <div>
+                            <h2 className="text-base font-black text-foreground">Regulated Cooperative Custody Registry</h2>
+                            <p className="text-xs text-muted-foreground">
+                                Click any cooperative to inspect custody terms, provision a dedicated 3000XXXXXX BankSuite Escrow NUBAN, or execute a GL 2100 settlement sweep.
+                            </p>
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* UNIONS */}
-            {activeTab === "unions" && (
-                <div className="bg-card border rounded-2xl p-6 space-y-4">
-                    <h2 className="text-lg font-black">Registered Copteller Cooperatives ({cooperatives.length})</h2>
                     {cooperatives.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-8 text-center">No cooperatives registered in Copteller yet.</p>
+                        <p className="text-sm text-muted-foreground py-10 text-center">No cooperatives found in Copteller.</p>
                     ) : (
                         <div className="space-y-3">
-                            {cooperatives.map((c: any) => (
-                                <div key={c.id} className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="text-sm font-black">{c.name}</p>
-                                            <StatusBadge status={c.status} />
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            {c.sector} · {c.cooperative_type} · Reg: {c.registration_number || "N/A"} · State: {c.state || "N/A"}
-                                        </p>
-                                        <p className="text-[11px] text-muted-foreground">
-                                            Leader: {c.leader_name} · {c.current_member_count || 0} members · Escrow fee: {c.escrow_fee_percent ?? 1.5}%
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {c.status !== "active" ? (
-                                            <Button
-                                                size="sm"
-                                                disabled={busyId !== null}
-                                                onClick={() =>
-                                                    mutateCopteller(
-                                                        { action: "update_cooperative_status", cooperative_id: c.id, status: "active" },
-                                                        `Approved "${c.name}" under bank license.`,
-                                                        `coop-${c.id}`
-                                                    )
-                                                }
-                                                className="rounded-xl font-bold gap-1"
-                                            >
-                                                <Check className="h-3.5 w-3.5" /> Approve
-                                            </Button>
-                                        ) : (
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={busyId !== null}
-                                                onClick={() =>
-                                                    mutateCopteller(
-                                                        { action: "update_cooperative_status", cooperative_id: c.id, status: "suspended" },
-                                                        `Suspended "${c.name}".`,
-                                                        `coop-${c.id}`
-                                                    )
-                                                }
-                                                className="rounded-xl font-bold text-rose-600 border-rose-200 gap-1"
-                                            >
-                                                <X className="h-3.5 w-3.5" /> Suspend
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* SCHEMES */}
-            {activeTab === "schemes" && (
-                <div className="bg-card border rounded-2xl p-6 space-y-4">
-                    <h2 className="text-lg font-black">Cooperative Schemes & Bank Underwriting ({schemes.length})</h2>
-                    {schemes.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-8 text-center">No schemes found in Copteller.</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {schemes.map((s: any) => (
-                                <div key={s.id} className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-black">{s.name}</p>
-                                            <StatusBadge status={s.status} />
-                                            <Badge variant="outline" className="text-[10px]">
-                                                {s.bank_approved ? "Bank Approved" : "Awaiting Bank Sign-Off"}
-                                            </Badge>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            Type: {s.scheme_type} · Yield: {s.yield_rate ?? 0}% · Target: ₦{(Number(s.target_capital || 0) / 100).toLocaleString()} · Enrolled: {s.enrolled_count || 0}/{s.max_participants || "∞"}
-                                        </p>
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        variant={s.bank_approved ? "outline" : "default"}
-                                        disabled={busyId !== null}
-                                        onClick={() =>
-                                            mutateCopteller(
-                                                { action: "toggle_scheme_approval", scheme_id: s.id, bank_approved: !s.bank_approved },
-                                                `${s.bank_approved ? "Revoked" : "Granted"} bank approval for "${s.name}".`,
-                                                `scheme-${s.id}`
-                                            )
-                                        }
-                                        className="rounded-xl font-bold"
+                            {cooperatives.map((c: any) => {
+                                const pool = c.escrow_pool
+                                return (
+                                    <div
+                                        key={c.id}
+                                        className="rounded-2xl border border-border/80 hover:border-primary/40 bg-muted/15 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all"
                                     >
-                                        {s.bank_approved ? "Revoke Sign-Off" : "Grant Bank Sign-Off"}
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* GRANTS & LOANS */}
-            {activeTab === "grants" && (
-                <div className="bg-card border rounded-2xl p-6 space-y-4">
-                    <h2 className="text-lg font-black">Cooperative Loans & Grant Disbursals ({loans.length})</h2>
-                    {loans.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-8 text-center">No loans or grant requests in Copteller.</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {loans.map((l: any) => (
-                                <div key={l.id} className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-black">{l.borrower_name}</p>
-                                            <StatusBadge status={l.status} />
+                                        <div className="space-y-1.5 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedCoop(c)
+                                                        setSweepAmountNaira("")
+                                                    }}
+                                                    className="text-sm font-black text-foreground hover:text-primary text-left"
+                                                >
+                                                    {c.name}
+                                                </button>
+                                                <StatusPill status={c.status} />
+                                                {pool ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 font-mono text-[10px] font-black">
+                                                        Escrow NUBAN: {pool.escrow_nuban}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[10px] font-bold">
+                                                        Escrow NUBAN Not Provisioned
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground font-medium">
+                                                Reg: <span className="font-mono font-bold text-foreground">{c.registration_number || "Pending"}</span> ·{" "}
+                                                <span className="capitalize">{c.sector}</span> · {c.lga ? `${c.lga}, ` : ""}{c.state || "Nigeria"} ·{" "}
+                                                {c.current_member_count || 0} members
+                                            </p>
+                                            {pool && (
+                                                <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                                                    Settled BankSuite Custody: {fmtNaira(pool.custody_balance_kobo)} · Escrow Fee: {(Number(pool.escrow_fee_bps || 150) / 100).toFixed(2)}%
+                                                    {pool.last_swept_at ? ` · Last sweep ${new Date(pool.last_swept_at).toLocaleString()}` : ""}
+                                                </p>
+                                            )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            {l.purpose || "Cooperative Facility"} · {l.duration_months}m @ {l.interest_rate}% · Principal: ₦{(Number(l.principal || 0) / 100).toLocaleString()}
-                                        </p>
+
+                                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                            {!pool ? (
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busyId !== null}
+                                                    onClick={() =>
+                                                        mutateCopteller(
+                                                            { action: "provision_escrow_pool", cooperative_id: c.id },
+                                                            `Provisioned regulated BankSuite Escrow NUBAN for ${c.name}!`,
+                                                            `prov-${c.id}`
+                                                        )
+                                                    }
+                                                    className="h-9 rounded-xl text-xs font-black gap-1.5"
+                                                >
+                                                    <Landmark className="h-3.5 w-3.5" />
+                                                    {busyId === `prov-${c.id}` ? "Provisioning..." : "Provision Escrow NUBAN"}
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busyId !== null}
+                                                    onClick={() => {
+                                                        setSelectedCoop(c)
+                                                        setSweepAmountNaira("")
+                                                    }}
+                                                    className="h-9 rounded-xl text-xs font-black gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                >
+                                                    <ArrowRightLeft className="h-3.5 w-3.5" /> Sweep to GL 2100
+                                                </Button>
+                                            )}
+
+                                            {c.status !== "active" ? (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    disabled={busyId !== null}
+                                                    onClick={() =>
+                                                        mutateCopteller(
+                                                            { action: "update_cooperative_status", cooperative_id: c.id, status: "active" },
+                                                            `Approved "${c.name}" under MFB license.`,
+                                                            `st-${c.id}`
+                                                        )
+                                                    }
+                                                    className="h-9 rounded-xl text-xs font-bold gap-1"
+                                                >
+                                                    <Check className="h-3.5 w-3.5 text-emerald-600" /> Approve
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    disabled={busyId !== null}
+                                                    onClick={() =>
+                                                        mutateCopteller(
+                                                            { action: "update_cooperative_status", cooperative_id: c.id, status: "suspended" },
+                                                            `Suspended "${c.name}".`,
+                                                            `st-${c.id}`
+                                                        )
+                                                    }
+                                                    className="h-9 rounded-xl text-xs font-bold text-rose-600 border-rose-200"
+                                                >
+                                                    Suspend
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
-                                    {l.status === "pending" && (
-                                        <div className="flex gap-2">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={busyId !== null}
-                                                onClick={() =>
-                                                    mutateCopteller(
-                                                        { action: "reject_loan", loan_id: l.id },
-                                                        `Loan #${l.id} rejected.`,
-                                                        `loan-${l.id}`
-                                                    )
-                                                }
-                                                className="text-rose-600"
-                                            >
-                                                Reject
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                disabled={busyId !== null}
-                                                onClick={() =>
-                                                    mutateCopteller(
-                                                        { action: "disburse_loan", loan_id: l.id },
-                                                        `Disbursed Loan #${l.id} atomically to borrower wallet!`,
-                                                        `loan-${l.id}`
-                                                    )
-                                                }
-                                            >
-                                                Disburse Atomically
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
                 </div>
             )}
 
-            {/* CONTRACTS & HP ASSETS */}
-            {activeTab === "assets" && (
-                <div className="bg-card border rounded-2xl overflow-hidden">
-                    <div className="p-6 border-b">
-                        <h2 className="text-lg font-black">Live HP Assets & Cooperative Contracts ({contracts.length})</h2>
+            {/* TAB 2: SETTLEMENT RAIL LEDGER */}
+            {activeTab === "settlements" && (
+                <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-4">
+                    <div>
+                        <h2 className="text-base font-black text-foreground">Bi-Directional Settlement Ledger (Rails 1, 2 &amp; 3)</h2>
+                        <p className="text-xs text-muted-foreground">
+                            Audited record of every Escrow Treasury Sweep, Telemetry Loan Disbursement, and POS Agent Cooperative Cash-In posted to BankSuite GL 2100.
+                        </p>
                     </div>
-                    {contracts.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-12 text-center">No active contracts in Copteller.</p>
+                    {settlements.length === 0 ? (
+                        <div className="py-12 text-center space-y-2">
+                            <p className="text-sm font-bold text-muted-foreground">No settlement sweeps posted yet.</p>
+                            <p className="text-xs text-muted-foreground">
+                                Go to <strong>Escrow Pools &amp; Unions</strong> and click <strong>Provision Escrow NUBAN</strong> or <strong>Sweep to GL 2100</strong> to post your first live settlement.
+                            </p>
+                        </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-xs text-left">
+                            <table className="w-full text-left text-xs">
                                 <thead className="bg-muted/40 border-b text-[10px] uppercase tracking-wider text-muted-foreground">
                                     <tr>
-                                        <th className="px-4 py-3">Asset / Contract</th>
-                                        <th className="px-4 py-3">Type</th>
-                                        <th className="px-4 py-3">Member Ref</th>
-                                        <th className="px-4 py-3">Paid</th>
-                                        <th className="px-4 py-3">Obligation</th>
-                                        <th className="px-4 py-3">Missed</th>
-                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 font-black">Reference &amp; GL Journal</th>
+                                        <th className="px-4 py-3 font-black">Rail Type</th>
+                                        <th className="px-4 py-3 font-black">Cooperative / Counterparty</th>
+                                        <th className="px-4 py-3 font-black text-right">Amount</th>
+                                        <th className="px-4 py-3 font-black text-right">Fee</th>
+                                        <th className="px-4 py-3 font-black text-right">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y">
-                                    {contracts.map((c: any) => (
-                                        <tr key={c.id} className="hover:bg-muted/20">
-                                            <td className="px-4 py-3 font-bold">
-                                                {c.asset_name || `Contract #${c.id}`}
-                                                {c.asset_identifier && <span className="block text-[10px] font-mono text-muted-foreground">{c.asset_identifier}</span>}
-                                            </td>
-                                            <td className="px-4 py-3 uppercase font-mono">{c.contract_type}</td>
-                                            <td className="px-4 py-3 font-mono text-muted-foreground">{c.member}</td>
-                                            <td className="px-4 py-3 font-black text-emerald-600">
-                                                ₦{(Number(c.total_paid || 0) / 100).toLocaleString()}
+                                <tbody className="divide-y divide-border/70">
+                                    {settlements.map((s: any) => (
+                                        <tr key={s.id} className="hover:bg-muted/20">
+                                            <td className="px-4 py-3">
+                                                <p className="font-mono font-bold text-foreground">{s.reference}</p>
+                                                <p className="font-mono text-[10px] text-muted-foreground">{s.gl_journal_ref || "—"}</p>
                                             </td>
                                             <td className="px-4 py-3">
-                                                ₦{(Number(c.total_obligation || c.asset_value || 0) / 100).toLocaleString()}
+                                                <Badge variant="outline" className="text-[9px] font-black uppercase">
+                                                    {String(s.rail_type || "").replace(/_/g, " ")}
+                                                </Badge>
                                             </td>
-                                            <td className="px-4 py-3 font-bold">{c.missed_payments || 0}</td>
-                                            <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                                            <td className="px-4 py-3">
+                                                <p className="font-bold text-foreground">{s.coop_name || s.counterparty_label}</p>
+                                                <p className="text-[10px] text-muted-foreground font-mono">
+                                                    {s.escrow_nuban || s.counterparty_label} · {new Date(s.created_at).toLocaleString()}
+                                                </p>
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-mono font-black text-foreground">
+                                                {fmtNaira(s.amount_kobo)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-mono text-emerald-600 font-bold">
+                                                {fmtNaira(s.fee_kobo)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <StatusPill status={s.status} />
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -575,28 +528,150 @@ function CoptellerSuperadminContent() {
                 </div>
             )}
 
-            {/* VAULT */}
-            {activeTab === "vault" && (
-                <div className="bg-card border rounded-2xl p-6 space-y-4">
-                    <h2 className="text-lg font-black flex items-center gap-2">
-                        <KeyRound className="h-5 w-5 text-primary" /> Copteller Secret Vault (Masked Oversight)
-                    </h2>
-                    {vaultSecrets.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-8 text-center">No vault entries stored in Copteller yet.</p>
+            {/* TAB 3: CREDIT TELEMETRY & UNDERWRITING (RAIL 2) */}
+            {activeTab === "underwriting" && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-7 bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-4">
+                        <div>
+                            <h2 className="text-base font-black text-foreground">Copteller Credit &amp; Grant Disbursal Queue</h2>
+                            <p className="text-xs text-muted-foreground">
+                                Approving a Copteller loan posts DR GL 1300 / CR GL 2100 in BankSuite and credits the borrower&apos;s Copteller wallet atomically.
+                            </p>
+                        </div>
+                        {loans.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-8 text-center">
+                                No pending Copteller loans in queue. All cooperative facilities are clear.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {loans.map((l: any) => (
+                                    <div key={l.id} className="rounded-2xl border border-border/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-black text-sm">{l.borrower_name}</span>
+                                                <StatusPill status={l.status} />
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                Principal: <strong className="text-foreground">{fmtNaira(l.principal)}</strong> · {l.duration_months} mo @ {l.interest_rate}% · {l.purpose || "Cooperative Facility"}
+                                            </p>
+                                        </div>
+                                        {l.status === "pending" && (
+                                            <div className="flex gap-2 shrink-0">
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busyId !== null}
+                                                    onClick={() =>
+                                                        mutateCopteller(
+                                                            { action: "disburse_loan", loan_id: l.id },
+                                                            `Disbursed Loan #${l.id} via BankSuite GL 1300 → Copteller wallet!`,
+                                                            `loan-${l.id}`
+                                                        )
+                                                    }
+                                                    className="h-9 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                >
+                                                    <Check className="h-3.5 w-3.5 mr-1" /> Approve &amp; Disburse
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    disabled={busyId !== null}
+                                                    onClick={() =>
+                                                        mutateCopteller(
+                                                            { action: "reject_loan", loan_id: l.id },
+                                                            `Rejected Copteller loan #${l.id}.`,
+                                                            `loan-rej-${l.id}`
+                                                        )
+                                                    }
+                                                    className="h-9 rounded-xl text-xs font-bold text-rose-600"
+                                                >
+                                                    <X className="h-3.5 w-3.5 mr-1" /> Reject
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="lg:col-span-5 space-y-4">
+                        <CbnHealthGauge
+                            label="Average Cooperative Trust Score"
+                            value={kpis.avgCreditScore > 100 ? Math.round(kpis.avgCreditScore) : Math.round(300 + (kpis.avgCreditScore || 72) * 5.5)}
+                            max={850}
+                            unit="/ 850"
+                            statusText="Pre-Qualified Underwriting Pool"
+                            tone="emerald"
+                            subtitle="Computed live from Copteller member Ajo consistency and HP lease streak telemetry."
+                        />
+                        <div className="bg-card border border-border/80 rounded-3xl p-5 shadow-sm space-y-3">
+                            <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <Users2 className="h-4 w-4 text-emerald-600" /> Verified Member Behavioral Telemetry
+                            </h3>
+                            {memberTelemetry.length === 0 ? (
+                                <p className="text-xs text-muted-foreground py-4 text-center">No active member telemetry records yet.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {memberTelemetry.slice(0, 8).map((m: any, i: number) => {
+                                        const score = Number(m.credit_score || 70)
+                                        const score850 = score > 100 ? Math.round(score) : Math.round(300 + score * 5.5)
+                                        return (
+                                            <div key={i} className="p-3 rounded-xl border border-border/70 bg-muted/20 flex items-center justify-between text-xs">
+                                                <div className="min-w-0">
+                                                    <p className="font-black text-foreground truncate">{m.member_name}</p>
+                                                    <p className="text-[10px] text-muted-foreground truncate">
+                                                        Contributed: {fmtNaira(m.total_contributed || 0)} · {m.role || "member"}
+                                                    </p>
+                                                </div>
+                                                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 font-mono font-black text-[11px] shrink-0">
+                                                    {score850}/850
+                                                </span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 4: SCHEMES */}
+            {activeTab === "schemes" && (
+                <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-4">
+                    <h2 className="text-base font-black text-foreground">Cooperative Schemes &amp; Syndicated Pools ({schemes.length})</h2>
+                    {schemes.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-8 text-center">No cooperative schemes configured yet.</p>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {vaultSecrets.map((s: any) => (
-                                <div key={s.id} className="border rounded-2xl p-4 space-y-2">
-                                    <div className="flex justify-between items-start">
+                            {schemes.map((s: any) => (
+                                <div key={s.id} className="rounded-2xl border border-border/80 p-4 space-y-3 bg-muted/15">
+                                    <div className="flex items-start justify-between gap-2">
                                         <div>
-                                            <p className="text-sm font-black">{s.name}</p>
-                                            <p className="text-[11px] text-muted-foreground">{s.category} · {s.description || "Service credential"}</p>
+                                            <p className="font-black text-sm text-foreground">{s.name}</p>
+                                            <p className="text-[11px] text-muted-foreground capitalize">
+                                                {String(s.scheme_type || "thrift").replace(/_/g, " ")} · Target {fmtNaira(s.target_capital || 0)} · Yield {s.yield_rate || 0}%
+                                            </p>
                                         </div>
-                                        <Badge variant="outline" className="text-[9px] uppercase">
-                                            {s.encrypted ? "AES-256-GCM" : "Masked"}
-                                        </Badge>
+                                        <StatusPill status={s.bank_approved ? "approved" : "pending"} />
                                     </div>
-                                    <p className="font-mono text-xs bg-muted/50 px-3 py-2 rounded-lg">{s.maskedPreview}</p>
+                                    <div className="flex justify-end">
+                                        <Button
+                                            size="sm"
+                                            variant={s.bank_approved ? "outline" : "default"}
+                                            disabled={busyId !== null}
+                                            onClick={() =>
+                                                mutateCopteller(
+                                                    { action: "toggle_scheme_approval", scheme_id: s.id, bank_approved: !s.bank_approved },
+                                                    s.bank_approved ? `Revoked MFB underwriting on "${s.name}".` : `Authorized "${s.name}" under MFB custody!`,
+                                                    `sch-${s.id}`
+                                                )
+                                            }
+                                            className="h-8 rounded-xl text-xs font-bold"
+                                        >
+                                            {s.bank_approved ? "Revoke Approval" : "Authorize Under MFB"}
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -604,42 +679,43 @@ function CoptellerSuperadminContent() {
                 </div>
             )}
 
-            {/* AUDIT LOGS */}
-            {activeTab === "compliance" && (
-                <div className="bg-card border rounded-2xl overflow-hidden">
-                    <div className="p-6 border-b flex items-center justify-between">
-                        <h2 className="text-lg font-black">Live Copteller Immutable Audit Stream</h2>
-                        <Button asChild variant="outline" size="sm" className="rounded-xl font-bold text-xs gap-1.5">
-                            <a href="/api/admin/copteller/export?format=json" target="_blank">
-                                <Download className="h-3.5 w-3.5" /> JSON Snapshot
-                            </a>
-                        </Button>
-                    </div>
-                    {auditLogs.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-12 text-center">No Copteller audit logs found.</p>
+            {/* TAB 5: CONTRACTS & HP */}
+            {activeTab === "contracts" && (
+                <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-4">
+                    <h2 className="text-base font-black text-foreground">Hire-Purchase &amp; Thrift Contracts ({contracts.length})</h2>
+                    {contracts.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-8 text-center">No active contracts yet.</p>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-xs text-left">
+                            <table className="w-full text-left text-xs">
                                 <thead className="bg-muted/40 border-b text-[10px] uppercase tracking-wider text-muted-foreground">
                                     <tr>
-                                        <th className="px-4 py-3">Time</th>
-                                        <th className="px-4 py-3">Actor</th>
-                                        <th className="px-4 py-3">Action</th>
-                                        <th className="px-4 py-3">Entity</th>
-                                        <th className="px-4 py-3">Amount</th>
+                                        <th className="px-4 py-3 font-black">Contract &amp; Asset</th>
+                                        <th className="px-4 py-3 font-black">Member</th>
+                                        <th className="px-4 py-3 font-black text-right">Paid / Obligation</th>
+                                        <th className="px-4 py-3 font-black text-right">Streak / Missed</th>
+                                        <th className="px-4 py-3 font-black text-right">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y">
-                                    {auditLogs.map((a: any) => (
-                                        <tr key={a.id} className="hover:bg-muted/20">
-                                            <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                                                {new Date(a.created_at).toLocaleString()}
+                                <tbody className="divide-y divide-border/70">
+                                    {contracts.map((c: any) => (
+                                        <tr key={c.id} className="hover:bg-muted/20">
+                                            <td className="px-4 py-3">
+                                                <p className="font-bold text-foreground">{c.asset_name || c.contract_type}</p>
+                                                <p className="text-[10px] font-mono text-muted-foreground">{c.asset_identifier || `#${c.id}`}</p>
                                             </td>
-                                            <td className="px-4 py-3 font-semibold">{a.actor_name || a.actor_id} ({a.actor_role})</td>
-                                            <td className="px-4 py-3 font-mono font-bold text-primary">{a.action}</td>
-                                            <td className="px-4 py-3">{a.entity_type} #{a.entity_id}</td>
-                                            <td className="px-4 py-3 font-mono font-bold">
-                                                {a.amount_kobo ? `₦${(Number(a.amount_kobo) / 100).toLocaleString()}` : "—"}
+                                            <td className="px-4 py-3 font-mono text-[11px]">{c.member}</td>
+                                            <td className="px-4 py-3 text-right font-mono font-bold">
+                                                {fmtNaira(c.total_paid || 0)} / {fmtNaira(c.total_obligation || c.asset_value || 0)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-bold">
+                                                <span className="text-emerald-600">{c.payment_streak || 0}w</span> ·{" "}
+                                                <span className={Number(c.missed_payments || 0) > 0 ? "text-rose-600" : "text-muted-foreground"}>
+                                                    {c.missed_payments || 0} missed
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <StatusPill status={c.status} />
                                             </td>
                                         </tr>
                                     ))}
@@ -649,14 +725,162 @@ function CoptellerSuperadminContent() {
                     )}
                 </div>
             )}
+
+            {/* TAB 6: VAULT */}
+            {activeTab === "vault" && (
+                <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-3">
+                    <h2 className="text-base font-black text-foreground flex items-center gap-2">
+                        <KeyRound className="h-4 w-4 text-primary" /> Copteller Encrypted Vault Keys (Read-Only Masked)
+                    </h2>
+                    {vaultSecrets.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-6">No vault secrets indexed.</p>
+                    ) : (
+                        vaultSecrets.map((s: any) => (
+                            <div key={s.id} className="p-3.5 rounded-2xl border border-border/70 bg-muted/15 flex items-center justify-between text-xs">
+                                <div>
+                                    <p className="font-mono font-bold">{s.name}</p>
+                                    <p className="text-[11px] text-muted-foreground">{s.description || s.category}</p>
+                                </div>
+                                <span className="font-mono text-[11px] px-2.5 py-1 rounded-lg bg-muted border border-border">
+                                    {s.maskedPreview}
+                                </span>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+
+            {/* TAB 7: AUDIT */}
+            {activeTab === "audit" && (
+                <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-3">
+                    <h2 className="text-base font-black text-foreground flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-primary" /> Copteller Immutable Audit Stream
+                    </h2>
+                    {auditLogs.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-6">No Copteller audit entries logged yet.</p>
+                    ) : (
+                        <div className="divide-y divide-border/70">
+                            {auditLogs.map((a: any) => (
+                                <div key={a.id} className="py-2.5 flex items-center justify-between text-xs">
+                                    <div>
+                                        <p className="font-mono font-bold text-foreground">{a.action}</p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {a.actor_name || a.actor_role} · {a.entity_type} #{a.entity_id}
+                                        </p>
+                                    </div>
+                                    <span className="text-[11px] text-muted-foreground font-mono">
+                                        {new Date(a.created_at).toLocaleString()}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* SLIDE-OVER DRAWER: COOPERATIVE CUSTODY & GL 2100 SWEEP */}
+            <BankSideDrawer
+                open={Boolean(selectedCoop)}
+                onClose={() => setSelectedCoop(null)}
+                title={selectedCoop?.name || "Cooperative Custody"}
+                subtitle={`Reg. No: ${selectedCoop?.registration_number || "Pending"} · ${selectedCoop?.state || "Nigeria"}`}
+                badge={selectedCoop ? <StatusPill status={selectedCoop.status} /> : null}
+            >
+                {selectedCoop && (
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3.5 rounded-2xl bg-muted/30 border border-border/70">
+                                <p className="text-[10px] font-black uppercase text-muted-foreground">Escrow Pool NUBAN</p>
+                                <p className="text-sm font-mono font-black text-foreground mt-1">
+                                    {selectedCoop.escrow_pool?.escrow_nuban || "Not Provisioned"}
+                                </p>
+                            </div>
+                            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                                <p className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400">Settled GL 2100 Float</p>
+                                <p className="text-sm font-mono font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                                    {fmtNaira(selectedCoop.escrow_pool?.custody_balance_kobo || 0)}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-border/80 p-4 space-y-3 bg-muted/15">
+                            <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                                Execute Live GL 2100 Treasury Settlement Sweep
+                            </h3>
+                            <p className="text-xs text-muted-foreground">
+                                Posts a balanced double-entry journal (<strong>DR 1000 Cash/NIBSS Nostro</strong> → <strong>CR 2100 Cooperative Escrow Trust</strong> + <strong>CR 4000 Escrow Fee</strong>) and updates the cooperative&apos;s ring-fenced Escrow NUBAN balance in PostgreSQL.
+                            </p>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-muted-foreground">
+                                    Sweep Amount (₦) — leave blank to auto-sweep live Copteller float delta
+                                </label>
+                                <Input
+                                    type="number"
+                                    min={1000}
+                                    step={5000}
+                                    placeholder="Auto-calculate from Copteller vault balance"
+                                    value={sweepAmountNaira}
+                                    onChange={(e) => setSweepAmountNaira(e.target.value)}
+                                    className="h-10 rounded-xl font-bold"
+                                />
+                            </div>
+                            <Button
+                                className="w-full h-10 rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                                disabled={busyId !== null}
+                                onClick={async () => {
+                                    const res = await mutateCopteller(
+                                        {
+                                            action: "execute_settlement_sweep",
+                                            cooperative_id: selectedCoop.id,
+                                            amount_naira: sweepAmountNaira ? Number(sweepAmountNaira) : undefined,
+                                        },
+                                        `Settlement sweep posted to GL 2100 for ${selectedCoop.name}!`,
+                                        `sweep-${selectedCoop.id}`
+                                    )
+                                    if (res) setSweepAmountNaira("")
+                                }}
+                            >
+                                <ArrowRightLeft className="h-4 w-4" />
+                                {busyId === `sweep-${selectedCoop.id}` ? "Posting GL Sweep..." : "Execute Settlement Sweep Now"}
+                            </Button>
+                        </div>
+
+                        <div className="rounded-2xl border border-border/80 p-4 space-y-2 text-xs">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Society Metadata</p>
+                            <div className="flex justify-between py-1 border-b border-border/60">
+                                <span className="text-muted-foreground">Union Leader</span>
+                                <span className="font-bold">{selectedCoop.leader_name}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-border/60">
+                                <span className="text-muted-foreground">Sector &amp; Cycle</span>
+                                <span className="font-bold capitalize">{selectedCoop.sector} · {selectedCoop.cycle_frequency || "weekly"}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-border/60">
+                                <span className="text-muted-foreground">Escrow Custody Fee</span>
+                                <span className="font-mono font-bold">{selectedCoop.escrow_fee_percent ?? 1.5}%</span>
+                            </div>
+                            <div className="flex justify-between py-1">
+                                <span className="text-muted-foreground">Credit Facility Ceiling</span>
+                                <span className="font-mono font-bold">{fmtNaira(selectedCoop.escrow_pool?.credit_facility_limit_kobo || 1000000000)}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </BankSideDrawer>
         </div>
     )
 }
 
-export default function CoptellerSuperadminPage() {
+export default function CoptellerAdminBridgePage() {
     return (
-        <React.Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading Copteller Bridge...</div>}>
-            <CoptellerSuperadminContent />
+        <React.Suspense
+            fallback={
+                <div className="flex h-[50vh] items-center justify-center">
+                    <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                </div>
+            }
+        >
+            <CoptellerCustodyContent />
         </React.Suspense>
     )
 }
