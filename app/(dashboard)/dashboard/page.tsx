@@ -148,6 +148,11 @@ export default async function DashboardPage() {
                             </Link>
                         </Button>
                         <Button asChild size="sm" variant="outline" className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <Link href="/dashboard/operations?tab=eod">
+                                <Activity className="h-3.5 w-3.5 text-emerald-600" /> EOD Close &amp; Sync
+                            </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline" className="h-9 rounded-xl font-bold text-xs gap-1.5">
                             <Link href="/products/loans">
                                 <CreditCard className="h-3.5 w-3.5" /> Credit Desk
                             </Link>

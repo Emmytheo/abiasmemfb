@@ -180,27 +180,22 @@ export default function AgencyAdminPage() {
             />
 
             {/* KPIs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="bg-card p-5 rounded-2xl border">
-                    <Smartphone className="h-5 w-5 text-primary mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Active Fleet Terminals</p>
-                    <p className="text-3xl font-black mt-1">{totalActive}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <Calendar className="h-5 w-5 text-amber-500 mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Pending Requests</p>
-                    <p className="text-3xl font-black mt-1">{totalPending}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <DollarSign className="h-5 w-5 text-emerald-500 mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Agent Share (70%)</p>
-                    <p className="text-3xl font-black mt-1">₦{(agentCommKobo / 100).toLocaleString()}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <Landmark className="h-5 w-5 text-blue-500 mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Bank Revenue (30%)</p>
-                    <p className="text-3xl font-black mt-1">₦{(bankCommKobo / 100).toLocaleString()}</p>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    { label: "Active Fleet Terminals", val: String(totalActive), sub: `${terminals.length} registered units`, icon: Smartphone, tone: "bg-primary/10 text-primary" },
+                    { label: "Pending Requests", val: String(totalPending), sub: "Awaiting serial allocation", icon: Calendar, tone: totalPending > 0 ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground" },
+                    { label: "Agent Share (70%)", val: `₦${(agentCommKobo / 100).toLocaleString()}`, sub: "Credited to agent float", icon: DollarSign, tone: "bg-emerald-500/10 text-emerald-600" },
+                    { label: "Bank Revenue (30%)", val: `₦${(bankCommKobo / 100).toLocaleString()}`, sub: "Booked to GL 4000 income", icon: Landmark, tone: "bg-blue-500/10 text-blue-600" },
+                ].map((k, idx) => (
+                    <div key={idx} className="bg-card border border-border/80 rounded-3xl p-5 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{k.label}</span>
+                            <div className={`p-2 rounded-xl ${k.tone}`}><k.icon className="h-4 w-4" /></div>
+                        </div>
+                        <p className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums-fintech">{k.val}</p>
+                        <p className="text-[11px] font-medium text-muted-foreground">{k.sub}</p>
+                    </div>
+                ))}
             </div>
 
             {/* Tabs */}

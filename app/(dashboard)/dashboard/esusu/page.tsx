@@ -3,33 +3,37 @@
 import * as React from "react"
 import Link from "next/link"
 import {
+    PiggyBank,
     Users,
-    TrendingUp,
     Calendar,
     Building2,
     DollarSign,
     PlusCircle,
     Loader2,
     X,
-    ShieldAlert,
     RefreshCw,
     Play,
     Globe,
+    Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { useBankProfile } from "@/context/bank-profile-context"
+import { BankPageHeader } from "@/components/banking/page-header"
+
+const fmtNaira = (kobo: number | string) => `₦${(Number(kobo || 0) / 100).toLocaleString()}`
 
 export default function EsusuAdminPage() {
     const { activeProfile } = useBankProfile()
+    const [tab, setTab] = React.useState<"vaults" | "legacy">("vaults")
+    const [vaults, setVaults] = React.useState<any[]>([])
     const [cooperatives, setCooperatives] = React.useState<any[]>([])
     const [cycles, setCycles] = React.useState<any[]>([])
     const [membersByCycle, setMembersByCycle] = React.useState<Record<string, any[]>>({})
     const [payouts, setPayouts] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [busy, setBusy] = React.useState<string | null>(null)
-    const [selectedCycleIdx, setSelectedCycleIdx] = React.useState(0)
 
     const [showCoopModal, setShowCoopModal] = React.useState(false)
     const [showCycleModal, setShowCycleModal] = React.useState(false)
@@ -46,12 +50,13 @@ export default function EsusuAdminPage() {
     const loadData = React.useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetch("/api/admin/esusu")
+            const res = await fetch("/api/admin/esusu", { cache: "no-store" })
             const data = await res.json()
             if (!res.ok || !data.success) {
-                toast.error(data.error || "Failed to load Esusu data")
+                toast.error(data.error || "Failed to load Target Vaults ledger")
                 return
             }
+            setVaults(data.personalSavingsPlans || [])
             setCooperatives(data.cooperatives || [])
             setCycles(data.cycles || [])
             setMembersByCycle(data.membersByCycle || {})
@@ -60,7 +65,7 @@ export default function EsusuAdminPage() {
                 setNewCycleCoopId(String(data.cooperatives[0].id))
             }
         } catch {
-            toast.error("Failed to fetch Esusu ledgers")
+            toast.error("Failed to fetch Target Vaults")
         } finally {
             setLoading(false)
         }
@@ -69,26 +74,6 @@ export default function EsusuAdminPage() {
     React.useEffect(() => {
         loadData()
     }, [])
-
-    const handleCoopStatus = async (id: number, status: "active" | "suspended") => {
-        setBusy(`coop-${id}`)
-        try {
-            const res = await fetch("/api/admin/esusu", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cooperative_id: id, status }),
-            })
-            const data = await res.json()
-            if (!res.ok || !data.success) {
-                toast.error(data.error || "Status update failed")
-                return
-            }
-            toast.success(`Cooperative status updated to ${status}.`)
-            await loadData()
-        } finally {
-            setBusy(null)
-        }
-    }
 
     const handleCreateCoop = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -101,10 +86,10 @@ export default function EsusuAdminPage() {
             })
             const data = await res.json()
             if (!res.ok || !data.success) {
-                toast.error(data.error || "Failed to create cooperative")
+                toast.error(data.error || "Failed to create legacy group")
                 return
             }
-            toast.success(`Created cooperative "${newCoopName.trim()}"!`)
+            toast.success(`Created group "${newCoopName.trim()}"!`)
             setNewCoopName("")
             setNewCoopDesc("")
             setShowCoopModal(false)
@@ -132,7 +117,7 @@ export default function EsusuAdminPage() {
             })
             const data = await res.json()
             if (!res.ok || !data.success) {
-                toast.error(data.error || "Failed to launch Esusu cycle")
+                toast.error(data.error || "Failed to launch cycle")
                 return
             }
             toast.success(`Launched cycle "${newCycleName.trim()}"!`)
@@ -164,289 +149,274 @@ export default function EsusuAdminPage() {
         }
     }
 
-    const handleForcePayout = async (cycleId: number) => {
-        setBusy(`payout-${cycleId}`)
-        try {
-            const res = await fetch("/api/esusu/cycles/payout-cron", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cycle_id: cycleId }),
-            })
-            const data = await res.json()
-            if (!res.ok || !data.success) {
-                toast.error(data.error || "Vault payout rejected")
-                return
-            }
-            toast.success(data.message || "Rotational payout executed!")
-            await loadData()
-        } finally {
-            setBusy(null)
-        }
-    }
-
-    const currentCycle = cycles[selectedCycleIdx] || cycles[0]
+    const totalVaultFloatKobo = vaults.reduce((s, v) => s + Number(v.saved_amount_kobo || 0), 0)
+    const activeVaultsCount = vaults.filter((v) => v.status === "active").length
     const totalMembers = Object.values(membersByCycle).reduce((s, list) => s + list.length, 0)
     const totalPaidKobo = payouts.reduce((s, p) => s + Number(p.amount || 0), 0)
 
-    if (loading) {
-        return (
-            <div className="flex h-[60vh] items-center justify-center gap-3 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" /> Loading Native Esusu Ledgers...
-            </div>
-        )
-    }
-
     return (
-        <div className="space-y-8 pb-12 max-w-7xl mx-auto px-4 sm:px-6 pt-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
-                <div>
-                    <Badge className="bg-primary/10 text-primary border-primary/25 uppercase text-[10px] font-black tracking-widest mb-2">
-                        Target Vaults &amp; Retail Thrift (GL 2200)
-                    </Badge>
-                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Target Savings Vaults &amp; Legacy Cycles</h1>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-2xl">
-                        Manage BankSuite personal target vaults and legacy internal pools. Registered multi-member cooperatives, union execs, and HP fleets operate via <strong>Copteller Custody</strong>.
-                    </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    {activeProfile.enabledModules.coptellerBridge && (
-                        <Button asChild size="sm" className="h-9 rounded-xl font-black text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
-                            <Link href="/dashboard/copteller">
-                                <Globe className="h-3.5 w-3.5" /> Open Copteller Custody Rail
-                            </Link>
+        <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 pb-12">
+            <BankPageHeader
+                badge="Personal Target Vaults · GL 2200"
+                livePill={`${activeVaultsCount} Active Vaults · 6.5% APY`}
+                liveTone="emerald"
+                title="Target Savings Vaults & Legacy Pools"
+                subtitle="Oversee individual locked target savings vaults (GL 2200) and EOD interest accrual. Multi-member registered cooperatives, union executives, and fleet hire-purchase operate on Copteller Custody (GL 2100)."
+                actions={
+                    <>
+                        {activeProfile.enabledModules.coptellerBridge && (
+                            <Button asChild size="sm" className="h-9 rounded-xl font-black text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                                <Link href="/dashboard/copteller">
+                                    <Globe className="h-3.5 w-3.5" /> Open Copteller Custody Rail
+                                </Link>
+                            </Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={loadData} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
                         </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => setShowCoopModal(true)} className="h-9 rounded-xl font-bold text-xs gap-1.5">
-                        <PlusCircle className="h-3.5 w-3.5" /> New Legacy Group
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setShowCycleModal(true)} className="h-9 rounded-xl font-bold text-xs gap-1.5">
-                        <PlusCircle className="h-3.5 w-3.5" /> Launch Cycle
-                    </Button>
-                </div>
-            </div>
+                    </>
+                }
+            />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="bg-card p-5 rounded-2xl border">
-                    <Building2 className="h-5 w-5 text-primary mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Active Cooperatives</p>
-                    <p className="text-3xl font-black mt-1">{cooperatives.filter((c) => c.status === "active").length}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <Calendar className="h-5 w-5 text-purple-500 mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Rotational Cycles</p>
-                    <p className="text-3xl font-black mt-1">{cycles.length}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <Users className="h-5 w-5 text-amber-500 mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Enrolled Members</p>
-                    <p className="text-3xl font-black mt-1">{totalMembers}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <DollarSign className="h-5 w-5 text-emerald-500 mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Total Payouts Settled</p>
-                    <p className="text-3xl font-black mt-1">₦{(totalPaidKobo / 100).toLocaleString()}</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-7 space-y-6">
-                    <div className="bg-card border rounded-2xl p-6 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-lg font-black">Cooperative Licenses ({cooperatives.length})</h2>
-                            <Button variant="ghost" size="sm" onClick={loadData}><RefreshCw className="h-4 w-4" /></Button>
+            {/* KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                {[
+                    { label: "Total Vault Float (GL 2200)", value: fmtNaira(totalVaultFloatKobo), sub: `${vaults.length} personal vaults created`, icon: PiggyBank, tone: "bg-emerald-500/10 text-emerald-600" },
+                    { label: "Active Yield Vaults", value: String(activeVaultsCount), sub: "Accruing daily APY via EOD", icon: Sparkles, tone: "bg-amber-500/10 text-amber-600" },
+                    { label: "Legacy Rotational Cycles", value: String(cycles.length), sub: `${totalMembers} enrolled legacy slots`, icon: Calendar, tone: "bg-violet-500/10 text-violet-600" },
+                    { label: "Legacy Payouts Settled", value: fmtNaira(totalPaidKobo), sub: `${payouts.length} completed disbursements`, icon: DollarSign, tone: "bg-blue-500/10 text-blue-600" },
+                ].map((k, idx) => (
+                    <div key={idx} className="bg-card border border-border/80 rounded-3xl p-5 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{k.label}</span>
+                            <div className={`p-2 rounded-xl ${k.tone}`}><k.icon className="h-4 w-4" /></div>
                         </div>
-                        {cooperatives.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-6 text-center">No cooperatives created yet.</p>
+                        <p className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums-fintech">{k.value}</p>
+                        <p className="text-[11px] font-medium text-muted-foreground">{k.sub}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Tabs */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex gap-1 bg-muted/70 p-1 rounded-2xl w-fit">
+                    <button
+                        onClick={() => setTab("vaults")}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            tab === "vaults" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+                        }`}
+                    >
+                        Personal Target Vaults ({vaults.length})
+                    </button>
+                    <button
+                        onClick={() => setTab("legacy")}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            tab === "legacy" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+                        }`}
+                    >
+                        Legacy Internal Cycles ({cycles.length})
+                    </button>
+                </div>
+
+                {tab === "legacy" && (
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setShowCoopModal(true)} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <PlusCircle className="h-3.5 w-3.5" /> New Legacy Group
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setShowCycleModal(true)} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <PlusCircle className="h-3.5 w-3.5" /> Launch Cycle
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            {loading ? (
+                <div className="py-16 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading vault ledgers...
+                </div>
+            ) : tab === "vaults" ? (
+                <div className="bg-card border border-border/80 rounded-3xl shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-border/70 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-base font-black">Retail Personal Target Savings Vaults (GL 2200)</h2>
+                            <p className="text-xs text-muted-foreground">Customer-funded goal vaults backed by GL 2200 with daily EOD APY interest accrual.</p>
+                        </div>
+                        <Button asChild size="sm" variant="outline" className="h-8 rounded-xl text-xs font-bold">
+                            <Link href="/dashboard/operations?tab=eod">Run EOD Interest Accrual</Link>
+                        </Button>
+                    </div>
+                    {vaults.length === 0 ? (
+                        <div className="py-14 text-center space-y-2">
+                            <PiggyBank className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+                            <p className="text-sm font-bold text-muted-foreground">No retail target vaults created yet.</p>
+                            <p className="text-xs text-muted-foreground">Customers can open yield-bearing target vaults from their Client Portal (`/esusu`).</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-muted/40 border-b text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                    <tr>
+                                        <th className="px-5 py-3.5">Vault Goal</th>
+                                        <th className="px-5 py-3.5">Customer &amp; Source NUBAN</th>
+                                        <th className="px-5 py-3.5">Progress</th>
+                                        <th className="px-5 py-3.5 text-right">Saved Balance</th>
+                                        <th className="px-5 py-3.5">APY &amp; Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/60">
+                                    {vaults.map((v) => {
+                                        const saved = Number(v.saved_amount_kobo || 0)
+                                        const target = Math.max(1, Number(v.target_amount_kobo || 1))
+                                        const pct = Math.min(100, Math.round((saved / target) * 100))
+                                        return (
+                                            <tr key={v.id} className="hover:bg-muted/25">
+                                                <td className="px-5 py-3.5">
+                                                    <p className="font-black text-foreground">{v.name}</p>
+                                                    <p className="text-[11px] text-muted-foreground capitalize">
+                                                        {v.frequency} · {fmtNaira(v.deduction_amount_kobo)}/cycle
+                                                    </p>
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    <p className="font-bold">{v.holder_name}</p>
+                                                    <p className="text-[11px] font-mono text-muted-foreground">{v.source_account_number || "Primary NUBAN"}</p>
+                                                </td>
+                                                <td className="px-5 py-3.5 w-48">
+                                                    <div className="flex justify-between text-[10px] font-bold mb-1">
+                                                        <span>{pct}%</span>
+                                                        <span className="text-muted-foreground">Goal {fmtNaira(target)}</span>
+                                                    </div>
+                                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3.5 text-right font-mono font-black text-sm tabular-nums-fintech">
+                                                    {fmtNaira(saved)}
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Badge variant="outline" className="text-[10px] font-bold text-emerald-600 border-emerald-500/30">
+                                                            {Number(v.apy_percent || 6.5)}% APY
+                                                        </Badge>
+                                                        <Badge variant={v.status === "active" ? "default" : "secondary"} className="text-[9px] uppercase">
+                                                            {v.status}
+                                                        </Badge>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-7 bg-card border border-border/80 rounded-3xl p-6 space-y-4 shadow-sm">
+                        <h2 className="text-base font-black flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-primary" /> Legacy Internal Rotational Cycles ({cycles.length})
+                        </h2>
+                        {cycles.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-8 text-center">No legacy cycles present.</p>
                         ) : (
                             <div className="space-y-3">
-                                {cooperatives.map((c) => (
-                                    <div key={c.id} className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20">
+                                {cycles.map((c) => (
+                                    <div key={c.id} className="p-4 rounded-2xl border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <p className="font-bold text-sm">{c.name}</p>
-                                                <Badge variant={c.status === "active" ? "default" : "secondary"} className="text-[9px] uppercase">
-                                                    {c.status}
-                                                </Badge>
+                                                <p className="font-black text-sm">{c.name}</p>
+                                                <Badge variant="outline" className="text-[9px] uppercase">{c.status}</Badge>
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-0.5">{c.description || "Registered guild"}</p>
-                                            <p className="text-[10px] text-muted-foreground mt-1">Leader: {c.union_leader}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                {fmtNaira(c.contribution_amount)} / {c.frequency} · {c.total_slots} slots · Vault {c.vault_account_number || "—"} ({fmtNaira(c.vault_balance_kobo)})
+                                            </p>
                                         </div>
-                                        {c.status === "active" ? (
-                                            <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => handleCoopStatus(c.id, "suspended")} className="text-destructive">
-                                                Suspend
-                                            </Button>
-                                        ) : (
-                                            <Button size="sm" disabled={busy !== null} onClick={() => handleCoopStatus(c.id, "active")}>
-                                                Approve License
-                                            </Button>
-                                        )}
+                                        <Button
+                                            size="sm"
+                                            disabled={busy !== null}
+                                            onClick={() => handleRunCollection(c.id)}
+                                            className="h-8 rounded-xl text-[11px] font-black gap-1"
+                                        >
+                                            <Play className="h-3 w-3" /> Run Collection
+                                        </Button>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
-
-                    <div className="bg-card border rounded-2xl p-6 space-y-4">
-                        <h2 className="text-lg font-black">Settled Payout Journal ({payouts.length})</h2>
-                        {payouts.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-6 text-center">No payouts distributed yet.</p>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-muted/40 border-b text-[10px] uppercase text-muted-foreground">
-                                        <tr>
-                                            <th className="px-3 py-2.5">Cycle</th>
-                                            <th className="px-3 py-2.5">Recipient</th>
-                                            <th className="px-3 py-2.5">Net Paid</th>
-                                            <th className="px-3 py-2.5">Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {payouts.map((p) => (
-                                            <tr key={p.id}>
-                                                <td className="px-3 py-2.5 font-bold">{p.cycle_name}</td>
-                                                <td className="px-3 py-2.5">{p.recipient}</td>
-                                                <td className="px-3 py-2.5 font-black text-emerald-600">₦{(Number(p.amount) / 100).toLocaleString()}</td>
-                                                <td className="px-3 py-2.5 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right: Active Cycle Queue & Execution */}
-                <div className="lg:col-span-5 bg-card border rounded-2xl p-6 space-y-5 h-fit">
-                    <div className="flex items-center justify-between gap-2">
-                        <h2 className="text-lg font-black flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-primary" /> Cycle Operations
+                    <div className="lg:col-span-5 bg-card border border-border/80 rounded-3xl p-6 space-y-4 shadow-sm">
+                        <h2 className="text-base font-black flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-primary" /> Legacy Internal Groups ({cooperatives.length})
                         </h2>
-                        <div className="flex gap-1 flex-wrap">
-                            {cycles.map((c, idx) => (
-                                <button
-                                    key={c.id}
-                                    onClick={() => setSelectedCycleIdx(idx)}
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase ${
-                                        selectedCycleIdx === idx ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                                    }`}
-                                >
-                                    #{c.id}
-                                </button>
+                        <div className="space-y-2.5">
+                            {cooperatives.map((g) => (
+                                <div key={g.id} className="p-3.5 rounded-2xl border bg-muted/20 flex items-center justify-between text-xs">
+                                    <div>
+                                        <p className="font-bold">{g.name}</p>
+                                        <p className="text-[11px] text-muted-foreground">Leader: {g.union_leader}</p>
+                                    </div>
+                                    <Badge variant={g.status === "active" ? "default" : "secondary"} className="text-[9px] uppercase">
+                                        {g.status}
+                                    </Badge>
+                                </div>
                             ))}
                         </div>
                     </div>
-
-                    {!currentCycle ? (
-                        <p className="text-sm text-muted-foreground py-8 text-center">No Esusu cycles launched yet.</p>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="p-4 rounded-xl bg-muted/30 border space-y-2 text-xs">
-                                <p className="font-black text-sm">{currentCycle.name}</p>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Contribution / Slot:</span>
-                                    <span className="font-bold">₦{(Number(currentCycle.contribution_amount) / 100).toLocaleString()} ({currentCycle.frequency})</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Holding Vault Balance:</span>
-                                    <span className="font-black text-emerald-600">₦{(Number(currentCycle.vault_balance_kobo || 0) / 100).toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Current Payout Turn:</span>
-                                    <span className="font-bold">Slot {Number(currentCycle.current_payout_index || 0) + 1} / {currentCycle.total_slots}</span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <p className="text-[10px] uppercase font-black text-muted-foreground">Enrolled Slots</p>
-                                {(membersByCycle[String(currentCycle.id)] || []).length === 0 ? (
-                                    <p className="text-xs text-muted-foreground">No members enrolled in this cycle yet.</p>
-                                ) : (
-                                    (membersByCycle[String(currentCycle.id)] || []).map((m) => (
-                                        <div key={m.id} className="p-2.5 rounded-xl border flex justify-between items-center text-xs">
-                                            <span className="font-bold">
-                                                #{Number(m.payout_order_index) + 1} · {m.customer_name}
-                                            </span>
-                                            <Badge variant={Number(m.payout_order_index) === Number(currentCycle.current_payout_index) ? "default" : "outline"} className="text-[9px] uppercase">
-                                                {Number(m.payout_order_index) === Number(currentCycle.current_payout_index)
-                                                    ? "Next Payout"
-                                                    : Number(m.payout_order_index) < Number(currentCycle.current_payout_index)
-                                                        ? "Paid"
-                                                        : "Queued"}
-                                            </Badge>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-
-                            <div className="space-y-2 pt-2 border-t">
-                                <Button
-                                    onClick={() => handleRunCollection(currentCycle.id)}
-                                    disabled={busy !== null}
-                                    className="w-full rounded-xl font-black gap-1.5"
-                                >
-                                    <Play className="h-4 w-4" /> Run Atomic Collection & Payout
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleForcePayout(currentCycle.id)}
-                                    disabled={busy !== null}
-                                    className="w-full rounded-xl font-bold gap-1.5"
-                                >
-                                    <ShieldAlert className="h-4 w-4 text-amber-500" /> Payout Existing Holding Vault
-                                </Button>
-                            </div>
-                        </div>
-                    )}
                 </div>
-            </div>
+            )}
 
-            {/* Modals */}
+            {/* Create Legacy Group Modal */}
             {showCoopModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-                    <form onSubmit={handleCreateCoop} className="bg-card border rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+                    <form onSubmit={handleCreateCoop} className="bg-card border rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
                         <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-black">Register Cooperative Union</h3>
+                            <h3 className="text-base font-black">Create Legacy Internal Group</h3>
                             <Button type="button" size="icon" variant="ghost" onClick={() => setShowCoopModal(false)}><X className="h-4 w-4" /></Button>
                         </div>
-                        <input required placeholder="Cooperative Name" value={newCoopName} onChange={(e) => setNewCoopName(e.target.value)} className="w-full h-10 rounded-xl border bg-background px-3 text-sm" />
-                        <textarea placeholder="Charter & Sector Description" value={newCoopDesc} onChange={(e) => setNewCoopDesc(e.target.value)} className="w-full rounded-xl border bg-background p-3 text-sm" rows={3} />
-                        <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setShowCoopModal(false)}>Cancel</Button>
-                            <Button type="submit" disabled={busy === "create-coop"}>Create Cooperative</Button>
-                        </div>
+                        <input
+                            value={newCoopName}
+                            onChange={(e) => setNewCoopName(e.target.value)}
+                            placeholder="Group Name"
+                            className="w-full h-10 rounded-xl border bg-background px-3 text-xs font-bold"
+                            required
+                        />
+                        <textarea
+                            value={newCoopDesc}
+                            onChange={(e) => setNewCoopDesc(e.target.value)}
+                            placeholder="Description"
+                            className="w-full rounded-xl border bg-background p-3 text-xs"
+                            rows={3}
+                        />
+                        <Button type="submit" disabled={busy !== null} className="w-full h-10 rounded-xl font-black text-xs">Create Group</Button>
                     </form>
                 </div>
             )}
 
+            {/* Launch Cycle Modal */}
             {showCycleModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-                    <form onSubmit={handleCreateCycle} className="bg-card border rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+                    <form onSubmit={handleCreateCycle} className="bg-card border rounded-3xl p-6 max-w-md w-full space-y-3 shadow-2xl">
                         <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-black">Launch Rotational Esusu Cycle</h3>
+                            <h3 className="text-base font-black">Launch Rotational Cycle</h3>
                             <Button type="button" size="icon" variant="ghost" onClick={() => setShowCycleModal(false)}><X className="h-4 w-4" /></Button>
                         </div>
-                        <select required value={newCycleCoopId} onChange={(e) => setNewCycleCoopId(e.target.value)} className="w-full h-10 rounded-xl border bg-background px-3 text-sm">
+                        <select value={newCycleCoopId} onChange={(e) => setNewCycleCoopId(e.target.value)} className="w-full h-10 rounded-xl border bg-background px-3 text-xs font-bold">
                             {cooperatives.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        <input required placeholder="Cycle Name" value={newCycleName} onChange={(e) => setNewCycleName(e.target.value)} className="w-full h-10 rounded-xl border bg-background px-3 text-sm" />
-                        <div className="grid grid-cols-2 gap-3">
-                            <input type="number" required min="100" placeholder="Contribution (NGN)" value={newCycleAmountNaira} onChange={(e) => setNewCycleAmountNaira(e.target.value)} className="w-full h-10 rounded-xl border bg-background px-3 text-sm" />
-                            <select value={newCycleFreq} onChange={(e) => setNewCycleFreq(e.target.value as any)} className="w-full h-10 rounded-xl border bg-background px-3 text-sm">
+                        <input value={newCycleName} onChange={(e) => setNewCycleName(e.target.value)} placeholder="Cycle Name" className="w-full h-10 rounded-xl border bg-background px-3 text-xs font-bold" required />
+                        <div className="grid grid-cols-2 gap-2">
+                            <input type="number" value={newCycleAmountNaira} onChange={(e) => setNewCycleAmountNaira(e.target.value)} placeholder="Amount (₦)" className="h-10 rounded-xl border bg-background px-3 text-xs font-mono" />
+                            <select value={newCycleFreq} onChange={(e) => setNewCycleFreq(e.target.value as any)} className="h-10 rounded-xl border bg-background px-3 text-xs font-bold">
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
                                 <option value="monthly">Monthly</option>
                             </select>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <input type="number" required min="2" placeholder="Total Slots" value={newCycleSlots} onChange={(e) => setNewCycleSlots(e.target.value)} className="w-full h-10 rounded-xl border bg-background px-3 text-sm" />
-                            <input type="number" step="0.1" required min="0" placeholder="Fee %" value={newCycleFee} onChange={(e) => setNewCycleFee(e.target.value)} className="w-full h-10 rounded-xl border bg-background px-3 text-sm" />
+                        <div className="grid grid-cols-2 gap-2">
+                            <input type="number" value={newCycleSlots} onChange={(e) => setNewCycleSlots(e.target.value)} placeholder="Slots" className="h-10 rounded-xl border bg-background px-3 text-xs font-mono" />
+                            <input type="number" step="0.5" value={newCycleFee} onChange={(e) => setNewCycleFee(e.target.value)} placeholder="Fee %" className="h-10 rounded-xl border bg-background px-3 text-xs font-mono" />
                         </div>
-                        <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setShowCycleModal(false)}>Cancel</Button>
-                            <Button type="submit" disabled={busy === "create-cycle"}>Launch Cycle</Button>
-                        </div>
+                        <Button type="submit" disabled={busy !== null} className="w-full h-10 rounded-xl font-black text-xs">Launch Cycle</Button>
                     </form>
                 </div>
             )}

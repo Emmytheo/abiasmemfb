@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useScope } from "@/context/scope-context";
 import { useBankProfile } from "@/context/bank-profile-context";
 import { NIGERIAN_BANKS } from "@/lib/data/nigerian-banks";
+import { BankPageHeader } from "@/components/banking/page-header";
 import {
     Dialog,
     DialogContent,
@@ -260,19 +261,19 @@ export default function StandingOrdersPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24 px-4 sm:px-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Standing Orders</h1>
-                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                        Configure automated recurring transfers from your accounts.
-                    </p>
-                </div>
-                <Button onClick={() => setShowCreateModal(true)} className="shrink-0 font-bold gap-2">
-                    <Plus className="h-5 w-5" /> Schedule New Order
-                </Button>
-            </div>
+        <div className="space-y-6 pb-16">
+            <BankPageHeader
+                badge={`${activeScope.name} · Automated Standing Instructions`}
+                livePill={`${standingOrders.filter((o) => o.status === "active").length} Active Schedules`}
+                liveTone="emerald"
+                title="Standing Orders"
+                subtitle="Configure recurring daily, weekly, or monthly internal and NIP transfers swept automatically during EOD Close-of-Business."
+                actions={
+                    <Button size="sm" onClick={() => setShowCreateModal(true)} className="h-9 rounded-xl font-black text-xs gap-1.5">
+                        <Plus className="h-3.5 w-3.5" /> Schedule New Order
+                    </Button>
+                }
+            />
 
             {/* List Table */}
             <Card className="border shadow-sm">

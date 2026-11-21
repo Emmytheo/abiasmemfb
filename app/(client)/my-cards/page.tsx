@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useScope } from "@/context/scope-context"
 import { useBankProfile } from "@/context/bank-profile-context"
+import { BankPageHeader } from "@/components/banking/page-header"
 
 interface Card {
     id: string
@@ -268,34 +269,35 @@ export default function MyCardsPage() {
     }
 
     return (
-        <div className="space-y-8 pb-12 max-w-6xl mx-auto px-4 sm:px-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
-                        {activeScope.type === "business"
-                            ? "Corporate Expense Cards"
-                            : activeScope.type === "coop"
+        <div className="space-y-6 pb-12">
+            <BankPageHeader
+                badge={`${activeScope.name} · Card Issuing Switch`}
+                livePill={`${cards.filter((c) => !c.is_frozen).length} Active · ${cards.filter((c) => c.is_frozen).length} Frozen`}
+                liveTone={cards.some((c) => c.is_frozen) ? "amber" : "emerald"}
+                title={
+                    activeScope.type === "business"
+                        ? "Corporate Expense Cards"
+                        : activeScope.type === "coop"
                             ? "Union Disbursement Cards"
-                            : "Smart Cards Management"}
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1 font-medium">
-                        Issue, configure, and instantly lock physical &amp; virtual {activeProfile.shortName} cards linked to your core accounts.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={loadData} className="rounded-xl h-11 font-bold gap-2">
-                        <RefreshCw className="h-4 w-4" /> Refresh
-                    </Button>
-                    <Button
-                        onClick={() => setShowRequestModal(true)}
-                        disabled={accounts.length === 0}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl px-5 h-11 shadow-lg flex items-center gap-2"
-                    >
-                        <Plus className="h-5 w-5" /> Request Card
-                    </Button>
-                </div>
-            </div>
+                            : "Smart Cards Vault"
+                }
+                subtitle={`Issue, configure, and instantly lock physical & virtual ${activeProfile.shortName} cards linked directly to your live NUBAN accounts.`}
+                actions={
+                    <>
+                        <Button variant="outline" size="sm" onClick={loadData} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={() => setShowRequestModal(true)}
+                            disabled={accounts.length === 0}
+                            className="h-9 rounded-xl font-black text-xs gap-1.5"
+                        >
+                            <Plus className="h-3.5 w-3.5" /> Issue Card
+                        </Button>
+                    </>
+                }
+            />
 
             {cards.length === 0 ? (
                 <div className="bg-card/50 backdrop-blur-xl border border-border rounded-2xl p-12 text-center max-w-md mx-auto space-y-4">

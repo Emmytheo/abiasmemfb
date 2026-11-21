@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { BankPageHeader } from "@/components/banking/page-header"
 
 export default function InvoicesPage() {
     const { activeScope } = useScope()
@@ -137,23 +138,24 @@ export default function InvoicesPage() {
     const collectionRate = totalKobo > 0 ? Math.round((paidKobo / totalKobo) * 100) : 0
 
     return (
-        <div className="max-w-7xl mx-auto p-2 md:p-8 space-y-8">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{activeScope.name}</p>
-                    <h1 className="text-3xl md:text-4xl font-black tracking-tight mt-1 flex items-center gap-3">
-                        <Receipt className="h-8 w-8 text-primary" /> Invoices & Billing
-                    </h1>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={loadInvoices} className="rounded-xl font-bold">
-                        <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
-                    </Button>
-                    <Button onClick={() => setShowModal(true)} className="rounded-xl font-black">
-                        <Plus className="h-4 w-4 mr-1.5" /> Issue Invoice
-                    </Button>
-                </div>
-            </header>
+        <div className="space-y-6 pb-12">
+            <BankPageHeader
+                badge={`${activeScope.name} · Accounts Receivable`}
+                livePill={`${collectionRate}% Collected`}
+                liveTone="emerald"
+                title="Invoices & Corporate Billing"
+                subtitle="Issue client invoices, track receivables aging, and reconcile paid settlements into your corporate ledger."
+                actions={
+                    <>
+                        <Button variant="outline" size="sm" onClick={loadInvoices} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                        </Button>
+                        <Button size="sm" onClick={() => setShowModal(true)} className="h-9 rounded-xl font-black text-xs gap-1.5">
+                            <Plus className="h-3.5 w-3.5" /> Issue Invoice
+                        </Button>
+                    </>
+                }
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="bg-card p-6 rounded-2xl border">

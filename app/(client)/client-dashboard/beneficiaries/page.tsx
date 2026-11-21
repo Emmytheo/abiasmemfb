@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useScope } from "@/context/scope-context";
+import { BankPageHeader } from "@/components/banking/page-header";
 import {
     Dialog,
     DialogContent,
@@ -119,20 +120,21 @@ export default function BeneficiariesPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24 px-4 sm:px-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Saved Beneficiaries</h1>
-                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                        Manage your frequently used transfer accounts.
-                    </p>
-                </div>
-                <Button asChild className="shrink-0">
-                    <Link href="/pay/transfer">
-                        <Plus className="mr-2 h-4 w-4" /> Add New Transfer
-                    </Link>
-                </Button>
-            </div>
+        <div className="space-y-6 pb-16">
+            <BankPageHeader
+                badge={`${activeScope.name} · Transfer Contacts`}
+                livePill={`${beneficiaries.length} Saved Contact${beneficiaries.length === 1 ? "" : "s"}`}
+                liveTone="emerald"
+                title="Saved Beneficiaries"
+                subtitle="Manage verified NUBAN transfer recipients for instant one-click selection inside your Fund Transfer Desk."
+                actions={
+                    <Button asChild size="sm" className="h-9 rounded-xl font-black text-xs gap-1.5">
+                        <Link href="/client-dashboard/transfers">
+                            <Plus className="h-3.5 w-3.5" /> New Transfer
+                        </Link>
+                    </Button>
+                }
+            />
 
             <Card className="border shadow-sm">
                 <CardHeader className="border-b bg-muted/20 pb-4">

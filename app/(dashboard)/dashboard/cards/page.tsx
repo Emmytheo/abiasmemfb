@@ -142,27 +142,22 @@ export default function CardsAdminPage() {
                 }
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="bg-card p-5 rounded-2xl border">
-                    <CreditCard className="h-5 w-5 text-primary mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Total Issued Cards</p>
-                    <p className="text-3xl font-black mt-1">{cards.length}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <CheckCircle className="h-5 w-5 text-emerald-500 mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Active Cards</p>
-                    <p className="text-3xl font-black mt-1">{totalActive}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <Lock className="h-5 w-5 text-destructive mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Security Frozen</p>
-                    <p className="text-3xl font-black mt-1">{totalFrozen}</p>
-                </div>
-                <div className="bg-card p-5 rounded-2xl border">
-                    <Sliders className="h-5 w-5 text-blue-500 mb-3" />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">Avg Daily POS Limit</p>
-                    <p className="text-3xl font-black mt-1">₦{(avgPosLimit / 100).toLocaleString()}</p>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    { label: "Total Issued Cards", val: String(cards.length), sub: "Physical & virtual fleet", icon: CreditCard, tone: "bg-primary/10 text-primary" },
+                    { label: "Active Cards", val: String(totalActive), sub: "Authorized on switch", icon: CheckCircle, tone: "bg-emerald-500/10 text-emerald-600" },
+                    { label: "Security Frozen", val: String(totalFrozen), sub: "Blocked from POS/Web/ATM", icon: Lock, tone: totalFrozen > 0 ? "bg-rose-500/10 text-rose-600" : "bg-muted text-muted-foreground" },
+                    { label: "Avg Daily POS Limit", val: `₦${(avgPosLimit / 100).toLocaleString()}`, sub: "Channel spending cap", icon: Sliders, tone: "bg-blue-500/10 text-blue-600" },
+                ].map((k, idx) => (
+                    <div key={idx} className="bg-card border border-border/80 rounded-3xl p-5 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{k.label}</span>
+                            <div className={`p-2 rounded-xl ${k.tone}`}><k.icon className="h-4 w-4" /></div>
+                        </div>
+                        <p className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums-fintech">{k.val}</p>
+                        <p className="text-[11px] font-medium text-muted-foreground">{k.sub}</p>
+                    </div>
+                ))}
             </div>
 
             <div className="bg-card border rounded-2xl p-6 space-y-4">

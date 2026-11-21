@@ -229,6 +229,33 @@ export async function POST(req: NextRequest) {
             }
         })
 
+        // Post balanced Double-Entry GL journal for POS 70/30 commission split
+        try {
+            const { postBalancedGlJournal } = await import("@/lib/banking/gl-engine")
+            if (totalFeeKobo > 0) {
+                await postBalancedGlJournal({
+                    narration: `POS Agency Commission Split (${ref}) · Terminal ${terminal.serial_number}`,
+                    sourceModule: "agency_pos",
+                    sourceRef: ref,
+                    actorId: auth.userId,
+                    actorEmail: auth.email,
+                    ipAddress: auth.ipAddress,
+                    lines: [
+                        { glCode: "2000", side: "debit", amountKobo: totalFeeKobo, narration: `Cardholder POS fee debit (${ref})` },
+                        { glCode: "4000", side: "credit", amountKobo: totalFeeKobo, narration: `Gross POS fee income (${ref})` },
+                        ...(agentShareKobo > 0
+                            ? [
+                                  { glCode: "5000", side: "debit" as const, amountKobo: agentShareKobo, narration: `70% POS agent commission expense (${terminal.serial_number})` },
+                                  { glCode: "2000", side: "credit" as const, amountKobo: agentShareKobo, narration: `Agent float commission credit (${terminal.serial_number})` },
+                              ]
+                            : []),
+                    ],
+                })
+            }
+        } catch (glErr: any) {
+            console.warn("[POS Cashout] GL posting warning:", glErr.message)
+        }
+
         await writeBankAuditLog({
             actorId: auth.userId,
             actorEmail: auth.email,

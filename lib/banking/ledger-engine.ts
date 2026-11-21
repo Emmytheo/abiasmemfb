@@ -438,6 +438,44 @@ export async function executeAtomicTransfer(
         }
     })
 
+    // Post balanced Double-Entry GL journal for outward interbank transfers & NIP fee income
+    try {
+        const { postBalancedGlJournal } = await import("@/lib/banking/gl-engine")
+        if (params.transferType !== "internal") {
+            const lines: Array<{ glCode: string; side: "debit" | "credit"; amountKobo: number; narration?: string }> = [
+                { glCode: "2000", side: "debit", amountKobo: totalDebitKobo, narration: `Outward ${params.transferType.toUpperCase()} debit (${txResult.sourceAccountNumber})` },
+                { glCode: "1000", side: "credit", amountKobo: amountKobo, narration: `NIBSS outward settlement to ${destAccountClean} (${bankCode})` },
+            ]
+            if (feeKobo > 0) {
+                lines.push({ glCode: "4000", side: "credit", amountKobo: feeKobo, narration: `NIP transfer commission (${txResult.reference})` })
+            }
+            await postBalancedGlJournal({
+                narration: `Interbank Transfer ${txResult.reference} to ${destAccountClean}`,
+                sourceModule: "transfers",
+                sourceRef: txResult.reference,
+                actorId: params.actorUserId,
+                actorEmail: params.actorEmail,
+                ipAddress: params.ipAddress,
+                lines,
+            })
+        } else if (feeKobo > 0) {
+            await postBalancedGlJournal({
+                narration: `Intra-Bank Transfer Fee ${txResult.reference}`,
+                sourceModule: "transfers",
+                sourceRef: txResult.reference,
+                actorId: params.actorUserId,
+                actorEmail: params.actorEmail,
+                ipAddress: params.ipAddress,
+                lines: [
+                    { glCode: "2000", side: "debit", amountKobo: feeKobo, narration: `Transfer fee debit (${txResult.sourceAccountNumber})` },
+                    { glCode: "4000", side: "credit", amountKobo: feeKobo, narration: `Transfer fee income (${txResult.reference})` },
+                ],
+            })
+        }
+    } catch (glErr: any) {
+        console.warn("[Ledger Engine] Transfer GL posting warning:", glErr.message)
+    }
+
     await writeBankAuditLog({
         actorId: params.actorUserId,
         actorEmail: params.actorEmail,
@@ -557,6 +595,33 @@ export async function executeTellerPosting(params: {
         }
     })
 
+    // Post strictly balanced Double-Entry GL journal for Teller Cash-In / Cash-Out
+    let glJournalRef: string | null = null
+    try {
+        const { postBalancedGlJournal } = await import("@/lib/banking/gl-engine")
+        const glRes = await postBalancedGlJournal({
+            narration: `${params.direction === "credit" ? "Teller Cash-In" : "Teller Cash-Out"} · ${result.accountNumber} (${params.narration})`,
+            sourceModule: "teller",
+            sourceRef: result.reference,
+            actorId: params.actorId,
+            actorEmail: params.actorEmail,
+            ipAddress: params.ipAddress,
+            lines:
+                params.direction === "credit"
+                    ? [
+                          { glCode: "1000", side: "debit", amountKobo, narration: `Vault cash / clearing inflow (${result.reference})` },
+                          { glCode: "2000", side: "credit", amountKobo, narration: `Customer deposit credit (${result.accountNumber})` },
+                      ]
+                    : [
+                          { glCode: "2000", side: "debit", amountKobo, narration: `Customer withdrawal debit (${result.accountNumber})` },
+                          { glCode: "1000", side: "credit", amountKobo, narration: `Vault cash / clearing outflow (${result.reference})` },
+                      ],
+        })
+        glJournalRef = glRes.journalRef
+    } catch (glErr: any) {
+        console.warn("[Ledger Engine] Teller GL posting warning:", glErr.message)
+    }
+
     await writeBankAuditLog({
         actorId: params.actorId,
         actorEmail: params.actorEmail,
@@ -568,9 +633,200 @@ export async function executeTellerPosting(params: {
         status: "success",
         ipAddress: params.ipAddress,
         beforeState: { balance_kobo: result.previousBalanceKobo },
-        afterState: { balance_kobo: result.newBalanceKobo, reference: result.reference },
+        afterState: { balance_kobo: result.newBalanceKobo, reference: result.reference, gl_journal_ref: glJournalRef },
         metadata: { narration: params.narration, ...(params.metadata || {}) },
     })
 
-    return result
+    return { ...result, glJournalRef }
+}
+
+/**
+ * Atomic Transaction Reversal: reverses a settled transaction's balance impact,
+ * inserts an offsetting REV_ transaction leg, marks the original transaction 'reversed',
+ * and posts a reversing Double-Entry GL journal.
+ */
+export async function executeTransactionReversal(params: {
+    actorId: string
+    actorEmail: string
+    actorRole: string
+    ipAddress?: string
+    transactionId: number
+    reason: string
+}) {
+    await ensureBankSuiteOperationalTables()
+    const cleanReason = String(params.reason || "").trim() || "Administrative reversal"
+
+    const revResult = await withBankSuiteTransaction(async (client) => {
+        const txRes = await client.query(
+            `SELECT * FROM public.transactions WHERE id = $1 FOR UPDATE`,
+            [Number(params.transactionId)]
+        )
+        const tx = txRes.rows[0]
+        if (!tx) throw new Error("Transaction not found.")
+        if (tx.status === "reversed") throw new Error("Transaction has already been reversed.")
+        if (tx.status !== "successful") {
+            throw new Error(`Only successful transactions can be reversed (current status: ${tx.status}).`)
+        }
+        if (String(tx.reference || "").startsWith("REV_")) {
+            throw new Error("Reversal legs cannot be reversed again.")
+        }
+
+        const amountKobo = Math.round(Number(tx.amount || 0))
+        if (amountKobo <= 0) throw new Error("Transaction amount is invalid for reversal.")
+
+        const fromId = tx.from_account_id ? Number(tx.from_account_id) : null
+        const toId = tx.to_account_id ? Number(tx.to_account_id) : null
+        const lockIds = Array.from(new Set([fromId, toId].filter((v): v is number => v !== null))).sort((a, b) => a - b)
+
+        const accMap = new Map<number, any>()
+        if (lockIds.length > 0) {
+            const accRows = await client.query(
+                `SELECT id, account_number, balance, user_id, customer_id FROM public.accounts WHERE id = ANY($1::int[]) ORDER BY id ASC FOR UPDATE`,
+                [lockIds]
+            )
+            for (const row of accRows.rows) accMap.set(Number(row.id), row)
+        }
+
+        let balanceAfter = 0
+        let primaryAccId: number | null = fromId || toId
+
+        // Restore debited source account (if any)
+        if (fromId && accMap.has(fromId)) {
+            const src = accMap.get(fromId)
+            const nextBal = Number(src.balance || 0) + amountKobo
+            await client.query(
+                `UPDATE public.accounts SET balance = $1, last_transaction_at = NOW(), updated_at = NOW() WHERE id = $2`,
+                [nextBal, fromId]
+            )
+            balanceAfter = nextBal
+            primaryAccId = fromId
+        }
+
+        // Claw back credited destination account (if any)
+        if (toId && accMap.has(toId)) {
+            const dst = accMap.get(toId)
+            const dstBal = Number(dst.balance || 0)
+            if (dstBal < amountKobo) {
+                throw new Error(
+                    `Cannot reverse: destination account ${dst.account_number} has insufficient balance (₦${(dstBal / 100).toLocaleString()}).`
+                )
+            }
+            const nextDstBal = dstBal - amountKobo
+            await client.query(
+                `UPDATE public.accounts SET balance = $1, last_transaction_at = NOW(), updated_at = NOW() WHERE id = $2`,
+                [nextDstBal, toId]
+            )
+            if (!fromId) {
+                balanceAfter = nextDstBal
+                primaryAccId = toId
+            }
+        }
+
+        const revRef = `REV_${tx.reference}_${crypto.randomBytes(2).toString("hex").toUpperCase()}`
+        await client.query(
+            `UPDATE public.transactions
+             SET status = 'reversed',
+                 metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+                 updated_at = NOW()
+             WHERE id = $2`,
+            [
+                JSON.stringify({
+                    reversed_at: new Date().toISOString(),
+                    reversed_by: params.actorEmail,
+                    reversal_reason: cleanReason,
+                    reversal_reference: revRef,
+                }),
+                tx.id,
+            ]
+        )
+
+        const revType = fromId ? "credit" : "debit"
+        const revInsert = await client.query(
+            `INSERT INTO public.transactions (
+                reference, type, amount, currency, from_account_id, to_account_id,
+                status, narration, channel, balance_after, date, metadata, customer_id, user_id,
+                created_at, updated_at
+             ) VALUES (
+                $1, $2, $3, 'NGN', $4, $5,
+                'successful', $6, 'admin', $7, NOW(), $8::jsonb, $9, $10,
+                NOW(), NOW()
+             ) RETURNING id`,
+            [
+                revRef,
+                revType,
+                amountKobo,
+                toId,
+                fromId,
+                `REVERSAL (${tx.reference}): ${cleanReason}`,
+                balanceAfter,
+                JSON.stringify({
+                    original_transaction_id: tx.id,
+                    original_reference: tx.reference,
+                    reversal_reason: cleanReason,
+                    reversed_by: params.actorEmail,
+                }),
+                tx.customer_id || null,
+                tx.user_id || params.actorId,
+            ]
+        )
+
+        return {
+            reversalTransactionId: Number(revInsert.rows[0].id),
+            reversalReference: revRef,
+            originalReference: tx.reference,
+            originalType: tx.type,
+            amountKobo,
+            fromId,
+            toId,
+            primaryAccId,
+        }
+    })
+
+    // Post reversing Double-Entry GL journal when reversal changes net external cash/deposit position
+    let glJournalRef: string | null = null
+    try {
+        const { postBalancedGlJournal } = await import("@/lib/banking/gl-engine")
+        if ((revResult.fromId && !revResult.toId) || (!revResult.fromId && revResult.toId)) {
+            const lines = revResult.fromId
+                ? [
+                      { glCode: "1000", side: "debit" as const, amountKobo: revResult.amountKobo, narration: `Reversal cash restoration (${revResult.originalReference})` },
+                      { glCode: "2000", side: "credit" as const, amountKobo: revResult.amountKobo, narration: `Customer credit reversal (${revResult.reversalReference})` },
+                  ]
+                : [
+                      { glCode: "2000", side: "debit" as const, amountKobo: revResult.amountKobo, narration: `Customer deposit clawback (${revResult.reversalReference})` },
+                      { glCode: "1000", side: "credit" as const, amountKobo: revResult.amountKobo, narration: `Reversal cash offset (${revResult.originalReference})` },
+                  ]
+            const glRes = await postBalancedGlJournal({
+                narration: `Transaction Reversal ${revResult.reversalReference} (${cleanReason})`,
+                sourceModule: "reversal",
+                sourceRef: revResult.reversalReference,
+                actorId: params.actorId,
+                actorEmail: params.actorEmail,
+                ipAddress: params.ipAddress,
+                lines,
+            })
+            glJournalRef = glRes.journalRef
+        }
+    } catch (glErr: any) {
+        console.warn("[Ledger Engine] Reversal GL warning:", glErr.message)
+    }
+
+    await writeBankAuditLog({
+        actorId: params.actorId,
+        actorEmail: params.actorEmail,
+        actorRole: params.actorRole,
+        action: "transaction.reversed",
+        entityType: "transaction",
+        entityId: params.transactionId,
+        amountKobo: revResult.amountKobo,
+        status: "success",
+        ipAddress: params.ipAddress,
+        afterState: {
+            reversal_reference: revResult.reversalReference,
+            reason: cleanReason,
+            gl_journal_ref: glJournalRef,
+        },
+    })
+
+    return { ...revResult, glJournalRef }
 }

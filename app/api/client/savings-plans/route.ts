@@ -156,6 +156,34 @@ export async function PATCH(req: NextRequest) {
                 }
             })
 
+            // Post balanced Double-Entry GL journal between GL 2000 (CASA) and GL 2200 (Target Savings Vaults)
+            try {
+                const { postBalancedGlJournal } = await import("@/lib/banking/gl-engine")
+                await postBalancedGlJournal({
+                    narration:
+                        action === "topup"
+                            ? `Target Vault Deposit: ${result.plan.name}`
+                            : `Target Vault Liquidation: ${result.plan.name}`,
+                    sourceModule: "target_vaults",
+                    sourceRef: `SAV_PLAN_${id}_${Date.now()}`,
+                    actorId: auth.userId,
+                    actorEmail: auth.email,
+                    ipAddress: auth.ipAddress,
+                    lines:
+                        action === "topup"
+                            ? [
+                                  { glCode: "2000", side: "debit", amountKobo: result.amountKobo, narration: `CASA debit for vault lock (${result.plan.name})` },
+                                  { glCode: "2200", side: "credit", amountKobo: result.amountKobo, narration: `Target vault custody credit (${result.plan.name})` },
+                              ]
+                            : [
+                                  { glCode: "2200", side: "debit", amountKobo: result.amountKobo, narration: `Target vault release (${result.plan.name})` },
+                                  { glCode: "2000", side: "credit", amountKobo: result.amountKobo, narration: `CASA credit from vault liquidation (${result.plan.name})` },
+                              ],
+                })
+            } catch (glErr: any) {
+                console.warn("[Target Vaults] GL posting warning:", glErr.message)
+            }
+
             await writeBankAuditLog({
                 actorId: auth.userId,
                 actorEmail: auth.email,

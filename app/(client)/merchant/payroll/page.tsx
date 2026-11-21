@@ -19,6 +19,7 @@ import { useScope } from "@/context/scope-context"
 import { useBankProfile } from "@/context/bank-profile-context"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { BankPageHeader } from "@/components/banking/page-header"
 
 interface PayrollRow {
     id: string
@@ -187,27 +188,25 @@ export default function MerchantPayrollPage() {
     const allPaid = rows.length > 0 && rows.every((r) => r.status === "paid")
 
     return (
-        <div className="p-2 md:p-8 space-y-8 max-w-6xl mx-auto">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <Badge variant="outline" className="uppercase text-[10px] tracking-widest mb-2">
-                        Corporate HR & Atomic Disbursement
-                    </Badge>
-                    <h1 className="text-3xl md:text-4xl font-black tracking-tight">Bulk Payroll Engine</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Upload a real CSV schedule or add staff below to execute atomic corporate salary disbursements.
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={downloadCsvTemplate} className="rounded-xl font-bold">
-                        <Download className="mr-2 h-4 w-4" /> CSV Template
-                    </Button>
-                    <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvFileChange} />
-                    <Button onClick={() => fileRef.current?.click()} className="rounded-xl font-black">
-                        <Upload className="mr-2 h-4 w-4" /> Upload CSV
-                    </Button>
-                </div>
-            </header>
+        <div className="space-y-6 pb-12">
+            <BankPageHeader
+                badge="Corporate HR & Atomic Disbursement"
+                livePill={`${rows.length} Staff Queued`}
+                liveTone="emerald"
+                title="Bulk Payroll Engine"
+                subtitle="Upload a CSV payroll schedule or build recipient lines manually to execute atomic multi-bank salary disbursements with audit receipts."
+                actions={
+                    <>
+                        <Button variant="outline" size="sm" onClick={downloadCsvTemplate} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <Download className="h-3.5 w-3.5" /> CSV Template
+                        </Button>
+                        <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvFileChange} />
+                        <Button size="sm" onClick={() => fileRef.current?.click()} className="h-9 rounded-xl font-black text-xs gap-1.5">
+                            <Upload className="h-3.5 w-3.5" /> Upload CSV
+                        </Button>
+                    </>
+                }
+            />
 
             {/* Funding Account & Batch Config */}
             <Card className="p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">

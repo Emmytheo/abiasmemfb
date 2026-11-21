@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdminUser } from "@/lib/auth/server-guard"
-import { queryBankSuite } from "@/lib/banking/db-pool"
+import { ensureBankSuiteOperationalTables, queryBankSuite } from "@/lib/banking/db-pool"
 import { writeBankAuditLog } from "@/lib/banking/ledger-engine"
 
 export const dynamic = "force-dynamic"
@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
     if (auth instanceof NextResponse) return auth
 
     try {
-        const [coopsRes, cyclesRes, membersRes, payoutsRes] = await Promise.all([
+        await ensureBankSuiteOperationalTables()
+        const [coopsRes, cyclesRes, membersRes, payoutsRes, vaultsRes] = await Promise.all([
             queryBankSuite(`
                 SELECT c.id, c.name, c.description, c.status, c.sector, c.cooperative_type,
                        c.state, c.registration_number, c.created_at,
@@ -49,6 +50,15 @@ export async function GET(req: NextRequest) {
                 ORDER BY p.created_at DESC
                 LIMIT 100
             `),
+            queryBankSuite(`
+                SELECT p.*,
+                       COALESCE(NULLIF(TRIM(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')), ''), c.email, p.user_id) AS holder_name,
+                       c.email AS holder_email
+                FROM public.banksuite_personal_savings_plans p
+                LEFT JOIN public.customers c ON c.supabase_id = p.user_id
+                ORDER BY p.created_at DESC
+                LIMIT 150
+            `),
         ])
 
         const membersByCycle: Record<string, any[]> = {}
@@ -64,6 +74,7 @@ export async function GET(req: NextRequest) {
             cycles: cyclesRes.rows,
             membersByCycle,
             payouts: payoutsRes.rows,
+            personalSavingsPlans: vaultsRes.rows,
         })
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 })

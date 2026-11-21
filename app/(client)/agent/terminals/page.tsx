@@ -23,6 +23,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { BankPageHeader } from "@/components/banking/page-header"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 
@@ -88,31 +89,24 @@ export default function AgentTerminalsPage() {
             .reduce((sum, c) => sum + Number(c.transaction_amount || 0), 0) / 100
 
     return (
-        <div className="p-4 md:p-10 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-500">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-1">
-                        <p className="text-xs font-bold uppercase tracking-widest text-primary/70">Hardware Management</p>
-                        <Badge variant="outline" className="uppercase text-[10px] tracking-widest bg-primary/5">
-                            {terminals.length} Registered
-                        </Badge>
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-1">POS Terminals</h1>
-                    <p className="text-muted-foreground mt-2 max-w-xl">
-                        Live hardware registry synced from the core agency ledger. Track volumes and request new POS devices.
-                    </p>
-                </div>
-
-                <div className="flex gap-3">
-                    <Button variant="outline" onClick={loadTerminals} className="h-11 font-bold gap-2">
-                        <RefreshCw className="h-4 w-4" /> Refresh
-                    </Button>
-                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="h-11 font-black shadow-lg">
-                                <PlusCircle className="mr-2 h-4 w-4" /> Request New POS
-                            </Button>
-                        </DialogTrigger>
+        <div className="space-y-6 pb-12">
+            <BankPageHeader
+                badge="POS Agency Hardware Registry"
+                livePill={`${terminals.length} Registered Terminal${terminals.length === 1 ? "" : "s"}`}
+                liveTone="emerald"
+                title="POS Terminals & Hardware"
+                subtitle="Live hardware registry synced from the core agency ledger. Track volumes, terminal status, and request new POS devices."
+                actions={
+                    <>
+                        <Button variant="outline" size="sm" onClick={loadTerminals} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                        </Button>
+                        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" className="h-9 rounded-xl font-black text-xs gap-1.5">
+                                    <PlusCircle className="h-3.5 w-3.5" /> Request New POS
+                                </Button>
+                            </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Hardware Request</DialogTitle>
@@ -155,8 +149,9 @@ export default function AgentTerminalsPage() {
                             </form>
                         </DialogContent>
                     </Dialog>
-                </div>
-            </header>
+                    </>
+                }
+            />
 
             {loading ? (
                 <div className="py-16 flex justify-center">

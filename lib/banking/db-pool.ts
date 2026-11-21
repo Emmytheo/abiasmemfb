@@ -349,6 +349,27 @@ export async function ensureBankSuiteOperationalTables(): Promise<void> {
                 notes TEXT,
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
+
+            -- 5. End-of-Day (EOD) Close-of-Business Batch Run Registry
+            CREATE TABLE IF NOT EXISTS public.banksuite_eod_runs (
+                id BIGSERIAL PRIMARY KEY,
+                run_ref TEXT NOT NULL UNIQUE,
+                run_type TEXT NOT NULL DEFAULT 'full_eod', -- full_eod | gl_sync
+                actor_email TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'completed',
+                gl_journals_posted INTEGER NOT NULL DEFAULT 0,
+                gl_synced_kobo BIGINT NOT NULL DEFAULT 0,
+                interest_accrued_kobo BIGINT NOT NULL DEFAULT 0,
+                vaults_credited INTEGER NOT NULL DEFAULT 0,
+                standing_orders_executed INTEGER NOT NULL DEFAULT 0,
+                loans_scanned INTEGER NOT NULL DEFAULT 0,
+                overdue_loans_tagged INTEGER NOT NULL DEFAULT 0,
+                cbn_provision_required_kobo BIGINT NOT NULL DEFAULT 0,
+                trial_balance_balanced BOOLEAN NOT NULL DEFAULT TRUE,
+                summary JSONB DEFAULT '{}'::jsonb,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_bs_eod_created ON public.banksuite_eod_runs (created_at DESC);
         `)
         g.__banksuiteOpsTablesReady = true
     })().finally(() => {

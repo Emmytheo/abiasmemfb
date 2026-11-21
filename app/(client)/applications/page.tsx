@@ -6,8 +6,9 @@ import { api } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { ProductApplication, ProductType } from "@/lib/api/types";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileText, ArrowRight, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, FileText, ArrowRight, Clock, CheckCircle2, XCircle, Plus } from "lucide-react";
 import { useScope } from "@/context/scope-context";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 export default function MyApplicationsPage() {
     const [applications, setApplications] = useState<ProductApplication[]>([]);
@@ -37,26 +38,8 @@ export default function MyApplicationsPage() {
                         } catch { /* ignore */ }
                     })
                 );
-                // Apply Scope Filtering
-                let filteredApps = apps;
-                if (activeScope.type === 'business') {
-                    filteredApps = apps.filter(a => {
-                        const pName = products[a.product_type_id]?.name.toLowerCase() || '';
-                        return pName.includes('corporate') || pName.includes('business') || pName.includes('sme');
-                    });
-                } else if (activeScope.type === 'coop') {
-                    filteredApps = apps.filter(a => {
-                        const pName = products[a.product_type_id]?.name.toLowerCase() || '';
-                        return pName.includes('union') || pName.includes('coop');
-                    });
-                } else {
-                    filteredApps = apps.filter(a => {
-                        const pName = products[a.product_type_id]?.name.toLowerCase() || '';
-                        return !pName.includes('corporate') && !pName.includes('business') && !pName.includes('sme') && !pName.includes('union') && !pName.includes('coop');
-                    });
-                }
-
-                setApplications(filteredApps);
+                setProductMap(products);
+                setApplications(apps);
             } finally {
                 setLoading(false);
             }
@@ -92,23 +75,35 @@ export default function MyApplicationsPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-4 md:p-10 space-y-8 animate-in fade-in duration-500">
-            <div>
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">My Applications</h1>
-                <p className="text-muted-foreground mt-1">Track the status of all your product applications.</p>
-            </div>
+        <div className="space-y-6 pb-12">
+            <BankPageHeader
+                badge={`${activeScope.name} · Origination Tracker`}
+                livePill={`${applications.length} Application${applications.length === 1 ? "" : "s"}`}
+                liveTone="emerald"
+                title="My Product Applications"
+                subtitle="Track real-time underwriting, NUBAN provisioning, and credit facility disbursement stages across all your requests."
+                actions={
+                    <>
+                        <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <Link href="/explore/accounts"><Plus className="h-3.5 w-3.5" /> Open Account</Link>
+                        </Button>
+                        <Button asChild size="sm" className="h-9 rounded-xl font-black text-xs gap-1.5">
+                            <Link href="/explore/loans"><Plus className="h-3.5 w-3.5" /> Apply for Loan</Link>
+                        </Button>
+                    </>
+                }
+            />
 
             {applications.length === 0 ? (
-                <div className="text-center py-24 border rounded-3xl bg-card relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-                    <div className="relative z-10 flex flex-col items-center">
-                        <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mb-6 shadow-inner border border-primary/10">
-                            <FileText className="h-10 w-10 text-primary/60" />
+                <div className="text-center py-20 border border-border/80 rounded-3xl bg-card">
+                    <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+                            <FileText className="h-8 w-8 text-primary" />
                         </div>
-                        <h3 className="text-xl font-bold mb-2">No Applications Yet</h3>
-                        <p className="text-sm text-muted-foreground mb-8 max-w-sm mx-auto">You haven&apos;t applied for any products yet. Explore our offerings to get started.</p>
-                        <Button asChild className="h-11 px-8 rounded-full shadow-lg shadow-primary/20">
-                            <Link href="/explore">Explore Products</Link>
+                        <h3 className="text-lg font-black mb-1">No Applications Yet</h3>
+                        <p className="text-xs text-muted-foreground mb-6 max-w-sm mx-auto">Apply for a Savings, Current, or Credit Facility to track underwriting live.</p>
+                        <Button asChild className="h-10 px-6 rounded-xl font-black text-xs">
+                            <Link href="/explore/accounts">Explore Accounts</Link>
                         </Button>
                     </div>
                 </div>

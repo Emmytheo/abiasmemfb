@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { useScope } from "@/context/scope-context"
 import { useBankProfile } from "@/context/bank-profile-context"
+import { BankPageHeader } from "@/components/banking/page-header"
 
 interface ApiKey {
     id: string
@@ -230,32 +231,32 @@ export default function MerchantClientPage() {
         .reduce((sum, ch) => sum + Number(ch.amount || 0), 0)
 
     return (
-        <div className="space-y-8 pb-12 max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-                        Merchant Payments Console
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1 font-medium">
-                        Manage cryptographic API keys, signed webhook endpoints, and live {activeProfile.internalPayBrand} checkout settlements.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={loadMerchantData} className="rounded-xl h-11 font-bold gap-2">
-                        <RefreshCw className="h-4 w-4" /> Refresh
-                    </Button>
-                    <Button
-                        disabled={!profile}
-                        onClick={() => {
-                            setSimulatedCheckoutState("init")
-                            setShowCheckoutSimulator(true)
-                        }}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl px-5 h-11 shadow-lg flex items-center gap-2"
-                    >
-                        <Sliders className="h-5 w-5" /> Test Live Checkout
-                    </Button>
-                </div>
-            </div>
+        <div className="space-y-6 pb-12">
+            <BankPageHeader
+                badge={`${activeScope.name} · Developer Payment Gateway`}
+                livePill={profile?.is_verified ? "KYB Verified Active" : profile ? "Pending KYB" : "Setup Required"}
+                liveTone={profile?.is_verified ? "emerald" : "amber"}
+                title="Merchant Payments Console"
+                subtitle={`Manage cryptographic API keys, signed webhook endpoints, and live ${activeProfile.internalPayBrand} checkout settlements.`}
+                actions={
+                    <>
+                        <Button variant="outline" size="sm" onClick={loadMerchantData} className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                        </Button>
+                        <Button
+                            size="sm"
+                            disabled={!profile}
+                            onClick={() => {
+                                setSimulatedCheckoutState("init")
+                                setShowCheckoutSimulator(true)
+                            }}
+                            className="h-9 rounded-xl font-black text-xs gap-1.5"
+                        >
+                            <Sliders className="h-3.5 w-3.5" /> Test Live Checkout
+                        </Button>
+                    </>
+                }
+            />
 
             {/* KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

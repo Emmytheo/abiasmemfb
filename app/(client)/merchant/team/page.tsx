@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useScope } from "@/context/scope-context"
 import { toast } from "sonner"
+import { BankPageHeader } from "@/components/banking/page-header"
 import {
     Dialog,
     DialogContent,
@@ -121,24 +122,20 @@ export default function MerchantTeamPage() {
     )
 
     return (
-        <div className="p-2 md:p-8 space-y-8 max-w-6xl mx-auto">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <Badge variant="outline" className="uppercase text-[10px] tracking-widest mb-2">
-                        Corporate Access Control
-                    </Badge>
-                    <h1 className="text-3xl md:text-4xl font-black tracking-tight">Team Directory</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Invite personnel, assign RBAC roles, and revoke corporate ledger access.
-                    </p>
-                </div>
-
-                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="h-11 rounded-xl font-black">
-                            <UserPlus className="mr-2 h-4 w-4" /> Invite Member
-                        </Button>
-                    </DialogTrigger>
+        <div className="space-y-6 pb-12">
+            <BankPageHeader
+                badge="Corporate Access Control · RBAC"
+                livePill={`${members.length} Team Member${members.length === 1 ? "" : "s"}`}
+                liveTone="emerald"
+                title="Team Directory"
+                subtitle="Invite corporate finance officers, assign maker/checker roles, and revoke access in real time."
+                actions={
+                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="sm" className="h-9 rounded-xl font-black text-xs gap-1.5">
+                                <UserPlus className="h-3.5 w-3.5" /> Invite Member
+                            </Button>
+                        </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Invite to Corporate Account</DialogTitle>
@@ -169,7 +166,8 @@ export default function MerchantTeamPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
-            </header>
+                }
+            />
 
             <Card className="rounded-2xl overflow-hidden">
                 <CardHeader className="bg-muted/30 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">

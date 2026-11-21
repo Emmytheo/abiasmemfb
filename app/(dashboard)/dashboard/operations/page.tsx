@@ -18,6 +18,9 @@ import {
     ArrowDownLeft,
     BookOpen,
     PlusCircle,
+    Clock,
+    Play,
+    AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -26,7 +29,7 @@ import { toast } from "sonner"
 import { BankPageHeader } from "@/components/banking/page-header"
 import { CbnHealthGauge } from "@/components/banking/charts/bank-charts"
 
-type OpsTab = "teller" | "gl" | "funding" | "approvals" | "reconciliation" | "audit"
+type OpsTab = "teller" | "gl" | "eod" | "funding" | "approvals" | "reconciliation" | "audit"
 
 const fmtNaira = (kobo: number) => `₦${(Number(kobo || 0) / 100).toLocaleString()}`
 
@@ -34,7 +37,7 @@ function OperationsContent() {
     const searchParams = useSearchParams()
     const initialTab = (searchParams?.get("tab") as OpsTab) || "teller"
     const [activeTab, setActiveTab] = React.useState<OpsTab>(
-        ["teller", "gl", "funding", "approvals", "reconciliation", "audit"].includes(initialTab)
+        ["teller", "gl", "eod", "funding", "approvals", "reconciliation", "audit"].includes(initialTab)
             ? initialTab
             : "teller"
     )
@@ -44,6 +47,7 @@ function OperationsContent() {
     const [fundingRequests, setFundingRequests] = React.useState<any[]>([])
     const [approvals, setApprovals] = React.useState<any[]>([])
     const [treasury, setTreasury] = React.useState<any>(null)
+    const [eodData, setEodData] = React.useState<any>(null)
     const [recon, setRecon] = React.useState<any>(null)
     const [auditLogs, setAuditLogs] = React.useState<any[]>([])
     const [auditSearch, setAuditSearch] = React.useState("")
@@ -66,17 +70,19 @@ function OperationsContent() {
     const loadAll = React.useCallback(async () => {
         setLoading(true)
         try {
-            const [tellerRes, apprRes, auditRes, treasRes] = await Promise.all([
+            const [tellerRes, apprRes, auditRes, treasRes, eodRes] = await Promise.all([
                 fetch("/api/admin/teller", { cache: "no-store" }),
                 fetch("/api/admin/approvals", { cache: "no-store" }),
                 fetch("/api/admin/audit-logs?limit=150", { cache: "no-store" }),
                 fetch("/api/admin/treasury", { cache: "no-store" }),
+                fetch("/api/admin/eod", { cache: "no-store" }),
             ])
-            const [tellerData, apprData, auditData, treasData] = await Promise.all([
+            const [tellerData, apprData, auditData, treasData, eodJson] = await Promise.all([
                 tellerRes.json(),
                 apprRes.json(),
                 auditRes.json(),
                 treasRes.json(),
+                eodRes.json(),
             ])
             if (tellerData.success) {
                 setAccounts(tellerData.accounts || [])
@@ -89,12 +95,35 @@ function OperationsContent() {
             if (apprData.success) setApprovals(apprData.approvals || [])
             if (auditData.success) setAuditLogs(auditData.logs || [])
             if (treasData.success) setTreasury(treasData)
+            if (eodJson.success) setEodData(eodJson)
         } catch {
             toast.error("Failed to synchronize banking operations console")
         } finally {
             setLoading(false)
         }
     }, [selectedAccountId])
+
+    const handleRunEod = async (action: "sync_gl" | "run_eod") => {
+        setSubmitting(action)
+        try {
+            const res = await fetch("/api/admin/eod", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action }),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "EOD operation failed")
+                return
+            }
+            toast.success(data.message || "EOD batch completed!")
+            await loadAll()
+        } catch {
+            toast.error("Network error running EOD engine")
+        } finally {
+            setSubmitting(null)
+        }
+    }
 
     const runReconciliation = async () => {
         setSubmitting("recon")
@@ -301,6 +330,7 @@ function OperationsContent() {
                 {[
                     { key: "teller", label: "Teller & Controls", icon: Landmark },
                     { key: "gl", label: "GL & Balance Sheet", icon: BookOpen },
+                    { key: "eod", label: "EOD Close & Sync", icon: Clock },
                     { key: "funding", label: `Funding Queue (${pendingFundingCount})`, icon: ArrowDownLeft },
                     { key: "approvals", label: `Maker-Checker (${pendingApprovalsCount})`, icon: ShieldCheck },
                     { key: "reconciliation", label: "Trial Balance", icon: Scale },
@@ -739,6 +769,144 @@ function OperationsContent() {
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* 2B. END-OF-DAY (EOD) CLOSE-OF-BUSINESS & GL SUB-LEDGER SYNC */}
+                    {activeTab === "eod" && (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                <div className="lg:col-span-5 bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-5">
+                                    <div>
+                                        <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider border-emerald-500/30 text-emerald-600 bg-emerald-500/10 mb-2">
+                                            Core Banking Batch Engine
+                                        </Badge>
+                                        <h2 className="text-lg font-black text-foreground">End-of-Day (EOD) Close-of-Business</h2>
+                                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                                            Synchronizes live customer/loan/vault sub-ledgers into the Double-Entry GL, accrues daily APY interest on Target Vaults (DR 5000 / CR 2200), tags PAR-30/60/90 overdue loans for CBN provisioning, sweeps due Standing Orders, and certifies Trial Balance equality.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                        <div className="p-3.5 rounded-2xl bg-muted/40 border">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground">Trial Balance</p>
+                                            <p className={`text-sm font-black mt-1 ${eodData?.trialBalance?.balanced !== false ? "text-emerald-600" : "text-rose-600"}`}>
+                                                {eodData?.trialBalance?.balanced !== false ? "DR = CR Balanced" : "Variance Detected"}
+                                            </p>
+                                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                                {eodData?.trialBalance?.totalEntries || 0} journal lines
+                                            </p>
+                                        </div>
+                                        <div className="p-3.5 rounded-2xl bg-muted/40 border">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground">Sub-Ledger Sync</p>
+                                            <p className={`text-sm font-black mt-1 ${eodData?.variance?.inSync ? "text-emerald-600" : "text-amber-600"}`}>
+                                                {eodData?.variance?.inSync ? "100% Tied Out" : "True-Up Needed"}
+                                            </p>
+                                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                                Var: {fmtNaira(eodData?.variance?.totalAbsVarianceKobo || 0)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2.5">
+                                        <Button
+                                            onClick={() => handleRunEod("run_eod")}
+                                            disabled={submitting !== null}
+                                            className="w-full h-11 rounded-xl font-black text-xs gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        >
+                                            {submitting === "run_eod" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                                            Run Full EOD Close-of-Business Batch
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleRunEod("sync_gl")}
+                                            disabled={submitting !== null}
+                                            className="w-full h-10 rounded-xl font-bold text-xs gap-2"
+                                        >
+                                            {submitting === "sync_gl" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                                            Sync Sub-Ledgers to Double-Entry GL Only
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-7 bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-4">
+                                    <div>
+                                        <h2 className="text-base font-black text-foreground">GL Control Account vs Live Sub-Ledger Proof</h2>
+                                        <p className="text-xs text-muted-foreground">Real-time tie-out between PostgreSQL sub-ledgers and General Ledger control codes.</p>
+                                    </div>
+                                    <div className="space-y-2.5">
+                                        {(eodData?.variance?.variances || []).map((v: any) => {
+                                            const synced = Number(v.varianceKobo || 0) === 0
+                                            return (
+                                                <div key={v.glCode} className="p-4 rounded-2xl border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge variant="outline" className="font-mono font-black text-[10px]">GL {v.glCode}</Badge>
+                                                            <span className="font-bold text-foreground">{v.label}</span>
+                                                        </div>
+                                                        <p className="text-[11px] font-mono text-muted-foreground mt-1">
+                                                            GL Balance: {fmtNaira(v.glBalanceKobo)} · Sub-Ledger: {fmtNaira(v.subLedgerKobo)}
+                                                        </p>
+                                                    </div>
+                                                    <Badge
+                                                        variant={synced ? "default" : "outline"}
+                                                        className={`text-[10px] font-black uppercase w-fit ${
+                                                            synced ? "bg-emerald-600 text-white" : "border-amber-500/40 text-amber-600 bg-amber-500/10"
+                                                        }`}
+                                                    >
+                                                        {synced ? "In Sync" : `Δ ${fmtNaira(Math.abs(v.varianceKobo))}`}
+                                                    </Badge>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-sm space-y-4">
+                                <h2 className="text-base font-black text-foreground">EOD Close-of-Business Run History ({(eodData?.runs || []).length})</h2>
+                                {(eodData?.runs || []).length === 0 ? (
+                                    <p className="text-xs text-muted-foreground py-8 text-center">No EOD batch runs executed yet. Click &ldquo;Run Full EOD Close-of-Business Batch&rdquo; above to execute your first close.</p>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-xs">
+                                            <thead className="bg-muted/40 border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                <tr>
+                                                    <th className="px-3 py-2.5 font-black">Run Ref &amp; Time</th>
+                                                    <th className="px-3 py-2.5 font-black">Operator</th>
+                                                    <th className="px-3 py-2.5 font-black text-right">GL Synced</th>
+                                                    <th className="px-3 py-2.5 font-black text-right">Vault Interest</th>
+                                                    <th className="px-3 py-2.5 font-black text-right">Loans / PAR</th>
+                                                    <th className="px-3 py-2.5 font-black text-right">CBN Provision</th>
+                                                    <th className="px-3 py-2.5 font-black">Trial Balance</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/70">
+                                                {(eodData?.runs || []).map((r: any) => (
+                                                    <tr key={r.id} className="hover:bg-muted/20">
+                                                        <td className="px-3 py-2.5">
+                                                            <p className="font-mono font-bold text-foreground">{r.run_ref}</p>
+                                                            <p className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleString()}</p>
+                                                        </td>
+                                                        <td className="px-3 py-2.5">{r.actor_email}</td>
+                                                        <td className="px-3 py-2.5 text-right font-mono font-bold">{fmtNaira(r.gl_synced_kobo)}</td>
+                                                        <td className="px-3 py-2.5 text-right font-mono text-emerald-600 font-bold">{fmtNaira(r.interest_accrued_kobo)}</td>
+                                                        <td className="px-3 py-2.5 text-right font-mono">
+                                                            {r.loans_scanned} / <span className={r.overdue_loans_tagged > 0 ? "text-amber-600 font-bold" : ""}>{r.overdue_loans_tagged} PAR</span>
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-right font-mono font-bold">{fmtNaira(r.cbn_provision_required_kobo)}</td>
+                                                        <td className="px-3 py-2.5">
+                                                            <Badge variant={r.trial_balance_balanced ? "default" : "destructive"} className="text-[9px] uppercase font-black">
+                                                                {r.trial_balance_balanced ? "Balanced" : "Variance"}
+                                                            </Badge>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
