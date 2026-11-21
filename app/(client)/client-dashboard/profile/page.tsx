@@ -27,6 +27,7 @@ import { api, Customer, User as AuthUser } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { z } from "zod";
 import { useScope } from "@/context/scope-context";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 export default function ClientProfilePage() {
     const [isLoading, setIsLoading] = useState(true);
@@ -153,23 +154,20 @@ export default function ClientProfilePage() {
     }
 
     return (
-        <div className="mx-auto p-2 md:p-4 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <header>
-                <div className="flex items-center gap-3 mb-1">
-                    <p className="text-xs font-bold uppercase tracking-widest text-primary/70">
-                        {activeScope.type === 'business' ? 'Corporate Management' : activeScope.type === 'coop' ? 'Union Management' : 'Account Management'}
-                    </p>
-                    <Badge variant="outline" className="uppercase text-[10px] tracking-widest">{activeScope.type} Scope</Badge>
-                </div>
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-1">
-                    {activeScope.type === 'business' ? 'Business Profile' : activeScope.type === 'coop' ? 'Cooperative Profile' : 'Identity Profile'}
-                </h1>
-                <p className="text-muted-foreground mt-2 max-w-2xl">
-                    {activeScope.type === 'business' ? 'Manage your corporate entity data and compliance communications.' : 
-                     activeScope.type === 'coop' ? 'Manage your cooperative union data and member notifications.' :
-                     'Manage your personal identity data and security communications.'}
-                </p>
-            </header>
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <BankPageHeader
+                badge={activeScope.type === 'business' ? 'Corporate Management' : activeScope.type === 'coop' ? 'Union Management' : 'Account Management'}
+                livePill={`${activeScope.type.toUpperCase()} Scope`}
+                liveTone="primary"
+                title={activeScope.type === 'business' ? 'Business Profile' : activeScope.type === 'coop' ? 'Cooperative Profile' : 'Identity Profile'}
+                subtitle={
+                    activeScope.type === 'business'
+                        ? 'Manage your corporate entity data and compliance communications.'
+                        : activeScope.type === 'coop'
+                          ? 'Manage your cooperative union data and member notifications.'
+                          : 'Manage your personal identity data and security communications.'
+                }
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left: Form */}

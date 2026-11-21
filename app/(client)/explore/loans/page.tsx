@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building, Briefcase, CheckCircle2, Loader2 } from "lucide-react";
+import { Building, Briefcase, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import { ProductType } from "@/lib/api/types";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 export default function ExploreLoansPage() {
     const [products, setProducts] = useState<ProductType[]>([]);
@@ -28,11 +29,20 @@ export default function ExploreLoansPage() {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Explore Loans</h1>
-                <p className="text-muted-foreground mt-1">Get the financial support you need to achieve your goals.</p>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6 animate-in fade-in duration-500">
+            <BankPageHeader
+                badge="Credit Facilities"
+                livePill={`${products.length} Active Facilities`}
+                title="Explore Loans & Credit"
+                subtitle="Transparent SME working capital, salary advances, and cooperative-backed facilities underwritten in real time."
+                actions={
+                    <Button asChild variant="outline" size="sm" className="rounded-xl">
+                        <Link href="/my-loans">
+                            <ArrowLeft className="h-4 w-4 mr-1.5" /> My Loans
+                        </Link>
+                    </Button>
+                }
+            />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
                 {products.length === 0 ? (

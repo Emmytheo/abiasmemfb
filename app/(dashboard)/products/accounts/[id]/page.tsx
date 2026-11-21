@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 const formatNaira = (n: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(n);
 
@@ -73,22 +74,19 @@ function AdminAccountDetailContent({ params }: { params: Promise<{ id: string }>
         'border-emerald-500/30 bg-emerald-500/10 text-emerald-600';
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24 px-3">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
-                        <ArrowLeft className="h-5 w-5" />
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24 px-4 md:px-6 pt-6">
+            <BankPageHeader
+                badge={`Account Controls · ${account.account_type}`}
+                livePill={account.is_frozen ? 'Frozen' : account.pnd_enabled ? 'PND Active' : 'Active'}
+                liveTone={account.is_frozen ? 'rose' : account.pnd_enabled ? 'amber' : 'emerald'}
+                title={`NUBAN ${account.account_number}`}
+                subtitle={`Ledger source: ${account.source.toUpperCase()} · Opened ${new Date(account.created_at).toLocaleDateString()} · Real-time freeze, PND, tier upgrade & statement dispatch controls.`}
+                actions={
+                    <Button variant="outline" size="sm" onClick={() => router.back()} className="rounded-xl">
+                        <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Accounts
                     </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Account Detail</h1>
-                        <p className="text-muted-foreground font-mono text-sm">{account.account_number}</p>
-                    </div>
-                </div>
-                <div className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider border ${statusColor}`}>
-                    {account.is_frozen ? 'Frozen' : account.pnd_enabled ? 'PND Active' : 'Active'}
-                </div>
-            </div>
+                }
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main */}

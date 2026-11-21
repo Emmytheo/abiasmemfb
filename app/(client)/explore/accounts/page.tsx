@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Landmark, CheckCircle2, Loader2 } from "lucide-react";
+import { Landmark, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import { ProductType } from "@/lib/api/types";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 export default function ExploreAccountsPage() {
     const [products, setProducts] = useState<ProductType[]>([]);
@@ -28,11 +29,20 @@ export default function ExploreAccountsPage() {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Open an Account</h1>
-                <p className="text-muted-foreground mt-1">Discover high-yield savings and flexible business accounts.</p>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6 animate-in fade-in duration-500">
+            <BankPageHeader
+                badge="Deposit Catalogue"
+                livePill={`${products.length} Active Products`}
+                title="Open an Account"
+                subtitle="Discover NDIC-insured savings, high-yield target deposits, and flexible SME corporate accounts."
+                actions={
+                    <Button asChild variant="outline" size="sm" className="rounded-xl">
+                        <Link href="/my-accounts">
+                            <ArrowLeft className="h-4 w-4 mr-1.5" /> My Accounts
+                        </Link>
+                    </Button>
+                }
+            />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
                 {products.length === 0 ? (

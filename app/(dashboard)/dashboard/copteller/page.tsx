@@ -31,7 +31,7 @@ import { BankSideDrawer } from "@/components/banking/side-drawer"
 import { EcosystemRailCard } from "@/components/banking/ecosystem-rail-card"
 import { CbnHealthGauge } from "@/components/banking/charts/bank-charts"
 
-type BridgeTab = "escrow" | "settlements" | "underwriting" | "schemes" | "contracts" | "vault" | "audit"
+type BridgeTab = "escrow" | "console" | "settlements" | "underwriting" | "schemes" | "contracts" | "vault" | "audit"
 
 const fmtNaira = (kobo: number) => `₦${(Number(kobo || 0) / 100).toLocaleString()}`
 
@@ -62,6 +62,7 @@ function CoptellerCustodyContent() {
     // Interactive Cooperative Custody Drawer
     const [selectedCoop, setSelectedCoop] = React.useState<any | null>(null)
     const [sweepAmountNaira, setSweepAmountNaira] = React.useState("")
+    const [embedPath, setEmbedPath] = React.useState<string>("/copteller/admin?embed=1")
 
     React.useEffect(() => {
         const tab = searchParams?.get("tab")
@@ -69,7 +70,7 @@ function CoptellerCustodyContent() {
         else if (tab === "grants") setActiveTab("underwriting")
         else if (tab === "assets") setActiveTab("contracts")
         else if (tab === "compliance") setActiveTab("audit")
-        else if (tab && ["escrow", "settlements", "underwriting", "schemes", "contracts", "vault", "audit"].includes(tab)) {
+        else if (tab && ["escrow", "console", "settlements", "underwriting", "schemes", "contracts", "vault", "audit"].includes(tab)) {
             setActiveTab(tab as BridgeTab)
         }
     }, [searchParams])
@@ -167,11 +168,21 @@ function CoptellerCustodyContent() {
     return (
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6">
             <BankPageHeader
-                badge="Institutional BaaS & Escrow Custody"
-                livePill={health.connected ? `Live Rail · ${health.latencyMs}ms` : "Bridge Offline"}
-                liveTone={health.connected ? "emerald" : "rose"}
-                title="Copteller Custody & Settlement Rail"
-                subtitle="Provision CBN-regulated 3000XXXXXX Escrow Pool NUBANs for registered cooperatives, execute GL 2100 treasury sweeps, and underwrite telemetry-backed cooperative credit."
+                badge={`Optional Cooperative Submodule · ${
+                    health.mode === "http_bridge"
+                        ? "Decoupled HTTP Headless Rail"
+                        : health.mode === "direct_db"
+                          ? "Same-Cluster Direct DB + HTTP Ready"
+                          : "Standalone Mode (Unlinked)"
+                }`}
+                livePill={
+                    health.connected
+                        ? `${health.mode === "http_bridge" ? "HTTP Bridge" : "Live Rail"} · ${health.latencyMs}ms`
+                        : "Module Detached"
+                }
+                liveTone={health.connected ? "emerald" : "amber"}
+                title="Copteller Custody & Headless Cooperative Module"
+                subtitle="Modularly connect an independent Copteller Cooperative OS deployment to provision 3000XXXXXX Escrow NUBANs, settle GL 2100 sweeps, co-underwrite loans, and administer cooperatives headlessly — without reinventing Copteller inside BankSuite."
                 actions={
                     <>
                         <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
@@ -304,6 +315,7 @@ function CoptellerCustodyContent() {
             <div className="flex flex-wrap gap-1.5 bg-muted/60 p-1.5 rounded-2xl border border-border/70 w-fit">
                 {[
                     { key: "escrow", label: `Escrow Pools & Unions (${cooperatives.length})`, badge: pendingCoops },
+                    { key: "console", label: "Headless Cooperative Console" },
                     { key: "settlements", label: `Settlement Rail (${settlements.length})` },
                     { key: "underwriting", label: `Credit Telemetry (${loans.length})`, badge: pendingLoans },
                     { key: "schemes", label: `Schemes (${schemes.length})` },
@@ -330,6 +342,66 @@ function CoptellerCustodyContent() {
                     </button>
                 ))}
             </div>
+
+            {/* TAB 1B: HEADLESS COOPERATIVE CONSOLE (EMBEDDED SUBMODULE) */}
+            {activeTab === "console" && (
+                <div className="bg-card border border-border/80 rounded-3xl overflow-hidden shadow-sm">
+                    <div className="p-4 sm:p-5 border-b border-border/70 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-muted/20">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-black text-foreground">Embedded Copteller Headless Administration</h2>
+                                <Badge variant="outline" className="text-[9px] font-black uppercase border-emerald-500/30 text-emerald-600 bg-emerald-500/10">
+                                    Modular Submodule
+                                </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Administer Ajo thrift circles, Keke/transport member forms, union executives, and asset leases directly from the connected Copteller deployment ({health.appUrl || "Configure COPTELLER_BRIDGE_URL"}).
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {[
+                                { label: "Coop Overview", path: "/copteller/admin?embed=1" },
+                                { label: "Members", path: "/copteller/admin/members?embed=1" },
+                                { label: "Schemes", path: "/copteller/admin/schemes?embed=1" },
+                                { label: "Unions", path: "/copteller/superadmin/unions?embed=1" },
+                                { label: "Forms & Settings", path: "/copteller/admin/settings?embed=1" },
+                            ].map((r) => (
+                                <button
+                                    key={r.path}
+                                    type="button"
+                                    onClick={() => setEmbedPath(r.path)}
+                                    className={`px-2.5 py-1.5 rounded-xl text-[11px] font-black transition-all ${
+                                        embedPath === r.path
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "bg-background border border-border text-muted-foreground hover:text-foreground"
+                                    }`}
+                                >
+                                    {r.label}
+                                </button>
+                            ))}
+                            {health.appUrl && (
+                                <Button asChild size="sm" variant="outline" className="h-8 rounded-xl text-[11px] font-bold gap-1">
+                                    <a href={`${health.appUrl}${embedPath.replace("?embed=1", "")}`} target="_blank" rel="noopener noreferrer">
+                                        Pop Out <ArrowUpRight className="h-3 w-3" />
+                                    </a>
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                    {health.appUrl ? (
+                        <iframe
+                            src={`${health.appUrl}${embedPath}`}
+                            title="Copteller Headless Cooperative Administration"
+                            className="w-full h-[760px] border-0 bg-background"
+                        />
+                    ) : (
+                        <div className="p-12 text-center space-y-2 text-xs text-muted-foreground">
+                            <p className="font-black text-sm text-foreground">No Remote Copteller Submodule URL Configured</p>
+                            <p>Set <code className="font-mono px-1.5 py-0.5 rounded bg-muted">COPTELLER_BRIDGE_URL</code> and <code className="font-mono px-1.5 py-0.5 rounded bg-muted">COPTELLER_BRIDGE_SECRET</code> to attach an independent Copteller deployment.</p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* TAB 1: ESCROW POOLS & UNIONS (RAIL 1) */}
             {activeTab === "escrow" && (

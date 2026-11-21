@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useScope } from "@/context/scope-context"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { BankPageHeader } from "@/components/banking/page-header"
 
 export default function SettingsPage() {
     const { activeScope } = useScope()
@@ -102,17 +103,14 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="mx-auto p-2 md:p-8 space-y-8 max-w-5xl">
-            <header>
-                <div className="flex items-center gap-3 mb-1">
-                    <p className="text-xs font-bold uppercase tracking-widest text-primary/70">Persisted Configuration</p>
-                    <Badge variant="outline" className="uppercase text-[10px] tracking-widest">{activeScope.type} Scope</Badge>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight mt-1">Platform Settings</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Manage your real-time transaction PIN, daily transfer caps, dual-auth rules, and notification channels.
-                </p>
-            </header>
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+            <BankPageHeader
+                badge={`${activeScope.type.toUpperCase()} Scope · Security`}
+                livePill={prefs.has_transaction_pin ? "PIN Active" : "Set 4-Digit PIN"}
+                liveTone={prefs.has_transaction_pin ? "emerald" : "amber"}
+                title="Platform Settings & Security"
+                subtitle="Manage your encrypted transaction PIN, daily outbound transfer caps, dual-auth rules, and alert channels."
+            />
 
             <Tabs defaultValue="security" className="w-full">
                 <TabsList className="grid w-full grid-cols-3 h-12 bg-card border rounded-xl mb-6">
