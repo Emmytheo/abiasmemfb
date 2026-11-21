@@ -432,18 +432,34 @@ export function ClientSidebar({
         ];
     }, [activeScopeId, activeScope.type, mods]);
 
-    // Dynamically insert the Services Hub group if there are active categories and scope is personal
+    // Dynamically insert the Services Hub group (active categories + instant Bill Payments access)
+    const activeServiceCategories = React.useMemo(
+        () => serviceCategories.filter((c) => c.status !== "inactive"),
+        [serviceCategories]
+    );
+
     const dynamicNavGroups = [...scopeNavGroups];
-    if (serviceCategories.length > 0 && activeScope.type === 'personal') {
+    if (activeScope.type === 'personal' || activeScope.type === 'business') {
+        const hubItems =
+            activeServiceCategories.length > 0
+                ? [
+                      { title: "Services Hub", url: "/pay", icon: Lightbulb },
+                      ...activeServiceCategories.map((cat) => ({
+                          title: cat.name,
+                          url: `/pay/${cat.slug}`,
+                          icon: IconMap[cat.icon?.toLowerCase() || ''] || Tag,
+                      })),
+                  ]
+                : [
+                      { title: "Services Hub", url: "/pay", icon: Lightbulb },
+                      { title: "Pay Bills & Utilities", url: "/pay/bills", icon: Receipt },
+                  ];
+
         // Insert right before "Support & Settings" (which is the last item)
         dynamicNavGroups.splice(dynamicNavGroups.length - 1, 0, {
-            title: "Services Hub",
-            minRole: "customer",
-            items: serviceCategories.map(cat => ({
-                title: cat.name,
-                url: `/pay/${cat.slug}`,
-                icon: IconMap[cat.icon?.toLowerCase() || ''] || Tag,
-            }))
+            title: "Services & Bills",
+            minRole: "user",
+            items: hubItems,
         });
     }
 

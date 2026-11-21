@@ -58,6 +58,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Pencil } from "lucide-react";
 import { LienDialog } from "@/components/dashboard/LienDialog";
 import { IdentityLinkDialog } from "@/components/dashboard/IdentityLinkDialog";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -260,55 +261,68 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
     if (!customer) return <div className="p-8">Customer not found.</div>;
 
     const isLinked = !!(customer.is_associated && customer.email && !customer.email.endsWith('.internal'));
+    const totalDeposits = accounts.filter(a => !a.is_archived).reduce((s, a) => s + Number(a.balance || 0), 0);
+    const totalLoanExposure = loans.filter((l: any) => l.status === 'active' || l.status === 'defaulted').reduce((s, l: any) => s + Number(l.outstanding_balance ?? l.amount ?? 0), 0);
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
-            {/* Header - Stacked on Mobile */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" asChild className="rounded-full">
-                        <Link href="/customers"><ArrowLeft className="h-5 w-5" /></Link>
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-black tracking-tight flex items-center flex-wrap gap-3">
-                            {customer.firstName} {customer.lastName}
-                            {customer.is_test_account && <Badge variant="secondary" className="bg-purple-100 text-purple-700 font-bold px-2 py-0">TEST</Badge>}
-                        </h1>
-                        <p className="text-sm md:text-base text-muted-foreground flex items-center gap-2 mt-1">
-                            {customer.email} • {customer.phone_number}
-                        </p>
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
+            <BankPageHeader
+                badge={`Customer 360 · ${customer.risk_tier?.toUpperCase() || 'LOW'} RISK${customer.is_test_account ? ' · TEST' : ''}`}
+                livePill={`KYC ${customer.kyc_status?.toUpperCase() || 'PENDING'}`}
+                liveTone={customer.kyc_status === 'active' ? 'emerald' : customer.kyc_status === 'rejected' ? 'rose' : 'amber'}
+                title={`${customer.firstName} ${customer.lastName}`}
+                subtitle={`${customer.email || 'No email'} · ${customer.phone_number || 'No phone'}${customer.bvn ? ` · BVN ${customer.bvn}` : ''}`}
+                actions={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="outline" size="sm" asChild className="rounded-xl">
+                            <Link href="/customers"><ArrowLeft className="h-4 w-4 mr-1.5" /> Customers</Link>
+                        </Button>
+                        <Button size="sm" onClick={handleSync} disabled={actionLoading === 'sync'} className="rounded-xl font-bold">
+                            <RefreshCw className={`h-4 w-4 mr-1.5 ${actionLoading === 'sync' ? 'animate-spin' : ''}`} />
+                            Sync Core
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={openEdit} className="rounded-xl">
+                            <Pencil className="h-4 w-4 mr-1.5" /> Edit
+                        </Button>
+                        <Button
+                            variant={isLinked ? "secondary" : "outline"}
+                            size="sm"
+                            onClick={() => setIsLinkDialogOpen(true)}
+                            className="rounded-xl gap-1.5"
+                        >
+                            {isLinked ? <><ShieldCheck className="h-4 w-4" /> Identity Linked</> : <><Link2 className="h-4 w-4" /> Link Identity</>}
+                        </Button>
                     </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <Button onClick={handleSync} disabled={actionLoading === 'sync'} className="flex-1 md:flex-none">
-                        <RefreshCw className={`h-4 w-4 mr-2 ${actionLoading === 'sync' ? 'animate-spin' : ''}`} />
-                        Sync from Core
-                    </Button>
-                    <Button variant="outline" onClick={openEdit} className="flex-1 md:flex-none">
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit Profile
-                    </Button>
-                    <Button 
-                        variant={isLinked ? "secondary" : "outline"}
-                        onClick={() => setIsLinkDialogOpen(true)}
-                        className="w-full md:w-auto md:flex-none gap-2"
-                    >
-                        {isLinked ? (
-                            <><ShieldCheck className="h-4 w-4" /> Manage Identity</>
-                        ) : (
-                            <><Link2 className="h-4 w-4" /> Link Identity</>
-                        )}
-                    </Button>
+                }
+            />
 
-                    <IdentityLinkDialog 
-                        customerId={customer.id} 
-                        isOpen={isLinkDialogOpen}
-                        onClose={() => setIsLinkDialogOpen(false)}
-                        onSuccess={loadData}
-                        isLinked={isLinked} 
-                    />
+            {/* Customer 360 KPI Strip */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {[
+                    { label: "Total Deposit Liquidity", value: `₦${totalDeposits.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`, sub: `${accounts.filter(a => !a.is_archived).length} active accounts` },
+                    { label: "Credit Exposure", value: `₦${totalLoanExposure.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`, sub: `${loans.length} total loan facilities` },
+                    { label: "Applications", value: String(applications.length), sub: `${applications.filter((a: any) => a.status === 'pending').length} awaiting decision` },
+                    { label: "Digital Identity", value: isLinked ? "Verified" : "Unlinked", sub: customer.qore_customer_id ? `Core ID ${customer.qore_customer_id}` : "BankSuite Local Core" },
+                ].map((k) => (
+                    <Card key={k.label} className="border-border/80 rounded-2xl shadow-sm">
+                        <CardContent className="p-4 space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{k.label}</p>
+                            <p className="text-lg sm:text-xl font-black font-mono text-foreground">{k.value}</p>
+                            <p className="text-[11px] text-muted-foreground">{k.sub}</p>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
 
-                    <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+            <IdentityLinkDialog
+                customerId={customer.id}
+                isOpen={isLinkDialogOpen}
+                onClose={() => setIsLinkDialogOpen(false)}
+                onSuccess={loadData}
+                isLinked={isLinked}
+            />
+
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                         <DialogContent className="w-[95vw] max-w-[500px] p-4 md:p-8 rounded-2xl">
                             <DialogHeader>
                                 <DialogTitle>Edit Customer Profile</DialogTitle>
@@ -409,8 +423,6 @@ export default function AdminCustomerDetailPage({ params }: PageProps) {
                             </form>
                         </DialogContent>
                     </Dialog>
-                </div>
-            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Profile Overview (Left) */}

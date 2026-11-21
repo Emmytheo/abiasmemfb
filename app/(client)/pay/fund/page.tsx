@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useBankProfile } from "@/context/bank-profile-context"
+import { BankPageHeader } from "@/components/banking/page-header"
 
 export default function FundAccountPage() {
     const { activeProfile } = useBankProfile()
@@ -115,20 +116,20 @@ export default function FundAccountPage() {
     }
 
     return (
-        <div className="container max-w-3xl py-10 space-y-8">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" asChild className="rounded-full bg-muted/50">
-                    <Link href="/my-products">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Fund Account</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Deposit via NIP Bank Transfer, USSD ({activeProfile.ussdCode}), or verified Card Gateway.
-                    </p>
-                </div>
-            </div>
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 space-y-6">
+            <BankPageHeader
+                badge="Account Funding"
+                livePill={paystackEnabled ? "Instant Card & NIP Active" : "NIP Transfer & Teller Clearing"}
+                title="Fund Account"
+                subtitle={`Deposit into your NUBAN via NIP Bank Transfer, USSD (${activeProfile.ussdCode}), or verified Card Gateway.`}
+                actions={
+                    <Button asChild variant="outline" size="sm" className="rounded-xl font-bold">
+                        <Link href="/my-products">
+                            <ArrowLeft className="h-4 w-4 mr-1.5" /> My Accounts
+                        </Link>
+                    </Button>
+                }
+            />
 
             {selectedAccount && (
                 <Card className="p-5 border-primary/20 bg-primary/5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">

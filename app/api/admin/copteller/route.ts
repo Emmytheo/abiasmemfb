@@ -5,6 +5,7 @@ import {
     getCoptellerOversightSnapshot,
     processCoptellerLoanDecision,
     provisionCooperativeEscrowPool,
+    saveCoptellerBridgeConfig,
     toggleCoptellerSchemeApproval,
     updateCoptellerCooperativeStatus,
 } from "@/lib/banking/copteller-bridge"
@@ -100,6 +101,22 @@ export async function PATCH(req: NextRequest) {
                 ipAddress: auth.ipAddress,
             })
             return NextResponse.json({ success: true, ...result })
+        }
+
+        if (action === "save_bridge_config") {
+            const appUrl = String(body.app_url || "").trim().replace(/\/$/, "")
+            if (appUrl && !/^https?:\/\/.+/i.test(appUrl)) {
+                return NextResponse.json({ error: "Bridge URL must start with https:// or http://" }, { status: 400 })
+            }
+            const config = await saveCoptellerBridgeConfig({
+                appUrl,
+                bridgeSecret: body.bridge_secret !== undefined ? String(body.bridge_secret).trim() : undefined,
+                transport: ["auto", "http", "direct_db"].includes(body.transport) ? body.transport : "auto",
+                actorId: auth.userId,
+                actorEmail: auth.email,
+                ipAddress: auth.ipAddress,
+            })
+            return NextResponse.json({ success: true, config })
         }
 
         return NextResponse.json({ error: "Unsupported Copteller bridge action" }, { status: 400 })

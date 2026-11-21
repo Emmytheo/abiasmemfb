@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 // Generate a pseudo-random account number
 function generateAccountNumber() {
@@ -107,12 +108,20 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
 
         try {
             if (isLastStage || !hasWorkflow) {
-                const updatedApp = await api.updateApplication(String(app.id), {
-                    status: 'approved',
-                    workflow_stage: hasWorkflow ? workflowStages[workflowStages.length - 1] : 'Approved',
+                const res = await fetch("/api/admin/applications", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "approve",
+                        applicationId: app.id,
+                    }),
                 });
-                setApp(updatedApp);
-                toast.success("Application approved and provisions actively triggering on backend.");
+                const result = await res.json();
+                if (!res.ok || !result.success) {
+                    throw new Error(result.error || "Failed to approve and provision application.");
+                }
+                toast.success(result.message || "Application approved & live product provisioned with GL journal!");
+                await loadData();
             } else {
                 // Advance to next workflow stage
                 const nextStageName = workflowStages[currentStageIndex + 1];
@@ -275,28 +284,21 @@ function AdminApplicationReviewContent({ params }: { params: Promise<{ applicati
     const interestRate = activeTerms?.interest_rate || 0;
 
     return (
-        <div className="max-w-5xl mx-2 sm:mx-auto space-y-6 animate-in fade-in duration-500 pb-24">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" asChild className="rounded-full">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 pt-6 space-y-6 animate-in fade-in duration-500 pb-24">
+            <BankPageHeader
+                badge={`Application Underwriting · ${product?.name || 'Banking Product'}`}
+                livePill={isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending Review'}
+                liveTone={isApproved ? 'emerald' : isRejected ? 'rose' : 'amber'}
+                title={`Application #${String(app.id).substring(0, 12).toUpperCase()}`}
+                subtitle={`Workflow stage: ${app.workflow_stage || 'Submitted'} · Approving final stage provisions live NUBAN or disburses credit with Double-Entry GL.`}
+                actions={
+                    <Button variant="outline" size="sm" asChild className="rounded-xl">
                         <Link href="/products/applications">
-                            <ArrowLeft className="h-5 w-5" />
+                            <ArrowLeft className="h-4 w-4 mr-1.5" /> Applications Queue
                         </Link>
                     </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Review Application</h1>
-                        <p className="text-muted-foreground font-mono text-sm">Ref: {String(app.id).substring(0, 12)}</p>
-                    </div>
-                </div>
-                {/* Status Badge */}
-                <div className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider border ${isApproved ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
-                        isRejected ? 'bg-destructive/10 text-destructive border-destructive/30' :
-                            'bg-amber-500/10 text-amber-600 border-amber-500/30'
-                    }`}>
-                    {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending Review'}
-                </div>
-            </div>
+                }
+            />
 
             {isApproved && app.workflow_stage !== 'Provisioned' && (
                 <div className="p-5 rounded-2xl border border-destructive/20 bg-destructive/5 text-destructive-foreground flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm animate-in slide-in-from-top-2 duration-300 shadow-md">

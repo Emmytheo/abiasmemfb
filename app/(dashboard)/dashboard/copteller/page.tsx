@@ -63,6 +63,10 @@ function CoptellerCustodyContent() {
     const [selectedCoop, setSelectedCoop] = React.useState<any | null>(null)
     const [sweepAmountNaira, setSweepAmountNaira] = React.useState("")
     const [embedPath, setEmbedPath] = React.useState<string>("/copteller/admin?embed=1")
+    const [showBridgeConfig, setShowBridgeConfig] = React.useState(false)
+    const [cfgUrl, setCfgUrl] = React.useState("")
+    const [cfgSecret, setCfgSecret] = React.useState("")
+    const [cfgTransport, setCfgTransport] = React.useState<"auto" | "http" | "direct_db">("auto")
 
     React.useEffect(() => {
         const tab = searchParams?.get("tab")
@@ -85,6 +89,10 @@ function CoptellerCustodyContent() {
                 return
             }
             setSnapshot(data)
+            if (data?.health) {
+                setCfgUrl((prev) => prev || data.health.appUrl || "")
+                if (data.health.transport) setCfgTransport(data.health.transport)
+            }
             if (selectedCoop) {
                 const updated = (data.cooperatives || []).find((c: any) => c.id === selectedCoop.id)
                 if (updated) setSelectedCoop(updated)
@@ -151,7 +159,8 @@ function CoptellerCustodyContent() {
         )
     }
 
-    const health = snapshot?.health || { connected: false, appUrl: "http://localhost:3001" }
+    const health = snapshot?.health || { connected: false, appUrl: "" }
+    const hostedAppUrl = String(health.appUrl || "").replace(/\/$/, "")
     const kpis = snapshot?.kpis || {}
     const cooperatives = snapshot?.cooperatives || []
     const settlements = snapshot?.settlements || []
@@ -185,11 +194,23 @@ function CoptellerCustodyContent() {
                 subtitle="Modularly connect an independent Copteller Cooperative OS deployment to provision 3000XXXXXX Escrow NUBANs, settle GL 2100 sweeps, co-underwrite loans, and administer cooperatives headlessly — without reinventing Copteller inside BankSuite."
                 actions={
                     <>
-                        <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
-                            <a href={`${health.appUrl}/copteller/partner`} target="_blank" rel="noopener noreferrer">
-                                Copteller Partner Portal <ArrowUpRight className="h-3.5 w-3.5" />
-                            </a>
+                        <Button
+                            type="button"
+                            variant={hostedAppUrl ? "outline" : "default"}
+                            size="sm"
+                            onClick={() => setShowBridgeConfig((v) => !v)}
+                            className="h-9 rounded-xl font-bold text-xs gap-1.5"
+                        >
+                            <KeyRound className="h-3.5 w-3.5" />
+                            {hostedAppUrl ? "Bridge Endpoint" : "Set Hosted Copteller URL"}
                         </Button>
+                        {hostedAppUrl ? (
+                            <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                                <a href={`${hostedAppUrl}/copteller/partner`} target="_blank" rel="noopener noreferrer">
+                                    Copteller Partner Portal <ArrowUpRight className="h-3.5 w-3.5" />
+                                </a>
+                            </Button>
+                        ) : null}
                         <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
                             <a href="/api/admin/copteller/export?format=csv">
                                 <Download className="h-3.5 w-3.5" /> CBN CSV Return
@@ -207,6 +228,91 @@ function CoptellerCustodyContent() {
                     </>
                 }
             />
+
+            {(showBridgeConfig || !hostedAppUrl) && (
+                <div className="rounded-2xl border border-primary/25 bg-card p-5 shadow-sm space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-wider text-primary">
+                                Hosted Copteller Submodule Endpoint Configuration
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Point BankSuite to your live hosted Copteller deployment (e.g. <code className="font-mono">https://copteller.vercel.app</code>) — persisted in Postgres with zero redeploy needed.
+                            </p>
+                        </div>
+                        {hostedAppUrl && (
+                            <Button type="button" variant="ghost" size="sm" className="text-xs" onClick={() => setShowBridgeConfig(false)}>
+                                Close
+                            </Button>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                        <div className="md:col-span-5 space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                Hosted Copteller Base URL
+                            </label>
+                            <Input
+                                value={cfgUrl}
+                                onChange={(e) => setCfgUrl(e.target.value)}
+                                placeholder="https://your-copteller-app.vercel.app"
+                                className="h-9 rounded-xl font-mono text-xs"
+                            />
+                        </div>
+                        <div className="md:col-span-3 space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                Bridge Secret (optional update)
+                            </label>
+                            <Input
+                                type="password"
+                                value={cfgSecret}
+                                onChange={(e) => setCfgSecret(e.target.value)}
+                                placeholder={health.hasBridgeSecret ? "•••••••• (configured)" : "COPTELLER_BRIDGE_SECRET"}
+                                className="h-9 rounded-xl font-mono text-xs"
+                            />
+                        </div>
+                        <div className="md:col-span-2 space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                Transport
+                            </label>
+                            <select
+                                value={cfgTransport}
+                                onChange={(e) => setCfgTransport(e.target.value as any)}
+                                className="w-full h-9 px-2.5 rounded-xl border border-border bg-background text-xs font-bold"
+                            >
+                                <option value="auto">Auto (Smart)</option>
+                                <option value="http">HTTP Bridge Only</option>
+                                <option value="direct_db">Direct DB Cluster</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                            <Button
+                                type="button"
+                                size="sm"
+                                disabled={busyId === "save-cfg"}
+                                onClick={async () => {
+                                    const ok = await mutateCopteller(
+                                        {
+                                            action: "save_bridge_config",
+                                            app_url: cfgUrl.trim(),
+                                            bridge_secret: cfgSecret.trim() || undefined,
+                                            transport: cfgTransport,
+                                        },
+                                        "Saved hosted Copteller endpoint & reconnected bridge!",
+                                        "save-cfg"
+                                    )
+                                    if (ok) {
+                                        setCfgSecret("")
+                                        setShowBridgeConfig(false)
+                                    }
+                                }}
+                                className="w-full h-9 rounded-xl font-black text-xs"
+                            >
+                                {busyId === "save-cfg" ? "Saving..." : "Save & Connect"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {!health.connected && (
                 <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 flex items-start gap-3">
@@ -379,25 +485,28 @@ function CoptellerCustodyContent() {
                                     {r.label}
                                 </button>
                             ))}
-                            {health.appUrl && (
+                            {hostedAppUrl && (
                                 <Button asChild size="sm" variant="outline" className="h-8 rounded-xl text-[11px] font-bold gap-1">
-                                    <a href={`${health.appUrl}${embedPath.replace("?embed=1", "")}`} target="_blank" rel="noopener noreferrer">
+                                    <a href={`${hostedAppUrl}${embedPath.replace("?embed=1", "")}`} target="_blank" rel="noopener noreferrer">
                                         Pop Out <ArrowUpRight className="h-3 w-3" />
                                     </a>
                                 </Button>
                             )}
                         </div>
                     </div>
-                    {health.appUrl ? (
+                    {hostedAppUrl ? (
                         <iframe
-                            src={`${health.appUrl}${embedPath}`}
+                            src={`${hostedAppUrl}${embedPath}`}
                             title="Copteller Headless Cooperative Administration"
                             className="w-full h-[760px] border-0 bg-background"
                         />
                     ) : (
-                        <div className="p-12 text-center space-y-2 text-xs text-muted-foreground">
-                            <p className="font-black text-sm text-foreground">No Remote Copteller Submodule URL Configured</p>
-                            <p>Set <code className="font-mono px-1.5 py-0.5 rounded bg-muted">COPTELLER_BRIDGE_URL</code> and <code className="font-mono px-1.5 py-0.5 rounded bg-muted">COPTELLER_BRIDGE_SECRET</code> to attach an independent Copteller deployment.</p>
+                        <div className="p-12 text-center space-y-3 text-xs text-muted-foreground">
+                            <p className="font-black text-sm text-foreground">No Hosted Copteller Submodule URL Configured</p>
+                            <p>Enter your hosted Copteller URL in the <strong>Bridge Endpoint</strong> bar above (or set <code className="font-mono px-1.5 py-0.5 rounded bg-muted">COPTELLER_BRIDGE_URL</code> in Vercel env) to embed your live Copteller administration console here.</p>
+                            <Button type="button" size="sm" className="rounded-xl font-bold" onClick={() => setShowBridgeConfig(true)}>
+                                Configure Hosted Copteller URL
+                            </Button>
                         </div>
                     )}
                 </div>

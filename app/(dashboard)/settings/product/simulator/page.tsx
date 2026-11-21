@@ -2,6 +2,8 @@ import React from 'react'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { ProductSimulatorClient } from './ProductSimulatorClient'
+import { BankPageHeader } from '@/components/banking/page-header'
+import { SubsystemNav } from '@/components/banking/subsystem-nav'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,16 +27,18 @@ export default async function ProductSimulatorPage() {
     }))
 
     return (
-        <div className="flex-1 w-full bg-muted/20 min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">
-            <div className="max-w-6xl mx-auto space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-primary">Product Application Simulator</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Test dynamic product application forms. High-touch field events (like BVN lookups) and multi-stage workflows are active here.
-                    </p>
-                </div>
+        <div className="flex-1 w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto space-y-6">
+                <BankPageHeader
+                    badge="Product Factory · Live Sandbox"
+                    livePill={`${payloadProducts.length} Active Products`}
+                    title="Product Application Simulator"
+                    subtitle="Test dynamic product onboarding & loan application forms, field validation events (BVN lookups), and multi-stage workflows."
+                />
 
-                <div className="bg-background border rounded-xl shadow-sm p-6 overflow-hidden">
+                <SubsystemNav group="factory" />
+
+                <div className="bg-card border border-border/80 rounded-2xl shadow-sm p-6 overflow-hidden">
                     <ProductSimulatorClient availableProducts={payloadProducts} />
                 </div>
             </div>

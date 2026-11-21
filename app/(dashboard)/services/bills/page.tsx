@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { GenericDataTable } from "@/components/data-table";
 import { api, Transaction } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { BankPageHeader } from "@/components/banking/page-header";
+import { SubsystemNav } from "@/components/banking/subsystem-nav";
 
 export default function BillsPage() {
     const [data, setData] = useState<Transaction[]>([]);
@@ -19,7 +21,14 @@ export default function BillsPage() {
     if (loading) return <div className="p-8">Loading bills...</div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <BankPageHeader
+                badge="Bill Payments Monitor"
+                livePill={`${data.length} Posted Bills`}
+                title="Bills & Utility Settlements"
+                subtitle="Audit all customer utility settlements (Electricity DISCOs, Airtime/Data, Cable TV, and Abia State IGR levies)."
+            />
+            <SubsystemNav group="factory" />
             <GenericDataTable
                 title="Bills Payments"
                 description="Monitor all customer bill payments (IGR tax, tolls, etc)."

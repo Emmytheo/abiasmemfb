@@ -6,6 +6,8 @@ import { Eye, Info, PlayCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { DeleteRunButton } from './DeleteRunButton'
+import { BankPageHeader } from '@/components/banking/page-header'
+import { SubsystemNav } from '@/components/banking/subsystem-nav'
 
 export default async function WorkflowRunsPage() {
     const payload = await getPayload({ config })
@@ -17,16 +19,35 @@ export default async function WorkflowRunsPage() {
     })
 
     const runs = runsRes.docs as any[]
+    const completed = runs.filter((r) => r.status === 'COMPLETED').length
+    const failed = runs.filter((r) => r.status === 'FAILED').length
+    const inFlight = runs.filter((r) => r.status === 'PENDING' || r.status === 'RUNNING' || r.status === 'WAITING_APPROVAL').length
 
     return (
-        <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col gap-6 sm:gap-8">
-            <div className="flex flex-col sm:flex-row flex-wrap sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Run History</h1>
-                    <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-                        View execution results, inputs, and phase-by-phase logs.
-                    </p>
-                </div>
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col gap-6">
+            <BankPageHeader
+                badge="Automation Telemetry"
+                livePill={`${runs.length} Executions`}
+                liveTone={failed > 0 ? "amber" : "emerald"}
+                title="Workflow Run History"
+                subtitle="Inspect phase-by-phase execution logs, resolved payload inputs, API outputs, and approval gates."
+            />
+
+            <SubsystemNav group="automation" />
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {[
+                    { label: "Total Recorded Runs", value: runs.length, sub: "Audit execution ledger" },
+                    { label: "Completed", value: completed, sub: "Settled cleanly" },
+                    { label: "Failed", value: failed, sub: "Click eye icon to inspect" },
+                    { label: "In-Flight / Approval", value: inFlight, sub: "Pending or awaiting gate" },
+                ].map((k) => (
+                    <div key={k.label} className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{k.label}</p>
+                        <p className="text-2xl font-black font-mono text-foreground">{k.value}</p>
+                        <p className="text-[11px] text-muted-foreground">{k.sub}</p>
+                    </div>
+                ))}
             </div>
 
             <div className="border rounded-xl shadow-sm bg-background overflow-x-auto overflow-y-hidden">

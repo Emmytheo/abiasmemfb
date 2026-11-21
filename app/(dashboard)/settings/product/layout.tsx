@@ -5,51 +5,26 @@ import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useBankProfile } from "@/context/bank-profile-context";
+import { BankPageHeader } from "@/components/banking/page-header";
+import { SubsystemNav } from "@/components/banking/subsystem-nav";
 
 function ProductSettingsContent({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { activeProfile } = useBankProfile();
 
-    const tabs = [
-        { name: "Classes", href: "/settings/product/classes" },
-        { name: "Categories", href: "/settings/product/categories" },
-        { name: "Types", href: "/settings/product/types" },
-    ];
-
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Show header and tabs only on main listing pages */}
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {(pathname === "/settings/product/classes" ||
                 pathname === "/settings/product/categories" ||
                 pathname === "/settings/product/types") && (
                     <>
-                        <div className="flex flex-col gap-2 px-4 md:px-8">
-                            <h1 className="text-3xl font-bold tracking-tight text-primary">Product Configuration</h1>
-                            <p className="text-muted-foreground">
-                                Manage product classes, categories, and specific types offered by {activeProfile.shortName}.
-                            </p>
-                        </div>
-
-                        <div className="bg-background/95 backdrop-blur border-b sticky top-16 z-10 w-full mb-6 py-2 px-4 md:px-8">
-                            <nav className="flex items-center space-x-1 border rounded-lg p-1 bg-muted/20 w-max">
-                                {tabs.map((tab) => {
-                                    const isActive = pathname.startsWith(tab.href) &&
-                                        (pathname === tab.href || tab.name !== "Types" || pathname === "/settings/product/types");
-                                    return (
-                                        <Link
-                                            key={tab.name}
-                                            href={tab.href}
-                                            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive
-                                                ? "bg-background text-primary shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                                }`}
-                                        >
-                                            {tab.name}
-                                        </Link>
-                                    );
-                                })}
-                            </nav>
-                        </div>
+                        <BankPageHeader
+                            badge="Product Factory · Catalog Engine"
+                            livePill="Dynamic Schema Active"
+                            title="Product Configuration"
+                            subtitle={`Design product classes, deposit & credit categories, interest terms, and application form schemas offered by ${activeProfile.shortName}.`}
+                        />
+                        <SubsystemNav group="factory" />
                     </>
                 )}
 

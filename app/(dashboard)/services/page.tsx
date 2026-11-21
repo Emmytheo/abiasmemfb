@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Edit, Trash2, Zap, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import { GenericDataTable } from "@/components/data-table";
+import { BankPageHeader } from "@/components/banking/page-header";
+import { SubsystemNav } from "@/components/banking/subsystem-nav";
 
 export default function ServicesPage() {
     const [services, setServices] = useState<Service[]>([]);
@@ -46,18 +48,22 @@ export default function ServicesPage() {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Services</h1>
-                    <p className="text-muted-foreground">Manage transactional services like transfers, bill payments, and airtime.</p>
-                </div>
-                <Button asChild>
-                    <Link href="/services/new">
-                        <Plus className="mr-2 h-4 w-4" /> New Service
-                    </Link>
-                </Button>
-            </div>
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-6 animate-in fade-in duration-500">
+            <BankPageHeader
+                badge="Service Catalog"
+                livePill={`${services.filter((s) => s.status === 'active').length} Active Services`}
+                title="Executable Services"
+                subtitle="Manage transactional services including intra-bank/NIP transfers, utility bill payments, cable TV, and airtime top-ups."
+                actions={
+                    <Button asChild size="sm" className="rounded-xl font-bold">
+                        <Link href="/services/new">
+                            <Plus className="mr-1.5 h-4 w-4" /> New Service
+                        </Link>
+                    </Button>
+                }
+            />
+
+            <SubsystemNav group="factory" />
 
             <GenericDataTable
                 title="Service Catalog"

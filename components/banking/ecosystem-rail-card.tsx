@@ -32,7 +32,7 @@ interface EcosystemRailCardProps {
 
 export function EcosystemRailCard({
     coptellerConnected,
-    coptellerUrl = "http://localhost:3001",
+    coptellerUrl = "",
     activeCooperatives,
     activeMembers,
     coptellerEscrowNaira,
@@ -117,11 +117,13 @@ export function EcosystemRailCard({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
-                        <a href={`${coptellerUrl}/copteller/partner`} target="_blank" rel="noopener noreferrer">
-                            Copteller Partner Console <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                    </Button>
+                    {coptellerUrl ? (
+                        <Button asChild variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
+                            <a href={`${coptellerUrl.replace(/\/$/, "")}/copteller/partner`} target="_blank" rel="noopener noreferrer">
+                                Copteller Partner Console <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                        </Button>
+                    ) : null}
                     <Button asChild size="sm" className="h-9 rounded-xl font-black text-xs gap-1.5">
                         <Link href="/dashboard/copteller">
                             Manage Custody Rails <ArrowRight className="h-3.5 w-3.5" />

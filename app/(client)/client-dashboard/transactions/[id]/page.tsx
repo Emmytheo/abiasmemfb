@@ -11,13 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import {
     Loader2, ArrowLeft, ArrowDownLeft, ArrowUpRight, CheckCircle2,
-    XCircle, Clock, Copy, MessageSquareWarning, Share2, Receipt, Calendar, Info, RefreshCcw
+    XCircle, Clock, Copy, MessageSquareWarning, Share2, Receipt, Calendar, Info, RefreshCcw, Printer
 } from "lucide-react";
 import { toast } from "sonner";
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 const formatNaira = (n: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(n ?? 0);
 
@@ -68,12 +69,30 @@ function ClientTransactionDetailContent({ params }: { params: Promise<{ id: stri
     };
 
     const submitIssue = async () => {
-        if (!issueText.trim()) return;
+        if (!issueText.trim() || !tx) return;
         setSubmitting(true);
-        await new Promise(r => setTimeout(r, 800));
-        setSubmitting(false);
-        setIssueText('');
-        toast.success('Your issue has been submitted. Support will contact you shortly.');
+        try {
+            const res = await fetch('/api/client/transactions/dispute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    transactionId: tx.id,
+                    reference: tx.reference,
+                    reason: issueText.trim(),
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                toast.error(data.error || 'Could not log dispute ticket.');
+                return;
+            }
+            setIssueText('');
+            toast.success(data.message || 'Dispute ticket logged for Operations review.');
+        } catch {
+            toast.error('Network error while submitting dispute.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (loading || userLoading) return (
@@ -137,16 +156,26 @@ function ClientTransactionDetailContent({ params }: { params: Promise<{ id: stri
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 max-w-3xl mx-auto px-4 md:px-0">
-            {/* Header / Nav */}
-            <div className="flex items-center gap-4">
-                <Link href="/client-dashboard/transactions" className="border shadow-sm bg-background p-2 rounded-xl text-muted-foreground hover:text-primary transition-colors">
-                    <ArrowLeft className="w-5 h-5" />
-                </Link>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Transaction Receipt</h1>
-                </div>
-            </div>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 max-w-3xl mx-auto px-2 sm:px-0">
+            <BankPageHeader
+                badge={`Official Ledger Receipt · ${tx.category || 'Standard'}`}
+                livePill={tx.status.toUpperCase()}
+                liveTone={tx.status === 'successful' ? 'emerald' : tx.status === 'failed' ? 'rose' : 'amber'}
+                title="Transaction Receipt"
+                subtitle={`Reference ${tx.reference} · Posted ${new Date(tx.created_at).toLocaleString()}`}
+                actions={
+                    <div className="flex items-center gap-2 print:hidden">
+                        <Button variant="outline" size="sm" onClick={() => window.print()} className="rounded-xl font-bold">
+                            <Printer className="h-4 w-4 mr-1.5" /> Print / PDF
+                        </Button>
+                        <Button asChild variant="outline" size="sm" className="rounded-xl">
+                            <Link href="/client-dashboard/transactions">
+                                <ArrowLeft className="h-4 w-4 mr-1.5" /> Ledger
+                            </Link>
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Receipt Card */}
             <Card className="overflow-hidden border-border/50 shadow-sm relative">

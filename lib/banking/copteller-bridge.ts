@@ -10,6 +10,12 @@ import { postBalancedGlJournal } from "@/lib/banking/gl-engine"
 
 const g = globalThis as typeof globalThis & {
     __banksuiteCoptellerPool?: Pool
+    __banksuiteCoptellerConfigCache?: {
+        appUrl: string
+        bridgeSecret: string
+        transport: "auto" | "http" | "direct_db"
+        loadedAt: number
+    }
 }
 
 export interface CoptellerBridgeHealth {
@@ -18,21 +24,124 @@ export interface CoptellerBridgeHealth {
     mode: "http_bridge" | "direct_db" | "not_configured"
     latencyMs: number
     appUrl: string
+    transport?: "auto" | "http" | "direct_db"
+    hasBridgeSecret?: boolean
     partnerProtocol?: string
     error?: string
 }
 
+async function ensureCoptellerConfigTable() {
+    await queryBankSuite(`
+        CREATE TABLE IF NOT EXISTS public.banksuite_copteller_config (
+            id INT PRIMARY KEY DEFAULT 1,
+            app_url TEXT NOT NULL DEFAULT '',
+            bridge_secret TEXT NOT NULL DEFAULT '',
+            transport TEXT NOT NULL DEFAULT 'auto',
+            updated_by TEXT,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `).catch(() => {})
+}
+
+export async function loadPersistedBridgeConfig(): Promise<{
+    appUrl: string
+    bridgeSecret: string
+    transport: "auto" | "http" | "direct_db"
+}> {
+    if (g.__banksuiteCoptellerConfigCache && Date.now() - g.__banksuiteCoptellerConfigCache.loadedAt < 30_000) {
+        return g.__banksuiteCoptellerConfigCache
+    }
+    try {
+        await ensureCoptellerConfigTable()
+        const res = await queryBankSuite(
+            `SELECT app_url, bridge_secret, transport FROM public.banksuite_copteller_config WHERE id = 1 LIMIT 1`
+        )
+        const row = res.rows[0]
+        const parsed = {
+            appUrl: String(row?.app_url || "").trim().replace(/\/$/, ""),
+            bridgeSecret: String(row?.bridge_secret || "").trim(),
+            transport: (["auto", "http", "direct_db"].includes(row?.transport) ? row.transport : "auto") as
+                | "auto"
+                | "http"
+                | "direct_db",
+            loadedAt: Date.now(),
+        }
+        g.__banksuiteCoptellerConfigCache = parsed
+        return parsed
+    } catch {
+        return { appUrl: "", bridgeSecret: "", transport: "auto" }
+    }
+}
+
+export async function saveCoptellerBridgeConfig(params: {
+    appUrl: string
+    bridgeSecret?: string
+    transport?: "auto" | "http" | "direct_db"
+    actorId: string
+    actorEmail: string
+    ipAddress?: string
+}) {
+    await ensureCoptellerConfigTable()
+    const cleanUrl = String(params.appUrl || "").trim().replace(/\/$/, "")
+    const cleanTransport = params.transport && ["auto", "http", "direct_db"].includes(params.transport) ? params.transport : "auto"
+    const existing = await loadPersistedBridgeConfig()
+    const nextSecret = params.bridgeSecret !== undefined && params.bridgeSecret !== "" ? params.bridgeSecret : existing.bridgeSecret
+
+    await queryBankSuite(
+        `INSERT INTO public.banksuite_copteller_config (id, app_url, bridge_secret, transport, updated_by, updated_at)
+         VALUES (1, $1, $2, $3, $4, NOW())
+         ON CONFLICT (id) DO UPDATE
+         SET app_url = EXCLUDED.app_url,
+             bridge_secret = EXCLUDED.bridge_secret,
+             transport = EXCLUDED.transport,
+             updated_by = EXCLUDED.updated_by,
+             updated_at = NOW()`,
+        [cleanUrl, nextSecret, cleanTransport, params.actorEmail]
+    )
+
+    g.__banksuiteCoptellerConfigCache = {
+        appUrl: cleanUrl,
+        bridgeSecret: nextSecret,
+        transport: cleanTransport,
+        loadedAt: Date.now(),
+    }
+
+    await writeBankAuditLog({
+        actorId: params.actorId,
+        actorEmail: params.actorEmail,
+        actorRole: "admin",
+        action: "copteller.bridge.config_updated",
+        entityType: "copteller_bridge",
+        entityId: "global",
+        ipAddress: params.ipAddress,
+        afterState: { appUrl: cleanUrl, transport: cleanTransport, secretUpdated: Boolean(params.bridgeSecret) },
+    }).catch(() => {})
+
+    return { appUrl: cleanUrl, transport: cleanTransport, hasBridgeSecret: Boolean(nextSecret || process.env.COPTELLER_BRIDGE_SECRET || process.env.ADMIN_SECRET) }
+}
+
 export function getCoptellerBridgeUrl(): string {
-    return (
+    const persisted = g.__banksuiteCoptellerConfigCache?.appUrl || ""
+    const envUrl =
         process.env.COPTELLER_BRIDGE_URL ||
         process.env.NEXT_PUBLIC_COPTELLER_URL ||
         process.env.NEXT_PUBLIC_COPTELLER_APP_URL ||
         ""
-    ).replace(/\/$/, "")
+    const chosen = (persisted || envUrl).trim().replace(/\/$/, "")
+    // Guard against localhost leaking into production deployments
+    if (process.env.NODE_ENV === "production" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(chosen)) {
+        return ""
+    }
+    return chosen
 }
 
 export function getCoptellerBridgeSecret(): string | null {
-    return process.env.COPTELLER_BRIDGE_SECRET || process.env.ADMIN_SECRET || null
+    return (
+        g.__banksuiteCoptellerConfigCache?.bridgeSecret ||
+        process.env.COPTELLER_BRIDGE_SECRET ||
+        process.env.ADMIN_SECRET ||
+        null
+    )
 }
 
 /**
@@ -45,10 +154,11 @@ async function callCoptellerHeadlessHttp<T = any>(params: {
     body?: Record<string, any>
     actorEmail?: string
 }): Promise<T> {
+    await loadPersistedBridgeConfig()
     const baseUrl = getCoptellerBridgeUrl()
     const secret = getCoptellerBridgeSecret()
     if (!baseUrl) {
-        throw new Error("COPTELLER_BRIDGE_URL is not configured.")
+        throw new Error("Copteller hosted Bridge URL is not configured.")
     }
     const url = `${baseUrl}/api/copteller/banksuite/bridge${params.query ? `?${params.query}` : ""}`
     const res = await fetch(url, {
@@ -70,10 +180,13 @@ async function callCoptellerHeadlessHttp<T = any>(params: {
 }
 
 function shouldPreferHttpBridge(): boolean {
-    const forceHttp = process.env.COPTELLER_BRIDGE_TRANSPORT?.toLowerCase() === "http"
+    const persistedTransport = g.__banksuiteCoptellerConfigCache?.transport
+    const envTransport = process.env.COPTELLER_BRIDGE_TRANSPORT?.toLowerCase()
+    const effective = persistedTransport && persistedTransport !== "auto" ? persistedTransport : envTransport
     const hasHttp = Boolean(getCoptellerBridgeUrl())
     const hasDirectDb = Boolean(process.env.COPTELLER_DATABASE_URI)
-    return (forceHttp && hasHttp) || (!hasDirectDb && hasHttp)
+    if (effective === "direct_db" && hasDirectDb) return false
+    return (effective === "http" && hasHttp) || (!hasDirectDb && hasHttp)
 }
 
 export function getCoptellerBridgePool(): Pool | null {
@@ -116,7 +229,11 @@ export async function queryCoptellerBridge<R extends QueryResultRow = any>(
 }
 
 export async function checkCoptellerBridgeHealth(): Promise<CoptellerBridgeHealth> {
-    const appUrl = getCoptellerBridgeUrl()
+    const persisted = await loadPersistedBridgeConfig()
+    const rawAppUrl = getCoptellerBridgeUrl()
+    const devFallbackUrl = process.env.NODE_ENV === "development" ? "http://localhost:3001" : ""
+    const appUrl = rawAppUrl || devFallbackUrl
+    const hasBridgeSecret = Boolean(getCoptellerBridgeSecret())
     const pool = getCoptellerBridgePool()
 
     // 1. Independent Deployment Mode: Signed HTTP Headless Bridge (no shared DB required)
@@ -130,6 +247,8 @@ export async function checkCoptellerBridgeHealth(): Promise<CoptellerBridgeHealt
                 mode: "http_bridge",
                 latencyMs: Date.now() - started,
                 appUrl,
+                transport: persisted.transport,
+                hasBridgeSecret,
                 partnerProtocol: data?.protocol || "Copteller-Headless-PartnerBank-5Rail",
             }
         } catch (err: any) {
@@ -141,6 +260,8 @@ export async function checkCoptellerBridgeHealth(): Promise<CoptellerBridgeHealt
                     mode: "http_bridge",
                     latencyMs: Date.now() - started,
                     appUrl,
+                    transport: persisted.transport,
+                    hasBridgeSecret,
                     error: err.message,
                 }
             }
@@ -157,7 +278,9 @@ export async function checkCoptellerBridgeHealth(): Promise<CoptellerBridgeHealt
                 connected: true,
                 mode: "direct_db",
                 latencyMs: Date.now() - started,
-                appUrl: appUrl || "http://localhost:3001",
+                appUrl,
+                transport: persisted.transport,
+                hasBridgeSecret,
                 partnerProtocol: "BankSuite-Copteller-DirectDB",
             }
         } catch (err: any) {
@@ -166,7 +289,9 @@ export async function checkCoptellerBridgeHealth(): Promise<CoptellerBridgeHealt
                 connected: false,
                 mode: "direct_db",
                 latencyMs: Date.now() - started,
-                appUrl: appUrl || "http://localhost:3001",
+                appUrl,
+                transport: persisted.transport,
+                hasBridgeSecret,
                 error: err.message,
             }
         }
@@ -178,8 +303,10 @@ export async function checkCoptellerBridgeHealth(): Promise<CoptellerBridgeHealt
         connected: false,
         mode: "not_configured",
         latencyMs: 0,
-        appUrl: "",
-        error: "Standalone BankSuite mode — configure COPTELLER_BRIDGE_URL (HTTP) or COPTELLER_DATABASE_URI to attach a Copteller cooperative submodule.",
+        appUrl: rawAppUrl,
+        transport: persisted.transport,
+        hasBridgeSecret,
+        error: "Standalone BankSuite mode — configure your hosted Copteller Bridge URL below (or set COPTELLER_BRIDGE_URL) to attach a Copteller cooperative submodule.",
     }
 }
 

@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { CloudUpload, Code, FileJson, CheckCircle2, Loader2, Sparkles, Zap, RefreshCw } from "lucide-react";
+import { BankPageHeader } from "@/components/banking/page-header";
+import { SubsystemNav } from "@/components/banking/subsystem-nav";
 
 export default function RegistryBlueprintsEditor() {
     const [rawJson, setRawJson] = useState("");
@@ -131,24 +133,16 @@ export default function RegistryBlueprintsEditor() {
     };
 
     return (
-        <div className="max-w-6xl w-full mx-auto p-4 space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-                        <Sparkles className="h-6 w-6 text-primary" />
-                        Registry Blueprints
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Upload or paste Service Definition Language (SDL) JSON payloads to update platform products dynamically.
-                    </p>
-                </div>
-                {activeFileName && (
-                    <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-medium">
-                        <CheckCircle2 className="h-4 w-4" />
-                        {activeFileName} Ready
-                    </div>
-                )}
-            </div>
+        <div className="max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-6">
+            <BankPageHeader
+                badge="SDL Blueprint Compiler"
+                livePill={activeFileName ? `${activeFileName} Staged` : "Templates Ready"}
+                liveTone={activeFileName ? "emerald" : "primary"}
+                title="Registry Blueprints"
+                subtitle="Import, validate, or bootstrap Service Definition Language (SDL) JSON specifications to provision products, services, and workflows."
+            />
+
+            <SubsystemNav group="factory" />
 
             <Card className="border-2 border-primary/5 shadow-xl shadow-primary/5">
                 <Tabs defaultValue="upload" className="w-full">

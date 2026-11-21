@@ -6,6 +6,8 @@ import { PlusCircle, Play, Edit2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { WorkflowActions, InlineRename, TriggerBadge } from './WorkflowListActions'
+import { BankPageHeader } from '@/components/banking/page-header'
+import { SubsystemNav } from '@/components/banking/subsystem-nav'
 
 export default async function WorkflowsPage() {
     const payload = await getPayload({ config })
@@ -16,23 +18,44 @@ export default async function WorkflowsPage() {
     })
 
     const workflows = workflowsRes.docs
+    const publishedCount = workflows.filter((w) => w.status === 'PUBLISHED').length
+    const completedCount = workflows.filter((w) => w.lastRunStatus === 'COMPLETED').length
+    const failedCount = workflows.filter((w) => w.lastRunStatus === 'FAILED').length
 
     return (
-        <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col gap-6 sm:gap-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
-                    <p className="text-muted-foreground mt-2">
-                        Manage automation pipelines, approvals, and API integrations.
-                    </p>
-                </div>
-                <Link
-                    href="/workflows/new/edit"
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring h-10 px-4 py-2 rounded-md shadow-sm gap-2"
-                >
-                    <PlusCircle size={18} />
-                    Create Workflow
-                </Link>
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col gap-6">
+            <BankPageHeader
+                badge="Automation Engine · Orchestrator"
+                livePill={`${publishedCount} Published`}
+                liveTone={failedCount > 0 ? "amber" : "emerald"}
+                title="Workflow Pipelines"
+                subtitle="Visual banking orchestration pipelines powering transfers, bill payments, KYC onboarding, and multi-stage approvals."
+                actions={
+                    <Link
+                        href="/workflows/new/edit"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center font-bold text-xs transition-colors h-9 px-4 rounded-xl shadow-sm gap-2"
+                    >
+                        <PlusCircle size={16} />
+                        Create Workflow
+                    </Link>
+                }
+            />
+
+            <SubsystemNav group="automation" />
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {[
+                    { label: "Total Workflows", value: workflows.length, sub: "Registered DAG pipelines" },
+                    { label: "Published Live", value: publishedCount, sub: `${workflows.length - publishedCount} draft` },
+                    { label: "Healthy Last Runs", value: completedCount, sub: "Completed without error" },
+                    { label: "Attention Required", value: failedCount, sub: failedCount > 0 ? "Check Run History logs" : "All active runs clean" },
+                ].map((k) => (
+                    <div key={k.label} className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{k.label}</p>
+                        <p className="text-2xl font-black font-mono text-foreground">{k.value}</p>
+                        <p className="text-[11px] text-muted-foreground">{k.sub}</p>
+                    </div>
+                ))}
             </div>
 
             <div className="border rounded-xl shadow-sm bg-background overflow-x-auto">

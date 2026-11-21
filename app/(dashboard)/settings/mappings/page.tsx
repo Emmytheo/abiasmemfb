@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save, AlertCircle, CheckCircle2, Link2, Hash, Trash2, Plus, X, ArrowLeftCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { BankPageHeader } from "@/components/banking/page-header";
+import { SubsystemNav } from "@/components/banking/subsystem-nav";
 
 interface ProviderMapping {
     id: string;
@@ -198,31 +200,52 @@ export default function ProviderMappingsPage() {
 
     const isDirty = (id: string, current: string) => (edits[id] ?? current) !== current;
 
+    const mappedCount = mappings.length;
+    const unmappedCount = Math.max(0, productTypes.length - mappedCount);
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 mt-6 px-4 max-w-7xl mx-auto pb-24">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Provider Mappings</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Map dynamic platform product types to Qore Core Banking ProductCodes. Duplicates are strictly guarded against.
-                    </p>
-                </div>
-                {!showCreateForm && (
-                    <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-                        <Button 
-                            variant="outline" 
-                            onClick={handleProductSync} 
-                            disabled={isSyncingProducts}
-                            className="shadow-sm gap-2 select-none border-primary/20 hover:bg-primary/5 text-primary font-semibold"
-                        >
-                            <RefreshCw className={`h-4 w-4 ${isSyncingProducts ? 'animate-spin' : ''}`} />
-                            {isSyncingProducts ? 'Syncing...' : 'Sync Products from Qore'}
-                        </Button>
-                        <Button onClick={() => setShowCreateForm(true)} className="shadow-md gap-2 select-none">
-                            <Plus className="h-4 w-4" /> Create Mapping
-                        </Button>
+        <div className="space-y-6 animate-in fade-in duration-500 p-4 sm:p-8 max-w-7xl mx-auto pb-24">
+            <BankPageHeader
+                badge="Core Banking Product Mappings"
+                livePill={`${mappedCount} Mapped Codes`}
+                liveTone={unmappedCount > 0 ? "amber" : "emerald"}
+                title="Provider Product Mappings"
+                subtitle="Bind BankSuite product definitions to external Core Banking (Qore/BankOne) ProductCodes with duplicate protection."
+                actions={
+                    !showCreateForm ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleProductSync}
+                                disabled={isSyncingProducts}
+                                className="rounded-xl gap-1.5 font-bold"
+                            >
+                                <RefreshCw className={`h-3.5 w-3.5 ${isSyncingProducts ? 'animate-spin' : ''}`} />
+                                {isSyncingProducts ? 'Syncing...' : 'Sync from Qore'}
+                            </Button>
+                            <Button size="sm" onClick={() => setShowCreateForm(true)} className="rounded-xl gap-1.5 font-bold">
+                                <Plus className="h-3.5 w-3.5" /> Create Mapping
+                            </Button>
+                        </div>
+                    ) : undefined
+                }
+            />
+
+            <SubsystemNav group="automation" />
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {[
+                    { label: "Active Product Types", value: productTypes.length, sub: "Catalogue products in BankSuite" },
+                    { label: "Configured Mappings", value: mappedCount, sub: "Bound to external core codes" },
+                    { label: "Coverage Rate", value: `${productTypes.length > 0 ? Math.min(100, Math.round((mappedCount / productTypes.length) * 100)) : 100}%`, sub: unmappedCount > 0 ? `${unmappedCount} unmapped product(s)` : "Full coverage achieved" },
+                ].map((k) => (
+                    <div key={k.label} className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{k.label}</p>
+                        <p className="text-2xl font-black font-mono text-foreground">{k.value}</p>
+                        <p className="text-[11px] text-muted-foreground">{k.sub}</p>
                     </div>
-                )}
+                ))}
             </div>
 
             {/* Creation Form Overlay/Card */}

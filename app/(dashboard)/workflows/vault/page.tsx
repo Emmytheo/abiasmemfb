@@ -6,6 +6,7 @@ import { Shield, Clock, Fingerprint, Key, AlertTriangle, ChevronRight, ArrowLeft
 import { format, formatDistanceToNow, isPast } from 'date-fns'
 import { VaultActions } from './client-actions'
 import { VaultEditor } from './vault-editor'
+import { SubsystemNav } from '@/components/banking/subsystem-nav'
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
     API_KEY:        { bg: 'bg-blue-500/10',   text: 'text-blue-600 dark:text-blue-400',   dot: 'bg-blue-500' },
@@ -51,7 +52,9 @@ export default async function SecretVaultPage({
     const now = new Date()
 
     return (
-        <div className="flex h-[calc(100vh-theme(spacing.16))] w-full overflow-hidden bg-muted/30">
+        <div className="flex flex-col h-[calc(100vh-theme(spacing.16))] w-full overflow-hidden bg-muted/30">
+            <SubsystemNav group="automation" compact />
+            <div className="flex flex-1 min-h-0 w-full overflow-hidden">
 
             {/* ── LEFT: Secret List ────────────────────────────────────
                 Mobile: full-width list, hidden when a secret is selected
@@ -274,6 +277,7 @@ export default async function SecretVaultPage({
                     </div>
                 )}
             </aside>
+            </div>
         </div>
     )
 }

@@ -18,6 +18,7 @@ import { api } from "@/lib/api";
 import { Account, Transaction } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 export default function AccountDetailsPage({ params }: { params: Promise<{ accountId: string }> }) {
     const resolvedParams = use(params);
@@ -98,20 +99,21 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
         if (!account) return;
         setCardRequestLoading(true);
         try {
-            const res = await fetch('/api/endpoints/execute', {
+            const res = await fetch('/api/cards/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    endpointId: 34,
-                    dynamicPayload: { AccountNumber: account.account_number, CardType: cardType }
+                    account_id: Number(account.id),
+                    card_brand: cardType,
+                    card_type: 'virtual',
                 })
             });
             const data = await res.json();
-            if (res.ok && (data?.IsSuccessful !== false)) {
+            if (res.ok && data?.success !== false) {
                 setCardRequestDone(true);
-                toast.success(`${cardType} card requested! Processing within 5 business days.`);
+                toast.success(`${cardType} smart card issued! Manage PIN & limits in Smart Cards.`);
             } else {
-                toast.error(data?.Message || data?.error || 'Card request failed. Please try again.');
+                toast.error(data?.error || data?.message || 'Card request failed. Please try again.');
             }
         } catch (err: any) {
             toast.error(err.message || 'Network error. Try again.');
@@ -124,21 +126,21 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
         if (!activateCardNumber.trim()) { toast.error('Please enter your card number.'); return; }
         setActivateLoading(true);
         try {
-            const res = await fetch('/api/endpoints/execute', {
+            const res = await fetch('/api/cards/toggle-freeze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    endpointId: 35,
-                    dynamicPayload: { CardNumber: activateCardNumber.replace(/\s/g, '') }
+                    card_number: activateCardNumber.replace(/\s/g, ''),
+                    is_frozen: false,
                 })
             });
             const data = await res.json();
-            if (res.ok && (data?.IsSuccessful !== false)) {
+            if (res.ok && data?.success !== false) {
                 setActivateDone(true);
                 setActivateCardNumber('');
-                toast.success('Card activated successfully!');
+                toast.success('Card activated! Visit Smart Cards to configure limits & PIN.');
             } else {
-                toast.error(data?.Message || data?.error || 'Activation failed. Check the card number and try again.');
+                toast.error(data?.error || 'Could not locate that card number. Manage cards in /my-cards.');
             }
         } catch (err: any) {
             toast.error(err.message || 'Network error. Try again.');
@@ -173,25 +175,26 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ accou
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-            {/* Header / Breadcrumb */}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" asChild className="rounded-full bg-muted/50 hover:bg-muted">
-                    <Link href="/my-products">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-                        Account Details
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-2">
-                        {account.account_type} Account
-                        <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                        Status: <span className="text-emerald-500 font-medium capitalize">{account.status}</span>
-                    </p>
-                </div>
-            </div>
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+            <BankPageHeader
+                badge={`${account.account_type} Account · NUBAN`}
+                livePill={account.status.toUpperCase()}
+                liveTone={account.status === 'active' ? 'emerald' : 'amber'}
+                title={`NUBAN ${account.account_number}`}
+                subtitle={`Available balance ₦${account.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })} · Statements, smart cards & instant transfers.`}
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" asChild className="rounded-xl">
+                            <Link href="/my-products">
+                                <ArrowLeft className="mr-1.5 h-4 w-4" /> My Accounts
+                            </Link>
+                        </Button>
+                        <Button size="sm" asChild className="rounded-xl font-bold">
+                            <Link href="/pay/fund">Fund NUBAN</Link>
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Top Stat Cards */}
             <div className="grid gap-6 md:grid-cols-3">

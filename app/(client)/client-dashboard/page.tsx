@@ -443,12 +443,20 @@ export default function ClientDashboard() {
                         )}
                     </div>
 
-                    <Button asChild size="sm" className="w-full h-10 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
-                        <a href={`${coptellerLink?.appUrl || "http://localhost:3001"}/copteller/dashboard`} target="_blank" rel="noopener noreferrer">
-                            {coptellerLink?.linked ? "Open My Cooperative Portal" : "Explore Copteller Cooperatives"}
-                            <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                    </Button>
+                    {coptellerLink?.appUrl ? (
+                        <Button asChild size="sm" className="w-full h-10 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
+                            <a href={`${coptellerLink.appUrl.replace(/\/$/, "")}/copteller/dashboard`} target="_blank" rel="noopener noreferrer">
+                                {coptellerLink?.linked ? "Open My Cooperative Portal" : "Explore Copteller Cooperatives"}
+                                <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                        </Button>
+                    ) : (
+                        <Button asChild size="sm" className="w-full h-10 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
+                            <Link href="/esusu">
+                                Open Target Vaults &amp; Thrift <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                        </Button>
+                    )}
                 </div>
             </div>
 

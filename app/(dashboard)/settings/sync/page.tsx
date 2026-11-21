@@ -30,6 +30,8 @@ import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { SiteSettings } from "@/lib/api/types"
 import { HarmonizationReport } from "@/components/dashboard/HarmonizationReport"
+import { BankPageHeader } from "@/components/banking/page-header"
+import { SubsystemNav } from "@/components/banking/subsystem-nav"
 
 export default function SyncSettingsPage() {
     const [isLoading, setIsLoading] = useState(true)
@@ -171,43 +173,44 @@ export default function SyncSettingsPage() {
     if (!settings) return <div className="p-8 text-center font-bold text-lg">Settings not initialized. Check CMS globals.</div>
 
     return (
-        <div className="space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-3 md:p-8">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-background/50 backdrop-blur-sm sticky top-0 z-10 py-4 border-b -mx-3 px-3 md:mx-0 md:px-0 md:border-none md:static md:bg-transparent">
-                <div>
-                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-primary/70 mb-1">System Infrastructure</p>
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tight">Sync & Discovery</h1>
-                    <p className="hidden md:block text-muted-foreground mt-1 max-w-xl">
-                        Manage Qore Core Banking integration, discovery seeds, and registry synchronization endpoints.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
-                    <Button 
-                        variant="outline" 
-                        onClick={runDiscovery} 
-                        disabled={isDiscovering || isSyncingOfficers}
-                        className="grow md:grow-0 bg-background h-10 md:h-11"
-                    >
-                        {isDiscovering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Activity className="h-4 w-4 mr-2" />}
-                        <span className="hidden sm:inline">Run Discovery</span>
-                        <span className="sm:hidden text-xs">Discovery</span>
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        onClick={runOfficerSync} 
-                        disabled={isDiscovering || isSyncingOfficers}
-                        className="grow md:grow-0 bg-background h-10 md:h-11"
-                    >
-                        {isSyncingOfficers ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                        <span className="hidden sm:inline">Sync Officers</span>
-                        <span className="sm:hidden text-xs">Officers</span>
-                    </Button>
-                    <Button onClick={handleSave} disabled={isSaving} className="grow md:grow-0 h-10 md:h-11 shadow-lg shadow-primary/20">
-                        {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                        Save Changes
-                    </Button>
-                </div>
-            </div>
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
+            <BankPageHeader
+                badge="System Infrastructure · Core Sync"
+                livePill={isDiscovering || isSyncingOfficers ? "Sync Stream Active" : `${endpoints.length} Endpoints Indexed`}
+                liveTone={isDiscovering || isSyncingOfficers ? "amber" : "emerald"}
+                title="Sync & Discovery Engine"
+                subtitle="Manage Qore Core Banking integration, live SSE customer/officer discovery streams, identity harmonization, and endpoint health."
+                actions={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={runDiscovery}
+                            disabled={isDiscovering || isSyncingOfficers}
+                            className="rounded-xl font-bold"
+                        >
+                            {isDiscovering ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Activity className="h-3.5 w-3.5 mr-1.5" />}
+                            Run Discovery
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={runOfficerSync}
+                            disabled={isDiscovering || isSyncingOfficers}
+                            className="rounded-xl font-bold"
+                        >
+                            {isSyncingOfficers ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                            Sync Officers
+                        </Button>
+                        <Button size="sm" onClick={handleSave} disabled={isSaving} className="rounded-xl font-bold">
+                            {isSaving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                            Save Changes
+                        </Button>
+                    </div>
+                }
+            />
+
+            <SubsystemNav group="automation" />
 
             <Tabs defaultValue="settings" className="w-full">
                 <TabsList className="bg-muted/50 !h-full p-2 rounded-xl mb-8 flex-wrap h-auto gap-1">

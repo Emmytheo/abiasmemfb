@@ -1453,15 +1453,30 @@ export const getServiceCategories = async (): Promise<ServiceCategory[]> => {
         icon: doc.icon || '',
         description: doc.description || '',
         status: doc.status || 'active',
+        ui_layout: doc.ui_layout || 'default',
         created_at: doc.createdAt,
     })) as any;
 };
 
 export const getServicesByCategory = async (categorySlug: string): Promise<Service[]> => {
     const payload = await initPayload();
-    const { docs: cats } = await payload.find({ collection: 'service-categories' as any, where: { slug: { equals: categorySlug } }, limit: 1 });
-    if (!cats.length) return [];
-    const { docs } = await payload.find({ collection: 'services' as any, where: { and: [{ category: { equals: cats[0].id } }, { status: { equals: 'active' } }] }, depth: 2, limit: 200 });
+    const normalized = String(categorySlug || '').trim().toLowerCase();
+    const { docs: allCats } = await payload.find({ collection: 'service-categories' as any, limit: 100 });
+    const matchedCat =
+        allCats.find((c: any) => String(c.slug || '').toLowerCase() === normalized && c.status === 'active') ||
+        allCats.find((c: any) => String(c.slug || '').toLowerCase() === normalized) ||
+        allCats.find((c: any) => {
+            const slug = String(c.slug || '').toLowerCase();
+            if (['bills', 'utilities', 'pay-bills', 'bill-payments', 'e-pins', 'airtime', 'cable'].includes(normalized)) {
+                return c.status === 'active' && (slug.includes('bill') || slug.includes('utilit'));
+            }
+            if (['transfer', 'transfers'].includes(normalized)) {
+                return c.status === 'active' && slug.includes('transfer');
+            }
+            return false;
+        });
+    if (!matchedCat) return [];
+    const { docs } = await payload.find({ collection: 'services' as any, where: { and: [{ category: { equals: matchedCat.id } }, { status: { equals: 'active' } }] }, depth: 2, limit: 200 });
     return docs.map((doc: any) => ({
         id: String(doc.id),
         name: doc.name || 'Service',

@@ -11,9 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
     Loader2, ArrowLeft, AlertTriangle, ArrowDownLeft, ArrowUpRight,
-    RefreshCw, Copy, CheckCircle2, XCircle, Clock, Receipt, ArrowRight, Info, ExternalLink, Hash, Activity, CalendarDays
+    RefreshCw, Copy, CheckCircle2, XCircle, Clock, Receipt, ArrowRight, Info, ExternalLink, Hash, Activity, CalendarDays, RotateCcw
 } from "lucide-react";
 import { toast } from "sonner";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 const formatNaira = (n: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(n ?? 0);
 
@@ -45,16 +46,35 @@ function AdminTransactionDetailContent({ params }: { params: Promise<{ id: strin
         toast.success('Reference copied to clipboard');
     };
 
-    const queryExternal = async () => {
+    const handleReverseTransaction = async () => {
         if (!tx) return;
+        const reason = window.prompt(
+            `Enter supervisor reversal reason for ${tx.reference} (${formatNaira(tx.amount)}):`,
+            "Operational reversal by supervisor"
+        );
+        if (!reason || !reason.trim()) return;
         setQuerying(true);
         try {
-            const res = await fetch(`/api/mock/tx-status?TransactionReference=${encodeURIComponent(tx.reference)}`);
+            const res = await fetch(`/api/admin/transactions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "reverse",
+                    transactionId: tx.id,
+                    reason: reason.trim(),
+                }),
+            });
             const data = await res.json();
-            setExternalStatus(data.Payload || data);
-            toast.success('External status retrieved');
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "Reversal failed");
+                return;
+            }
+            setExternalStatus(data);
+            toast.success(`Atomic reversal posted (${data.reversalReference || "GL Reversed"})`);
+            const refreshed = await api.getTransactionById(id).catch(() => null);
+            if (refreshed) setTx(refreshed);
         } catch {
-            toast.error('Could not reach external status endpoint');
+            toast.error("Network error posting atomic reversal");
         } finally {
             setQuerying(false);
         }
@@ -80,17 +100,19 @@ function AdminTransactionDetailContent({ params }: { params: Promise<{ id: strin
     const destAccount = typeof tx.to_account === 'object' ? tx.to_account : null;
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24 px-4 md:px-6">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Transaction Details</h1>
-                    <p className="text-muted-foreground">Complete audit trail for ledger entry {tx.reference}</p>
-                </div>
-            </div>
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24 px-4 md:px-6 pt-6">
+            <BankPageHeader
+                badge={`Ledger Audit Trail · ${tx.type.toUpperCase()}`}
+                livePill={label}
+                liveTone={tx.status === 'successful' ? 'emerald' : tx.status === 'failed' ? 'rose' : 'amber'}
+                title={`Transaction ${tx.reference}`}
+                subtitle={`Posted ${new Date(tx.created_at).toLocaleString()} · Category: ${tx.category || 'Standard'} · Complete double-entry routing & reversal controls.`}
+                actions={
+                    <Button variant="outline" size="sm" onClick={() => router.back()} className="rounded-xl">
+                        <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Ledger
+                    </Button>
+                }
+            />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {/* Primary Overview Card */}
@@ -160,10 +182,10 @@ function AdminTransactionDetailContent({ params }: { params: Promise<{ id: strin
                                 <div className="space-y-1.5">
                                     <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Workflow Origin</span>
                                     <Link
-                                        href={`/workflows/${typeof tx.workflow_execution === 'object' ? tx.workflow_execution.id : tx.workflow_execution}`}
+                                        href={`/workflows/runs/${typeof tx.workflow_execution === 'object' ? tx.workflow_execution.id : tx.workflow_execution}`}
                                         className="text-sm font-medium text-primary hover:underline flex items-center gap-1"
                                     >
-                                        View Execution <ExternalLink className="w-3 h-3" />
+                                        View Workflow Run <ExternalLink className="w-3 h-3" />
                                     </Link>
                                 </div>
                             )}
@@ -228,13 +250,20 @@ function AdminTransactionDetailContent({ params }: { params: Promise<{ id: strin
 
                     {/* Actions */}
                     <div className="flex gap-3">
-                        <Button variant="outline" className="flex-1 gap-2" onClick={copyRef}>
-                            <Copy className="h-4 w-4" /> Copy Reference
+                        <Button variant="outline" className="flex-1 gap-2 rounded-xl" onClick={copyRef}>
+                            <Copy className="h-4 w-4" /> Copy Ref
                         </Button>
-                        <Button variant="outline" className="flex-1 gap-2" disabled={querying} onClick={queryExternal}>
-                            {querying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                            Query CBS Status
-                        </Button>
+                        {tx.status === "successful" && (
+                            <Button
+                                variant="destructive"
+                                className="flex-1 gap-2 rounded-xl font-bold"
+                                disabled={querying}
+                                onClick={handleReverseTransaction}
+                            >
+                                {querying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                                Atomic Reversal
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>

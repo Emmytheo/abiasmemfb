@@ -145,7 +145,7 @@ export default function ServicesPage() {
                 execution_workflow: executionWf || undefined,
                 fee_type: formData.get("fee_type") as any,
                 fee_value: Number(formData.get("fee_value")) || 0,
-                form_schema: selectedItem.form_schema,
+                form_schema: parsedSchema.length > 0 ? parsedSchema : selectedItem.form_schema,
                 status: formData.get("status") as 'active' | 'inactive',
                 service_intent: formData.get("service_intent") as any,
             });

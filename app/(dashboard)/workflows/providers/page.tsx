@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { ProviderActions } from './client-actions'
 import { ProviderEditor } from './provider-editor'
+import { SubsystemNav } from '@/components/banking/subsystem-nav'
 
 const CATEGORY_COLORS: Record<string, string> = {
     PAYMENT: 'bg-blue-500',
@@ -68,7 +69,9 @@ export default async function ProvidersManagerPage({
          * md      — 2-panel: list (fixed) + editor (flex)
          * lg      — 3-panel: list + editor + info panel
          */
-        <div className="flex h-[calc(100vh-theme(spacing.16))] w-full overflow-hidden bg-muted/30">
+        <div className="flex flex-col h-[calc(100vh-theme(spacing.16))] w-full overflow-hidden bg-muted/30">
+            <SubsystemNav group="automation" compact />
+            <div className="flex flex-1 min-h-0 w-full overflow-hidden">
 
             {/* ── LEFT: Provider List ──────────────────────────────────
                 On mobile: full width, hidden when a provider is selected.
@@ -274,6 +277,7 @@ export default async function ProvidersManagerPage({
                     </div>
                 )}
             </aside>
+            </div>
         </div>
     )
 }

@@ -1,9 +1,12 @@
 import React from 'react'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { Info, Clock } from 'lucide-react'
+import Link from 'next/link'
+import { Info, Clock, CheckCircle2, ArrowRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
+import { BankPageHeader } from '@/components/banking/page-header'
+import { SubsystemNav } from '@/components/banking/subsystem-nav'
 
 export default async function ScheduledJobsPage() {
     const payload = await getPayload({ config })
@@ -17,14 +20,40 @@ export default async function ScheduledJobsPage() {
     const jobs = jobsRes.docs as any[]
 
     return (
-        <div className="p-8 max-w-7xl mx-auto flex flex-col gap-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Scheduled Jobs</h1>
-                    <p className="text-muted-foreground mt-2">
-                        View active CRON schedules, background timers, and recurring logic tasks.
-                    </p>
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col gap-6">
+            <BankPageHeader
+                badge="Scheduler & Batch Cron"
+                livePill={`${jobs.length + 1} Active Schedules`}
+                title="Scheduled Jobs & Nightly Batches"
+                subtitle="Monitor core banking close-of-business CRON schedules alongside workflow timers and recurring automation tasks."
+            />
+
+            <SubsystemNav group="automation" />
+
+            {/* Core Banking Platform Cron Schedule */}
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <CheckCircle2 className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-black text-foreground">Core Banking Nightly EOD Close-of-Business Batch</p>
+                            <Badge variant="outline" className="font-mono text-[10px] border-emerald-500/30 text-emerald-600">
+                                CRON: 55 23 * * * (23:55 UTC)
+                            </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Endpoint: <code className="font-mono">/api/cron/eod</code> · Runs daily savings interest accrual, loan past-due PAR aging, and Trial Balance verification (`vercel.json`).
+                        </p>
+                    </div>
                 </div>
+                <Link
+                    href="/dashboard/operations"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-background border border-border hover:border-primary/50 text-xs font-bold shrink-0 transition-colors"
+                >
+                    Open EOD Control <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
             </div>
 
             <div className="border rounded-xl shadow-sm bg-background overflow-hidden">

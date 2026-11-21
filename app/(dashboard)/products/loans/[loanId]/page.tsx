@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { BankPageHeader } from "@/components/banking/page-header";
 
 const formatNaira = (n: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(n ?? 0);
 
@@ -146,22 +147,19 @@ function AdminLoanDetailContent({ params }: { params: Promise<{ loanId: string }
     ] as const;
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24 px-3">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
-                        <ArrowLeft className="h-5 w-5" />
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24 px-4 md:px-6 pt-6">
+            <BankPageHeader
+                badge={`Credit Facility · ${loan.duration_months} Months @ ${loan.interest_rate}% p.a.`}
+                livePill={statusInfo.label}
+                liveTone={loan.status === 'active' || loan.status === 'repaid' ? 'emerald' : loan.status === 'defaulted' || loan.status === 'rejected' ? 'rose' : 'amber'}
+                title={`Loan #${String(loan.id).slice(0, 16).toUpperCase()}`}
+                subtitle={`Principal ${formatNaira(loan.amount)} · Outstanding ${formatNaira(loan.outstanding_balance ?? loan.amount)} · Issued ${new Date(loan.created_at).toLocaleDateString()}`}
+                actions={
+                    <Button variant="outline" size="sm" onClick={() => router.back()} className="rounded-xl">
+                        <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Loans
                     </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold">Loan Detail</h1>
-                        <p className="text-muted-foreground font-mono text-sm">{String(loan.id).slice(0, 16).toUpperCase()}</p>
-                    </div>
-                </div>
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider border ${statusInfo.color}`}>
-                    {statusInfo.icon} {statusInfo.label}
-                </div>
-            </div>
+                }
+            />
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

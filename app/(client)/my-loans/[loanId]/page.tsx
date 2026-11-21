@@ -15,8 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/lib/api";
-import { Loan, Transaction, ProductType } from "@/lib/api/types";
+import { Loan, Transaction, ProductType, Account } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/client";
+import { BankPageHeader } from "@/components/banking/page-header";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: string }> }) {
     const resolvedParams = use(params);
@@ -26,7 +31,12 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
     const [loan, setLoan] = useState<Loan | null>(null);
     const [productType, setProductType] = useState<ProductType | null>(null);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [userAccounts, setUserAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
+    const [repayOpen, setRepayOpen] = useState(false);
+    const [repayAccountId, setRepayAccountId] = useState("");
+    const [repayAmount, setRepayAmount] = useState("");
+    const [repayBusy, setRepayBusy] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -54,9 +64,17 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
                     setProductType(pType);
                 }
 
-                // Fetch only transactions linked to this specific loan (disbursements + repayments)
-                const loanTxData = await api.getLoanTransactions(loanId);
+                // Fetch only transactions linked to this specific loan (disbursements + repayments) + user accounts
+                const [loanTxData, accs] = await Promise.all([
+                    api.getLoanTransactions(loanId),
+                    api.getUserAccounts(supaUser.id).catch(() => []),
+                ]);
                 setTransactions(loanTxData);
+                setUserAccounts(accs);
+                if (accs.length > 0) setRepayAccountId(String(accs[0].id));
+                if (loanData.monthly_installment) {
+                    setRepayAmount(String(Math.round(loanData.monthly_installment)));
+                }
 
             } catch (err) {
                 console.error("Failed to load loan details:", err);
@@ -106,29 +124,57 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
     // Formatter
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 
+    const handleSelfServiceRepay = async () => {
+        const amt = Number(repayAmount);
+        if (!repayAccountId) return toast.error("Select a source account.");
+        if (!Number.isFinite(amt) || amt <= 0) return toast.error("Enter a valid repayment amount.");
+        setRepayBusy(true);
+        try {
+            const res = await fetch("/api/client/loans/repay", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    loanId: loan.id,
+                    sourceAccountId: Number(repayAccountId),
+                    amountNaira: amt,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                toast.error(data.error || "Loan repayment failed.");
+                return;
+            }
+            toast.success(data.message || `Repayment of ${formatCurrency(amt)} posted to GL!`);
+            setRepayOpen(false);
+            const [refreshedLoan, refreshedTxs] = await Promise.all([
+                api.getLoanById(loanId),
+                api.getLoanTransactions(loanId),
+            ]);
+            if (refreshedLoan) setLoan(refreshedLoan);
+            setTransactions(refreshedTxs);
+        } catch {
+            toast.error("Network error during loan repayment.");
+        } finally {
+            setRepayBusy(false);
+        }
+    };
+
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-            {/* Header / Breadcrumb */}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" asChild className="rounded-full bg-muted/50 hover:bg-muted">
-                    <Link href="/my-loans">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-                        Loan Details
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-2">
-                        {productType?.name || 'Personal Loan'}
-                        <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                        Status: <span className={`font-medium capitalize ${loan.status === 'active' ? 'text-primary' :
-                            loan.status === 'repaid' ? 'text-emerald-500' :
-                                loan.status === 'defaulted' ? 'text-destructive' : 'text-amber-500'
-                            }`}>{loan.status}</span>
-                    </p>
-                </div>
-            </div>
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+            <BankPageHeader
+                badge={`Credit Facility · ${productType?.name || 'Personal Loan'}`}
+                livePill={loan.status.toUpperCase()}
+                liveTone={loan.status === 'active' || loan.status === 'repaid' ? 'emerald' : loan.status === 'defaulted' ? 'rose' : 'amber'}
+                title="Loan Facility Details"
+                subtitle={`Principal ${formatCurrency(loan.amount)} · ${loan.interest_rate}% p.a. over ${loan.duration_months} months · Instant self-service repayment enabled.`}
+                actions={
+                    <Button variant="outline" size="sm" asChild className="rounded-xl">
+                        <Link href="/my-loans">
+                            <ArrowLeft className="mr-1.5 h-4 w-4" /> My Loans
+                        </Link>
+                    </Button>
+                }
+            />
 
             {/* Top Stat Cards */}
             <div className="grid gap-6 md:grid-cols-3">
@@ -188,15 +234,79 @@ export default function LoanDetailsPage({ params }: { params: Promise<{ loanId: 
                                         <Calendar className="h-3 w-3" /> Due {loan.next_payment_date ? new Date(loan.next_payment_date).toLocaleDateString() : 'N/A'}
                                     </p>
                                 </div>
-                                <Button className="w-full justify-start h-12 relative overflow-hidden group shadow-sm" asChild>
-                                    <Link href={`/pay/transfer?to_loan=${loan.id}&amount=${loan.monthly_installment}`}>
-                                        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-300" />
-                                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-foreground/10 mr-3">
-                                            <ArrowUpRight className="h-4 w-4" />
-                                        </span>
-                                        Make Payment
-                                    </Link>
-                                </Button>
+                                <Dialog open={repayOpen} onOpenChange={setRepayOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button className="w-full justify-start h-12 rounded-xl font-bold shadow-sm">
+                                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-foreground/10 mr-3">
+                                                <ArrowUpRight className="h-4 w-4" />
+                                            </span>
+                                            Make Instant Repayment
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="rounded-2xl sm:max-w-md">
+                                        <DialogHeader>
+                                            <DialogTitle className="font-black">Repay Loan Facility</DialogTitle>
+                                            <DialogDescription className="text-xs">
+                                                Atomically debit your NUBAN account and post DR GL 2000 / CR GL 1200 repayment immediately.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-2">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-bold">Source Account</Label>
+                                                <select
+                                                    value={repayAccountId}
+                                                    onChange={(e) => setRepayAccountId(e.target.value)}
+                                                    className="w-full h-10 px-3 rounded-xl border border-border bg-background text-xs font-semibold"
+                                                >
+                                                    {userAccounts.map((a) => (
+                                                        <option key={a.id} value={a.id}>
+                                                            {a.account_type} · {a.account_number} ({formatCurrency(a.balance)})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-bold">Repayment Amount (NGN)</Label>
+                                                <Input
+                                                    type="number"
+                                                    min={100}
+                                                    value={repayAmount}
+                                                    onChange={(e) => setRepayAmount(e.target.value)}
+                                                    className="h-10 rounded-xl font-mono font-bold"
+                                                />
+                                                <div className="flex gap-2 pt-1">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-[11px] h-7 rounded-lg"
+                                                        onClick={() => setRepayAmount(String(Math.round(monthlyInstallment)))}
+                                                    >
+                                                        1 Installment
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-[11px] h-7 rounded-lg"
+                                                        onClick={() => setRepayAmount(String(Math.ceil(outstanding)))}
+                                                    >
+                                                        Full Payoff ({formatCurrency(outstanding)})
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setRepayOpen(false)} className="rounded-xl">
+                                                Cancel
+                                            </Button>
+                                            <Button onClick={handleSelfServiceRepay} disabled={repayBusy} className="rounded-xl font-bold">
+                                                {repayBusy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+                                                Confirm Repayment
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
                             </>
                         ) : loan.status === 'repaid' ? (
                             <div className="flex flex-col items-center justify-center p-6 text-center h-full">

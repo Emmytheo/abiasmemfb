@@ -2,6 +2,8 @@ import React from 'react'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { SimulatorClient } from './SimulatorClient'
+import { BankPageHeader } from '@/components/banking/page-header'
+import { SubsystemNav } from '@/components/banking/subsystem-nav'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,16 +27,18 @@ export default async function ServiceSimulatorPage() {
     }))
 
     return (
-        <div className="flex-1 w-full bg-muted/20 min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">
-            <div className="max-w-4xl mx-auto space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-primary">Service Simulator</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Select a published Service to test its Dynamic Form schema, automatic validations, and execution workflow integration.
-                    </p>
-                </div>
+        <div className="flex-1 w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto space-y-6">
+                <BankPageHeader
+                    badge="Service Factory · Live Sandbox"
+                    livePill={`${payloadServices.length} Executable Services`}
+                    title="Service Execution Simulator"
+                    subtitle="Test dynamic service schemas, validation endpoints, and workflow-backed bill & transfer executions before publishing to clients."
+                />
 
-                <div className="bg-background border rounded-xl shadow-sm p-6 overflow-hidden">
+                <SubsystemNav group="factory" />
+
+                <div className="bg-card border border-border/80 rounded-2xl shadow-sm p-6 overflow-hidden">
                     <SimulatorClient availableServices={payloadServices} />
                 </div>
             </div>
